@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { href: '/gyms', label: 'Gyms' },
   { href: '/payouts', label: 'Payouts' },
   { href: '/staff', label: 'Staff' },
+  { href: '/messages', label: 'Messages' },
   { href: '/pitch-access', label: 'Pitch Access' },
 ];
 
