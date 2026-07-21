@@ -13,7 +13,11 @@ interface JobApplication {
   jobTitle: string;
   name: string;
   email: string;
+  phone: string;
+  portfolioUrl: string | null;
+  linkedinUrl: string | null;
   message: string;
+  resumeUrl: string | null;
   isRead: boolean;
   createdAt: string;
 }
@@ -31,7 +35,9 @@ export default async function ApplicationsPage() {
             <Th>Status</Th>
             <Th>Role</Th>
             <Th>Applicant</Th>
+            <Th>Links</Th>
             <Th>Message</Th>
+            <Th>Resume</Th>
             <Th>Received</Th>
             <Th>Action</Th>
           </Thead>
@@ -45,8 +51,33 @@ export default async function ApplicationsPage() {
                 <Td>
                   <p className="font-medium">{a.name}</p>
                   <p className="text-gray-500">{a.email}</p>
+                  <p className="text-gray-500">{a.phone}</p>
+                </Td>
+                <Td>
+                  <div className="flex flex-col gap-1">
+                    {a.portfolioUrl && (
+                      <a href={a.portfolioUrl} target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline dark:text-emerald-400">
+                        Portfolio
+                      </a>
+                    )}
+                    {a.linkedinUrl && (
+                      <a href={a.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline dark:text-emerald-400">
+                        LinkedIn
+                      </a>
+                    )}
+                    {!a.portfolioUrl && !a.linkedinUrl && <span className="text-gray-400">—</span>}
+                  </div>
                 </Td>
                 <Td className="max-w-md whitespace-pre-wrap">{a.message}</Td>
+                <Td>
+                  {a.resumeUrl ? (
+                    <a href={a.resumeUrl} target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline dark:text-emerald-400">
+                      View
+                    </a>
+                  ) : (
+                    <span className="text-gray-400">—</span>
+                  )}
+                </Td>
                 <Td>{new Date(a.createdAt).toLocaleString()}</Td>
                 <Td>
                   <ActionForm action={setApplicationReadAction}>
@@ -59,7 +90,7 @@ export default async function ApplicationsPage() {
                 </Td>
               </Tr>
             ))}
-            {applications.length === 0 && <EmptyRow colSpan={6}>No applications yet.</EmptyRow>}
+            {applications.length === 0 && <EmptyRow colSpan={8}>No applications yet.</EmptyRow>}
           </tbody>
         </Table>
       </section>
