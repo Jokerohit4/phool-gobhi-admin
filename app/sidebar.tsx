@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: '/payouts', label: 'Payouts' },
   { href: '/staff', label: 'Staff' },
   { href: '/jobs', label: 'Jobs' },
+  { href: '/applications', label: 'Applications' },
   { href: '/messages', label: 'Messages' },
   { href: '/pitch-access', label: 'Pitch Access' },
 ];
