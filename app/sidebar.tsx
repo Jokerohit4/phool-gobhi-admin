@@ -5,12 +5,14 @@ import { usePathname, useRouter } from 'next/navigation';
 
 const NAV_ITEMS = [
   { href: '/gyms', label: 'Gyms' },
+  { href: '/attendance', label: 'Attendance' },
   { href: '/payouts', label: 'Payouts' },
   { href: '/staff', label: 'Staff' },
   { href: '/jobs', label: 'Jobs' },
   { href: '/applications', label: 'Applications' },
   { href: '/messages', label: 'Messages' },
   { href: '/pitch-access', label: 'Pitch Access' },
+  { href: '/settings', label: 'Settings' },
 ];
 
 export default function Sidebar() {
