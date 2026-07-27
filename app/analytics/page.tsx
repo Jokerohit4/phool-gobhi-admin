@@ -263,7 +263,7 @@ async function SupplyView({ days }: { days: string }) {
                   {g.booking_count === 0 ? (
                     <span className="flex items-center gap-2">
                       <span className="font-medium">0</span>
-                      <StatusBadge tone="warning">no bookings yet</StatusBadge>
+                      <StatusBadge tone="pending">no bookings yet</StatusBadge>
                     </span>
                   ) : (
                     g.booking_count
