@@ -1,12 +1,20 @@
 import { notFound } from 'next/navigation';
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
-import { approveGymAction, rejectGymAction } from './actions';
+import { approveGymAction, rejectGymAction, deleteReviewAction } from './actions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
+
+interface GymReview {
+  id: number;
+  customerId: number;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+}
 
 interface GymDetail {
   id: number;
@@ -42,6 +50,11 @@ export default async function GymDetailPage({
   } catch {
     notFound();
   }
+
+  // Best-effort — a reviews-fetch failure shouldn't block the rest of the page.
+  const reviews = await gatewayJson<{ data: GymReview[] }>(`/api/gyms/${id}/reviews`)
+    .then((res) => res.data)
+    .catch(() => [] as GymReview[]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -102,6 +115,29 @@ export default async function GymDetailPage({
           </div>
         )}
       </Card>
+
+      {reviews.length > 0 && (
+        <Card className="flex flex-col gap-3">
+          <h2 className="font-medium">Reviews ({reviews.length})</h2>
+          {reviews.map((r) => (
+            <div key={r.id} className="flex items-start justify-between gap-3 border-b pb-3 last:border-0 last:pb-0">
+              <div>
+                <p className="text-sm font-medium">
+                  {r.rating}★ · Customer #{r.customerId} · {new Date(r.createdAt).toLocaleDateString()}
+                </p>
+                {r.comment && <p className="mt-1 text-sm text-gray-600">{r.comment}</p>}
+              </div>
+              <ActionForm action={deleteReviewAction} confirmMessage="Remove this review? This cannot be undone.">
+                <input type="hidden" name="gymId" value={gym.id} />
+                <input type="hidden" name="reviewId" value={r.id} />
+                <SubmitButton variant="danger" pendingText="Removing…" className="shrink-0 text-xs">
+                  Remove
+                </SubmitButton>
+              </ActionForm>
+            </div>
+          ))}
+        </Card>
+      )}
 
       {!gym.isApproved && (
         <Card className="flex flex-col gap-4">

@@ -69,6 +69,16 @@ interface RevenueTrendData {
   days: { day: string; bookings: number; gmv: number }[];
 }
 
+interface RetentionCohort {
+  cohortWeek: string;
+  cohortSize: number;
+  weeks: { offset: number; activeUsers: number; retentionRate: number | null }[];
+}
+
+interface RetentionCohortsData {
+  cohorts: RetentionCohort[];
+}
+
 interface JourneyEvent {
   event: string;
   properties: Record<string, unknown>;
@@ -90,7 +100,7 @@ interface UserJourneyData {
   profile: { name: string | null; phone: string | null; role: string | null; type: string | null } | null;
 }
 
-const VIEWS = ['supply', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy', 'city', 'revenue', 'user'] as const;
+const VIEWS = ['supply', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy', 'city', 'revenue', 'retention', 'user'] as const;
 type View = (typeof VIEWS)[number];
 
 function isView(value: string | undefined): value is View {
@@ -106,6 +116,7 @@ const VIEW_LABELS: Record<View, string> = {
   buddy: 'Buddy',
   city: 'By City',
   revenue: 'Revenue',
+  retention: 'Retention',
   user: 'User Journey',
 };
 
@@ -114,9 +125,24 @@ const VIEW_LABELS: Record<View, string> = {
 // undifferentiated row.
 const VIEW_GROUPS: { label: string; views: View[] }[] = [
   { label: 'Funnels', views: ['supply', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy'] },
-  { label: 'Breakdowns', views: ['city', 'revenue'] },
+  { label: 'Breakdowns', views: ['city', 'revenue', 'retention'] },
   { label: 'Lookup', views: ['user'] },
 ];
+
+// Client events carry the app they came from (customer/partner/website) plus
+// platform (android/ios/web) in properties — the only place that lives, since
+// it's set by each app's own analytics_service.dart / AnalyticsBootstrap, not
+// derivable from the event name. Server events have no client app context at
+// all (a server never knows which app triggered it), so the closest "origin"
+// there is which backend service emitted the truth event.
+function originFor(event: JourneyEvent): string {
+  if (event.source === 'client') {
+    const app = event.properties?.app as string | undefined;
+    const platform = event.properties?.platform as string | undefined;
+    return [app, platform].filter(Boolean).join(' · ') || 'unknown app';
+  }
+  return event.service || 'unknown service';
+}
 
 function formatHours(h: string | null): string {
   if (h == null) return '—';
@@ -164,7 +190,7 @@ export default async function AnalyticsPage({
             </div>
           ))}
         </div>
-        {view !== 'user' && (
+        {view !== 'user' && view !== 'retention' && (
           <div className="flex gap-1">
             {['7', '30', '90'].map((d) => (
               <Link
@@ -191,6 +217,7 @@ export default async function AnalyticsPage({
       {view === 'buddy' && <BuddyView days={days} />}
       {view === 'city' && <CityView days={days} />}
       {view === 'revenue' && <RevenueView days={days} />}
+      {view === 'retention' && <RetentionView />}
       {view === 'user' && <UserJourneyView distinctId={distinctId} />}
     </div>
   );
@@ -542,6 +569,73 @@ async function RevenueView({ days }: { days: string }) {
   );
 }
 
+const RETENTION_WEEK_OFFSETS = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+
+function retentionCellClass(rate: number | null): string {
+  if (rate == null) return 'text-gray-300 dark:text-gray-700';
+  if (rate >= 0.5) return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300';
+  if (rate >= 0.25) return 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300';
+  return 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400';
+}
+
+async function RetentionView() {
+  const { data } = await gatewayJson<{ data: RetentionCohortsData }>('/api/bookings/admin/analytics/retention?weeks=12');
+  // Newest cohort first — the most recent weeks are what a founder watching a
+  // just-launched cohort actually cares about checking day to day.
+  const cohorts = [...data.cohorts].sort((a, b) => (a.cohortWeek < b.cohortWeek ? 1 : -1));
+
+  return (
+    <Card>
+      <SectionHeading
+        title="Weekly booking retention"
+        subtitle="Of customers whose first booking landed in a given week, what share booked again N weeks later — a funnel can look healthy while this leaks"
+      />
+      {cohorts.length === 0 ? (
+        <p className="text-sm text-gray-500 dark:text-gray-400">No booking_confirmed events yet in the analytics store.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className="whitespace-nowrap px-2 py-1.5 text-left text-xs font-medium uppercase tracking-wide text-gray-400">
+                  Cohort week
+                </th>
+                <th className="whitespace-nowrap px-2 py-1.5 text-left text-xs font-medium uppercase tracking-wide text-gray-400">
+                  Size
+                </th>
+                {RETENTION_WEEK_OFFSETS.map((o) => (
+                  <th key={o} className="whitespace-nowrap px-2 py-1.5 text-center text-xs font-medium uppercase tracking-wide text-gray-400">
+                    Week {o}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {cohorts.map((c) => {
+                const byOffset = new Map(c.weeks.map((w) => [w.offset, w]));
+                return (
+                  <tr key={c.cohortWeek} className="border-t border-gray-100 dark:border-gray-800">
+                    <td className="whitespace-nowrap px-2 py-1.5">{new Date(c.cohortWeek).toLocaleDateString()}</td>
+                    <td className="whitespace-nowrap px-2 py-1.5 tabular-nums">{c.cohortSize}</td>
+                    {RETENTION_WEEK_OFFSETS.map((o) => {
+                      const w = byOffset.get(o);
+                      return (
+                        <td key={o} className={`whitespace-nowrap px-2 py-1.5 text-center tabular-nums ${retentionCellClass(w?.retentionRate ?? null)}`}>
+                          {w ? `${Math.round((w.retentionRate ?? 0) * 100)}%` : '—'}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 async function UserJourneyView({ distinctId }: { distinctId?: string }) {
   return (
     <>
@@ -552,7 +646,7 @@ async function UserJourneyView({ distinctId }: { distinctId?: string }) {
             type="text"
             name="distinctId"
             defaultValue={distinctId ?? ''}
-            placeholder="User ID (e.g. 9) or anon_... id"
+            placeholder="Phone number, User ID (e.g. 9), or anon_... id"
             className="flex-1 rounded border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
           />
           <button type="submit" className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white">
@@ -571,10 +665,12 @@ async function UserJourneyResults({ distinctId }: { distinctId: string }) {
     ({ data } = await gatewayJson<{ data: UserJourneyData }>(
       `/api/bookings/admin/analytics/user-journey?distinctId=${encodeURIComponent(distinctId)}&days=365`,
     ));
-  } catch {
+  } catch (err) {
     return (
       <Card>
-        <div className="text-sm text-red-600">Couldn&apos;t load a journey for &ldquo;{distinctId}&rdquo;.</div>
+        <div className="text-sm text-red-600">
+          {err instanceof Error ? err.message : `Couldn't load a journey for "${distinctId}".`}
+        </div>
       </Card>
     );
   }
@@ -670,6 +766,9 @@ async function UserJourneyResults({ distinctId }: { distinctId: string }) {
                   }`}
                 >
                   {row.event.source}
+                </span>
+                <span className="w-32 shrink-0 truncate rounded-full bg-gray-100 px-2 py-0.5 text-center text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                  {originFor(row.event)}
                 </span>
                 <span className="font-medium">{labelFor(row.event.event)}</span>
                 <span className="truncate text-xs text-gray-400">

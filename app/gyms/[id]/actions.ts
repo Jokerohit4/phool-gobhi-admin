@@ -38,3 +38,16 @@ export async function rejectGymAction(_prev: ActionState, formData: FormData): P
   revalidatePath(`/gyms/${gymId}`);
   return { ok: true, message: 'Gym rejected' };
 }
+
+export async function deleteReviewAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+  const gymId = formData.get('gymId');
+  const reviewId = formData.get('reviewId');
+  try {
+    await gatewayJson(`/api/gyms/${gymId}/reviews/${reviewId}`, { method: 'DELETE' });
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to remove review' };
+  }
+  revalidatePath(`/gyms/${gymId}`);
+  return { ok: true, message: 'Review removed' };
+}
