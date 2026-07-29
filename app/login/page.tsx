@@ -1,11 +1,9 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
 import { signInWithGoogle } from '@/lib/firebaseClient';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -14,8 +12,10 @@ export default function LoginPage() {
   async function completeSession(res: Response) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Sign-in failed');
-    router.push('/gyms');
-    router.refresh();
+    // Hard navigation, not router.push/refresh: the session cookie was just
+    // set by the API route, and a full page load guarantees the next request
+    // picks it up rather than racing the client router's cache/transition.
+    window.location.href = '/gyms';
   }
 
   async function login(e: FormEvent) {
