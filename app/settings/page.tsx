@@ -1,6 +1,6 @@
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
-import { updateCancellationPolicyAction } from './actions';
+import { updateCancellationPolicyAction, updateAppVersionConfigAction } from './actions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { ActionForm } from '@/components/ui/ActionForm';
@@ -10,6 +10,40 @@ interface CancellationTier {
   maxHoursNotice: number | null;
   blocked: boolean;
   refundRate: number;
+}
+
+interface AppVersionEntry {
+  minVersion: string;
+  latestVersion: string;
+  updateUrl: string;
+  message: string;
+}
+
+type AppVersionConfig = Record<'customer' | 'partner', Record<'android' | 'ios', AppVersionEntry>>;
+
+const APP_VERSION_ROWS: Array<{ app: 'customer' | 'partner'; platform: 'android' | 'ios'; label: string }> = [
+  { app: 'customer', platform: 'android', label: 'Customer — Android' },
+  { app: 'customer', platform: 'ios', label: 'Customer — iOS' },
+  { app: 'partner', platform: 'android', label: 'Partner — Android' },
+  { app: 'partner', platform: 'ios', label: 'Partner — iOS' },
+];
+
+const EMPTY_APP_VERSION_ENTRY: AppVersionEntry = {
+  minVersion: '1.0.0',
+  latestVersion: '1.0.0',
+  updateUrl: '',
+  message: '',
+};
+
+// Defensive fill — tolerates the admin GET returning a partial/missing config
+// (e.g. before the first PUT ever lands) without the page crashing.
+function withDefaults(config: Partial<AppVersionConfig> | null | undefined): AppVersionConfig {
+  const merged = {} as AppVersionConfig;
+  for (const { app, platform } of APP_VERSION_ROWS) {
+    merged[app] = merged[app] || ({} as AppVersionConfig['customer']);
+    merged[app][platform] = { ...EMPTY_APP_VERSION_ENTRY, ...(config?.[app]?.[platform] || {}) };
+  }
+  return merged;
 }
 
 export default async function SettingsPage() {
@@ -23,6 +57,12 @@ export default async function SettingsPage() {
   const tiers = [...policy.tiers];
   while (tiers.length < 4) tiers.push({ maxHoursNotice: null, blocked: false, refundRate: 1 });
   const rows = tiers.slice(0, 4);
+
+  const { data: appVersionRaw, updatedAt: appVersionUpdatedAt } = await gatewayJson<{
+    data: Partial<AppVersionConfig>;
+    updatedAt?: string | null;
+  }>('/api/auth/app-config/admin');
+  const appVersionConfig = withDefaults(appVersionRaw);
 
   return (
     <div className="flex flex-col gap-8">
@@ -82,6 +122,79 @@ export default async function SettingsPage() {
             })}
             <SubmitButton pendingText="Saving…" className="w-fit">
               Save policy
+            </SubmitButton>
+          </ActionForm>
+        </Card>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <PageHeader
+          title="App version config"
+          subtitle={
+            appVersionUpdatedAt
+              ? `Controls the force-update gate and update-available nudge in both apps — last updated ${new Date(appVersionUpdatedAt).toLocaleString()}.`
+              : 'Controls the force-update gate and update-available nudge in both apps — not customized yet, showing defaults.'
+          }
+        />
+        <Card className="max-w-3xl">
+          <ActionForm action={updateAppVersionConfigAction} className="flex flex-col gap-6">
+            <p className="text-sm text-gray-500">
+              &ldquo;Min version&rdquo; below the installed build hard-blocks the app with an update-now screen.
+              &ldquo;Latest version&rdquo; above the installed build shows a dismissible update-available nudge instead.
+            </p>
+            {APP_VERSION_ROWS.map(({ app, platform, label }) => {
+              const entry = appVersionConfig[app][platform];
+              const prefix = `${app}_${platform}`;
+              return (
+                <div key={prefix} className="flex flex-col gap-2 border-t pt-4 first:border-t-0 first:pt-0">
+                  <span className="text-sm font-medium text-gray-500">{label}</span>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                    <label className="flex flex-col gap-1 text-sm">
+                      Min version (force update below this)
+                      <input
+                        type="text"
+                        name={`${prefix}_minVersion`}
+                        defaultValue={entry.minVersion}
+                        placeholder="1.0.0"
+                        className="rounded border px-3 py-2 text-sm"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1 text-sm">
+                      Latest version (soft nudge below this)
+                      <input
+                        type="text"
+                        name={`${prefix}_latestVersion`}
+                        defaultValue={entry.latestVersion}
+                        placeholder="1.0.0"
+                        className="rounded border px-3 py-2 text-sm"
+                      />
+                    </label>
+                    <label className="col-span-2 flex flex-col gap-1 text-sm">
+                      Store URL
+                      <input
+                        type="text"
+                        name={`${prefix}_updateUrl`}
+                        defaultValue={entry.updateUrl}
+                        placeholder="https://play.google.com/store/apps/details?id=..."
+                        className="rounded border px-3 py-2 text-sm"
+                      />
+                    </label>
+                    <label className="col-span-2 flex flex-col gap-1 text-sm">
+                      Message shown to users
+                      <input
+                        type="text"
+                        name={`${prefix}_message`}
+                        defaultValue={entry.message}
+                        placeholder="Optional — shown on the update screen/dialog"
+                        className="rounded border px-3 py-2 text-sm"
+                      />
+                    </label>
+                  </div>
+                </div>
+              );
+            })}
+            <SubmitButton pendingText="Saving…" className="w-fit">
+              Save app version config
             </SubmitButton>
           </ActionForm>
         </Card>
