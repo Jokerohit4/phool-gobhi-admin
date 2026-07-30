@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
@@ -60,7 +61,15 @@ export default async function GymDetailPage({
     <div className="flex flex-col gap-4">
       <PageHeader
         title={gym.name}
-        subtitle={`Partner #${gym.partnerId} · ${gym.address}, ${gym.city}, ${gym.state}`}
+        subtitle={
+          <>
+            Partner{' '}
+            <Link href={`/gyms?partnerId=${gym.partnerId}`} className="underline">
+              #{gym.partnerId}
+            </Link>{' '}
+            · {gym.address}, {gym.city}, {gym.state}
+          </>
+        }
       />
 
       <Card className="flex flex-col gap-4">

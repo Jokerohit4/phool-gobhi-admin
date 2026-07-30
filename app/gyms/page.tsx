@@ -24,31 +24,49 @@ function isTab(value: string | undefined): value is Tab {
 export default async function GymsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; partnerId?: string }>;
 }) {
   await requireSession();
-  const { status: rawStatus } = await searchParams;
+  const { status: rawStatus, partnerId } = await searchParams;
   const status: Tab = isTab(rawStatus) ? rawStatus : 'pending';
 
-  const { data: gyms } = await gatewayJson<{ data: Gym[] }>(`/api/gyms/admin/all?status=${status}`);
+  // Viewing a partner's gyms shows all of them regardless of status — a
+  // staff member clicking through from a gym's partner id wants to see
+  // every gym that partner has, not just whichever tab happened to be
+  // selected.
+  const qs = partnerId ? `partnerId=${partnerId}` : `status=${status}`;
+  const { data: gyms } = await gatewayJson<{ data: Gym[] }>(`/api/gyms/admin/all?${qs}`);
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="Gym approval queue" />
+      {partnerId ? (
+        <PageHeader
+          title={`Gyms for Partner #${partnerId}`}
+          subtitle={
+            <Link href="/gyms" className="underline">
+              ← All gyms
+            </Link>
+          }
+        />
+      ) : (
+        <PageHeader title="Gym approval queue" />
+      )}
 
-      <div className="flex gap-2">
-        {TABS.map((tab) => (
-          <Link
-            key={tab}
-            href={`/gyms?status=${tab}`}
-            className={`rounded px-3 py-1 text-sm capitalize ${
-              tab === status ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800'
-            }`}
-          >
-            {tab}
-          </Link>
-        ))}
-      </div>
+      {!partnerId && (
+        <div className="flex gap-2">
+          {TABS.map((tab) => (
+            <Link
+              key={tab}
+              href={`/gyms?status=${tab}`}
+              className={`rounded px-3 py-1 text-sm capitalize ${
+                tab === status ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800'
+              }`}
+            >
+              {tab}
+            </Link>
+          ))}
+        </div>
+      )}
 
       <Table>
         <Thead>
@@ -64,7 +82,11 @@ export default async function GymsPage({
                 <Link href={`/gyms/${gym.id}`} className="underline">{gym.name}</Link>
               </Td>
               <Td>{gym.city}</Td>
-              <Td>{gym.partnerId}</Td>
+              <Td>
+                <Link href={`/gyms?partnerId=${gym.partnerId}`} className="underline">
+                  {gym.partnerId}
+                </Link>
+              </Td>
               <Td>{new Date(gym.createdAt).toLocaleDateString()}</Td>
             </Tr>
           ))}
