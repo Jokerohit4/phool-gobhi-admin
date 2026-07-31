@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify, errors as joseErrors } from 'jose';
-import { ACCESS_COOKIE, REFRESH_COOKIE, ACCESS_COOKIE_MAX_AGE } from '@/lib/cookieNames';
+import { ACCESS_COOKIE, REFRESH_COOKIE, ACCESS_COOKIE_MAX_AGE, REFRESH_COOKIE_MAX_AGE, cookieOptions } from '@/lib/cookieNames';
 
 const secretKey = new TextEncoder().encode(process.env.JWT_SECRET);
 const GATEWAY_URL = process.env.GATEWAY_URL;
@@ -45,18 +45,19 @@ export async function proxy(request: NextRequest) {
     });
     if (!refreshRes.ok) return redirectToLogin(request);
 
-    const { accessToken } = await refreshRes.json();
+    const { accessToken, refreshToken: rotatedRefreshToken } = await refreshRes.json();
     const payload = accessToken ? await verifyGobhi(accessToken) : null;
     if (!payload) return redirectToLogin(request);
 
     const response = NextResponse.next();
-    response.cookies.set(ACCESS_COOKIE, accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: ACCESS_COOKIE_MAX_AGE,
-    });
+    response.cookies.set(ACCESS_COOKIE, accessToken, cookieOptions(ACCESS_COOKIE_MAX_AGE));
+    // Refresh tokens rotate server-side and the old one becomes single-use —
+    // see the identical fix (and full explanation) in lib/api.ts's
+    // refreshAccessToken(). Without this every session gets force-logged-out
+    // on its second silent refresh.
+    if (rotatedRefreshToken) {
+      response.cookies.set(REFRESH_COOKIE, rotatedRefreshToken, cookieOptions(REFRESH_COOKIE_MAX_AGE));
+    }
     return response;
   } catch {
     return redirectToLogin(request);
