@@ -41,6 +41,41 @@ export async function updateCancellationPolicyAction(
   return { ok: true, message: 'Cancellation policy updated' };
 }
 
+// IST has no DST and a fixed +5:30 offset, so this is a plain constant rather
+// than a real timezone conversion. The datetime-local input's value is
+// treated as IST wall-clock (not the admin's browser timezone) so the page
+// renders identically regardless of where the admin is signed in from —
+// launchInputToUtcIso is the inverse of utcIsoToLaunchInput in page.tsx.
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+function launchInputToUtcIso(value: string): string | null {
+  if (!value) return null;
+  const asIfUtc = new Date(`${value}:00.000Z`).getTime();
+  if (Number.isNaN(asIfUtc)) return null;
+  return new Date(asIfUtc - IST_OFFSET_MS).toISOString();
+}
+
+export async function updateLaunchGateAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+
+  const enabled = formData.get('enabled') === 'on';
+  const launchAtRaw = String(formData.get('launchAt') || '').trim();
+  // Enabled + no date = held gated indefinitely (deliberate manual-hold state).
+  const launchAt = launchInputToUtcIso(launchAtRaw);
+
+  try {
+    await gatewayJson('/api/auth/launch-gate/admin', {
+      method: 'PUT',
+      body: JSON.stringify({ enabled, launchAt }),
+    });
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to save launch gate' };
+  }
+
+  revalidatePath('/settings');
+  return { ok: true, message: 'Launch gate updated' };
+}
+
 const APP_VERSION_KEYS: Array<{ app: 'customer' | 'partner'; platform: 'android' | 'ios' }> = [
   { app: 'customer', platform: 'android' },
   { app: 'customer', platform: 'ios' },

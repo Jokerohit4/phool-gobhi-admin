@@ -1,10 +1,25 @@
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
-import { updateCancellationPolicyAction, updateAppVersionConfigAction } from './actions';
+import { updateCancellationPolicyAction, updateAppVersionConfigAction, updateLaunchGateAction } from './actions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
+
+interface LaunchGate {
+  enabled: boolean;
+  launchAt: string | null;
+}
+
+// Inverse of launchInputToUtcIso in actions.ts — same fixed +5:30 IST offset,
+// converting the stored UTC instant to the wall-clock string a
+// datetime-local input expects, so the field round-trips through IST
+// regardless of the admin's own browser timezone.
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+function utcIsoToLaunchInput(iso: string | null): string {
+  if (!iso) return '';
+  return new Date(new Date(iso).getTime() + IST_OFFSET_MS).toISOString().slice(0, 16);
+}
 
 interface CancellationTier {
   maxHoursNotice: number | null;
@@ -64,8 +79,41 @@ export default async function SettingsPage() {
   }>('/api/auth/app-config/admin');
   const appVersionConfig = withDefaults(appVersionRaw);
 
+  const { data: launchGate } = await gatewayJson<{ data: LaunchGate }>('/api/auth/launch-gate/admin');
+
   return (
     <div className="flex flex-col gap-8">
+      <section className="flex flex-col gap-4">
+        <PageHeader
+          title="Launch gate"
+          subtitle="Controls whether the website blocks gym browsing and booking creation. Partner onboarding (/partner/apply) is never affected."
+        />
+        <Card className="max-w-xl">
+          <ActionForm action={updateLaunchGateAction} className="flex flex-col gap-4">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input type="checkbox" name="enabled" defaultChecked={launchGate.enabled} />
+              Gate enabled
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              Launch date &amp; time (IST)
+              <input
+                type="datetime-local"
+                name="launchAt"
+                defaultValue={utcIsoToLaunchInput(launchGate.launchAt)}
+                className="rounded border px-3 py-2 text-sm"
+              />
+            </label>
+            <p className="text-sm text-gray-500">
+              Disabled: the site is always live. Enabled with a date: gated until that instant, then opens
+              automatically. Enabled with no date: gated indefinitely (manual hold).
+            </p>
+            <SubmitButton pendingText="Saving…" className="w-fit">
+              Save launch gate
+            </SubmitButton>
+          </ActionForm>
+        </Card>
+      </section>
+
       <section className="flex flex-col gap-4">
         <PageHeader
           title="Cancellation policy"
