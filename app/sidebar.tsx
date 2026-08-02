@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: '/jobs', label: 'Jobs' },
   { href: '/applications', label: 'Applications' },
   { href: '/messages', label: 'Messages' },
+  { href: '/reviews', label: 'Reviews' },
   { href: '/pitch-access', label: 'Pitch Access' },
   { href: '/settings', label: 'Settings' },
 ];
