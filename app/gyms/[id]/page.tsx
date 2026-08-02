@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
-import { approveGymAction, rejectGymAction, deleteReviewAction } from './actions';
+import { approveGymAction, rejectGymAction, deleteReviewAction, updateGymCommissionAction } from './actions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -33,6 +33,7 @@ interface GymDetail {
   isApproved: boolean;
   rejectionReason: string | null;
   partnerId: number;
+  commissionPct: number;
   images: { id: number; url: string }[];
 }
 
@@ -123,6 +124,32 @@ export default async function GymDetailPage({
             </ul>
           </div>
         )}
+      </Card>
+
+      <Card className="flex flex-col gap-3">
+        <h2 className="font-medium">Commission</h2>
+        <p className="text-sm text-gray-500">
+          Platform&apos;s share of this gym&apos;s bookings and subscriptions. Applies to every new booking/subscription
+          going forward — it does not change already-completed payouts. Default for a new gym is 20%.
+        </p>
+        <ActionForm action={updateGymCommissionAction} className="flex items-end gap-3">
+          <input type="hidden" name="gymId" value={gym.id} />
+          <label className="flex flex-col gap-1 text-sm">
+            Commission %
+            <input
+              type="number"
+              name="commissionPct"
+              min={0}
+              max={100}
+              step="0.01"
+              defaultValue={gym.commissionPct}
+              className="w-28 rounded border px-3 py-2 text-sm"
+            />
+          </label>
+          <SubmitButton pendingText="Saving…" className="w-fit">
+            Save
+          </SubmitButton>
+        </ActionForm>
       </Card>
 
       {reviews.length > 0 && (

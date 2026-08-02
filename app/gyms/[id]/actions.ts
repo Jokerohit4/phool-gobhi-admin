@@ -39,6 +39,25 @@ export async function rejectGymAction(_prev: ActionState, formData: FormData): P
   return { ok: true, message: 'Gym rejected' };
 }
 
+export async function updateGymCommissionAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+  const gymId = formData.get('gymId');
+  const commissionPct = Number(formData.get('commissionPct'));
+  if (Number.isNaN(commissionPct) || commissionPct < 0 || commissionPct > 100) {
+    return { ok: false, message: 'Commission must be a number between 0 and 100' };
+  }
+  try {
+    await gatewayJson(`/api/gyms/${gymId}/commission`, {
+      method: 'PUT',
+      body: JSON.stringify({ commissionPct }),
+    });
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to update commission' };
+  }
+  revalidatePath(`/gyms/${gymId}`);
+  return { ok: true, message: 'Commission updated' };
+}
+
 export async function deleteReviewAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireSession();
   const gymId = formData.get('gymId');
