@@ -113,3 +113,56 @@ export async function updateAppVersionConfigAction(
   revalidatePath('/settings');
   return { ok: true, message: 'App version config updated' };
 }
+
+export async function updateOtpConfigAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+
+  const provider = String(formData.get('provider') || '');
+
+  try {
+    await gatewayJson('/api/auth/otp-config/admin', {
+      method: 'PUT',
+      body: JSON.stringify({ provider }),
+    });
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to save OTP provider' };
+  }
+
+  revalidatePath('/settings');
+  return { ok: true, message: 'OTP provider updated' };
+}
+
+export async function addOtpSkipAllowlistAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+
+  const phone = String(formData.get('phone') || '').trim();
+  const note = String(formData.get('note') || '').trim() || undefined;
+
+  if (!phone) return { ok: false, message: 'Phone number is required' };
+
+  try {
+    await gatewayJson('/api/auth/otp-config/admin/skip-allowlist', {
+      method: 'POST',
+      body: JSON.stringify({ phone, note }),
+    });
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to add number' };
+  }
+
+  revalidatePath('/settings');
+  return { ok: true, message: `Added ${phone}` };
+}
+
+export async function removeOtpSkipAllowlistAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+  const id = formData.get('id');
+
+  try {
+    await gatewayJson(`/api/auth/otp-config/admin/skip-allowlist/${id}`, { method: 'DELETE' });
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to remove number' };
+  }
+
+  revalidatePath('/settings');
+  return { ok: true, message: 'Number removed' };
+}
