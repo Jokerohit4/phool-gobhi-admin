@@ -79,6 +79,14 @@ interface RetentionCohortsData {
   cohorts: RetentionCohort[];
 }
 
+interface GiftBonusPayoutsData {
+  days: { day: string; giftDays: number; bonusAmount: number }[];
+  totalGiftDays: number;
+  totalBonusAmount: number;
+  bonusCount: number;
+  closedOutCount: number;
+}
+
 interface JourneyEvent {
   event: string;
   properties: Record<string, unknown>;
@@ -100,7 +108,7 @@ interface UserJourneyData {
   profile: { name: string | null; phone: string | null; role: string | null; type: string | null } | null;
 }
 
-const VIEWS = ['supply', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy', 'city', 'revenue', 'retention', 'user'] as const;
+const VIEWS = ['supply', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy', 'city', 'revenue', 'retention', 'giftBonus', 'user'] as const;
 type View = (typeof VIEWS)[number];
 
 function isView(value: string | undefined): value is View {
@@ -117,6 +125,7 @@ const VIEW_LABELS: Record<View, string> = {
   city: 'By City',
   revenue: 'Revenue',
   retention: 'Retention',
+  giftBonus: 'Gift & Bonus Payouts',
   user: 'User Journey',
 };
 
@@ -125,7 +134,7 @@ const VIEW_LABELS: Record<View, string> = {
 // undifferentiated row.
 const VIEW_GROUPS: { label: string; views: View[] }[] = [
   { label: 'Funnels', views: ['supply', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy'] },
-  { label: 'Breakdowns', views: ['city', 'revenue', 'retention'] },
+  { label: 'Breakdowns', views: ['city', 'revenue', 'retention', 'giftBonus'] },
   { label: 'Lookup', views: ['user'] },
 ];
 
@@ -218,6 +227,7 @@ export default async function AnalyticsPage({
       {view === 'city' && <CityView days={days} />}
       {view === 'revenue' && <RevenueView days={days} />}
       {view === 'retention' && <RetentionView />}
+      {view === 'giftBonus' && <GiftBonusView days={days} />}
       {view === 'user' && <UserJourneyView distinctId={distinctId} />}
     </div>
   );
@@ -564,6 +574,40 @@ async function RevenueView({ days }: { days: string }) {
       <Card>
         <SectionHeading title="Bookings per day" />
         <TrendLineChart points={data.days.map((d) => ({ day: d.day, value: d.bookings }))} />
+      </Card>
+    </>
+  );
+}
+
+async function GiftBonusView({ days }: { days: string }) {
+  // wallet-service, not booking-service — it owns GymSubscription/the wallet
+  // credits, unlike every other view above (all booking-service).
+  const { data } = await gatewayJson<{ data: GiftBonusPayoutsData }>(`/api/wallet/admin/analytics/gift-bonus-payouts?days=${days}`);
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatTile label="Plans closed out" value={data.closedOutCount} />
+        <StatTile label="Gift days granted" value={data.totalGiftDays} />
+        <StatTile label="Bonuses paid" value={data.bonusCount} />
+        <StatTile label="Bonus ₹ paid" value={`₹${data.totalBonusAmount.toLocaleString()}`} />
+      </div>
+      <Card>
+        <SectionHeading
+          title="Gift days granted per day"
+          subtitle="Self-funded from each subscription's own missed-day breakage — capped so this can never exceed what that plan already collected"
+        />
+        <TrendLineChart points={data.days.map((d) => ({ day: d.day, value: d.giftDays }))} />
+      </Card>
+      <Card>
+        <SectionHeading
+          title="Attendance bonus ₹ paid per day"
+          subtitle="Real cost with no funding offset — most visible on 100%-attendance weekly plans, where there's no missed-day breakage to draw from"
+        />
+        <TrendLineChart
+          points={data.days.map((d) => ({ day: d.day, value: d.bonusAmount }))}
+          valueFormatter={(v) => `₹${v.toLocaleString()}`}
+        />
       </Card>
     </>
   );

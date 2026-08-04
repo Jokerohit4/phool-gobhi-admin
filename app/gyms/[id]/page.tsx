@@ -27,6 +27,11 @@ interface GymDetail {
   phone: string;
   sessionPrice: number;
   quotedPrice: number | null;
+  weeklyPlanPrice: number | null;
+  monthlyPlanPrice: number | null;
+  quarterlyPlanPrice: number | null;
+  sixMonthlyPlanPrice: number | null;
+  yearlyPlanPrice: number | null;
   established: number | null;
   amenities: string[];
   brandDocs: string[];
@@ -81,6 +86,19 @@ export default async function GymDetailPage({
           <dd>₹{gym.sessionPrice}</dd>
           <dt className="text-gray-500">Quoted price</dt>
           <dd>{gym.quotedPrice ? `₹${gym.quotedPrice}` : '—'}</dd>
+          <dt className="text-gray-500">Plan prices</dt>
+          <dd>
+            {[
+              ['Weekly', gym.weeklyPlanPrice],
+              ['Monthly', gym.monthlyPlanPrice],
+              ['Quarterly', gym.quarterlyPlanPrice],
+              ['Six monthly', gym.sixMonthlyPlanPrice],
+              ['Yearly', gym.yearlyPlanPrice],
+            ]
+              .filter(([, price]) => price != null)
+              .map(([label, price]) => `${label} ₹${price}`)
+              .join(', ') || '—'}
+          </dd>
           <dt className="text-gray-500">Established</dt>
           <dd>{gym.established ?? '—'}</dd>
           <dt className="text-gray-500">Amenities</dt>
