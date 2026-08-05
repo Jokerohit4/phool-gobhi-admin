@@ -84,7 +84,7 @@ const OTP_PROVIDER_OPTIONS: Array<{ value: OtpProvider; label: string; descripti
   {
     value: 'skip',
     label: 'Skip (test bypass)',
-    description: 'Allowlisted numbers below verify with 123456, no real OTP sent. Every other number still gets a real Fast2SMS OTP.',
+    description: 'Allowlisted numbers below verify with 123456, no real OTP sent. Every other number falls back to real Firebase phone verification — Fast2SMS never fires unless it’s explicitly selected above.',
   },
 ];
 
