@@ -22,19 +22,28 @@ function redirectToLogin(request: NextRequest, clearCookies = true) {
 
 export async function proxy(request: NextRequest) {
   const token = request.cookies.get(ACCESS_COOKIE)?.value;
-  if (!token) return redirectToLogin(request);
 
-  try {
-    const payload = await verifyGobhi(token);
-    return payload ? NextResponse.next() : redirectToLogin(request);
-  } catch (err) {
-    if (!(err instanceof joseErrors.JWTExpired)) {
+  if (token) {
+    try {
+      const payload = await verifyGobhi(token);
+      if (payload) return NextResponse.next();
       return redirectToLogin(request);
+    } catch (err) {
+      if (!(err instanceof joseErrors.JWTExpired)) {
+        return redirectToLogin(request);
+      }
+      // fall through — access token expired, try a silent refresh below.
     }
-    // Access token expired but might still have a valid refresh token —
-    // try a silent refresh so a 15-minute token lifetime doesn't force a
-    // re-login every 15 minutes during a staff session.
   }
+  // Either there was no access-token cookie at all (its own 15-minute
+  // maxAge already expired browser-side — the NORMAL case after any 15+
+  // minute gap between page loads, not evidence of a dead session) or the
+  // JWT itself had expired above. Either way, a still-valid refresh token
+  // (7-day cookie) should get a fresh session silently instead of forcing
+  // a full re-login every 15 minutes of inactivity — this branch used to
+  // be reached ONLY on an expired-but-present token, so a merely-absent
+  // one skipped straight to redirectToLogin's default clearCookies=true,
+  // wiping a perfectly good refresh token instead of using it.
 
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
   if (!refreshToken) return redirectToLogin(request);
