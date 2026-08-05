@@ -125,7 +125,11 @@ export default async function SettingsPage() {
           subtitle="Controls whether the website blocks gym browsing and booking creation. Partner onboarding (/partner/apply) is never affected."
         />
         <Card className="max-w-xl">
-          <ActionForm action={updateLaunchGateAction} className="flex flex-col gap-4">
+          <ActionForm
+            action={updateLaunchGateAction}
+            className="flex flex-col gap-4"
+            confirmMessage="This changes whether gym browsing and booking are gated for every visitor, immediately. Continue?"
+          >
             <label className="flex items-center gap-2 text-sm font-medium">
               <input type="checkbox" name="enabled" defaultChecked={launchGate.enabled} />
               Gate enabled
@@ -221,7 +225,11 @@ export default async function SettingsPage() {
           }
         />
         <Card className="max-w-3xl">
-          <ActionForm action={updateAppVersionConfigAction} className="flex flex-col gap-6">
+          <ActionForm
+            action={updateAppVersionConfigAction}
+            className="flex flex-col gap-6"
+            confirmMessage="This changes force/soft-update behavior for every install of both apps, immediately. Continue?"
+          >
             <p className="text-sm text-gray-500">
               &ldquo;Min version&rdquo; below the installed build hard-blocks the app with an update-now screen.
               &ldquo;Latest version&rdquo; above the installed build shows a dismissible update-available nudge instead.
@@ -294,7 +302,11 @@ export default async function SettingsPage() {
           }
         />
         <Card className="max-w-2xl">
-          <ActionForm action={updateOtpConfigAction} className="flex flex-col gap-4">
+          <ActionForm
+            action={updateOtpConfigAction}
+            className="flex flex-col gap-4"
+            confirmMessage="This changes how OTP verification works for every customer/partner login, platform-wide — including 'skip', which disables OTP verification entirely. Continue?"
+          >
             <div className="flex flex-col gap-3">
               {OTP_PROVIDER_OPTIONS.map((opt) => (
                 <label key={opt.value} className="flex items-start gap-2 text-sm">

@@ -11,12 +11,23 @@ export async function recordPayoutAction(_prev: ActionState, formData: FormData)
   const amountRaw = String(formData.get('amount') || '').trim();
   const description = String(formData.get('description') || '').trim() || undefined;
 
+  // A non-numeric amount becomes NaN, which silently passes the backend's
+  // own `<=0`/`<balance` guards (both are false for NaN) — reject it here
+  // with a real error message instead of forwarding it.
+  let amount: number | undefined;
+  if (amountRaw) {
+    amount = Number(amountRaw);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return { ok: false, message: 'Amount must be a positive number' };
+    }
+  }
+
   try {
     await gatewayJson(`/api/wallet/${userId}/payout`, {
       method: 'POST',
       body: JSON.stringify({
         // Empty amount means "pay out the full balance" (payoutWalletService defaults to it).
-        amount: amountRaw ? Number(amountRaw) : undefined,
+        amount,
         description,
       }),
     });
