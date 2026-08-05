@@ -11,10 +11,12 @@ async function verifyGobhi(token: string) {
   return payload.role === 'gobhi' ? payload : null;
 }
 
-function redirectToLogin(request: NextRequest) {
+function redirectToLogin(request: NextRequest, clearCookies = true) {
   const response = NextResponse.redirect(new URL('/login', request.url));
-  response.cookies.delete(ACCESS_COOKIE);
-  response.cookies.delete(REFRESH_COOKIE);
+  if (clearCookies) {
+    response.cookies.delete(ACCESS_COOKIE);
+    response.cookies.delete(REFRESH_COOKIE);
+  }
   return response;
 }
 
@@ -43,7 +45,13 @@ export async function proxy(request: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: refreshToken }),
     });
-    if (!refreshRes.ok) return redirectToLogin(request);
+    if (!refreshRes.ok) {
+      // A 401/403 proves the refresh token is dead — clear the session. A
+      // transient 5xx (deploy warm-up, DB blip) is NOT proof: redirect to
+      // login without clearing, so the session survives the blip.
+      const authFailure = refreshRes.status === 401 || refreshRes.status === 403;
+      return redirectToLogin(request, authFailure);
+    }
 
     const { accessToken, refreshToken: rotatedRefreshToken } = await refreshRes.json();
     const payload = accessToken ? await verifyGobhi(accessToken) : null;
@@ -60,7 +68,9 @@ export async function proxy(request: NextRequest) {
     }
     return response;
   } catch {
-    return redirectToLogin(request);
+    // Network failure talking to the gateway — transient, not a dead
+    // session. Preserve the cookies so the staff login survives.
+    return redirectToLogin(request, false);
   }
 }
 

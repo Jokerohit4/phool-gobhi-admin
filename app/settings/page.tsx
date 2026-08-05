@@ -79,8 +79,8 @@ interface OtpSkipAllowlistEntry {
 }
 
 const OTP_PROVIDER_OPTIONS: Array<{ value: OtpProvider; label: string; description: string }> = [
-  { value: 'fast2sms', label: 'Fast2SMS', description: 'Default — real paid SMS to every phone number.' },
-  { value: 'firebase', label: 'Firebase phone auth', description: 'Real Firebase phone verification, no SMS cost.' },
+  { value: 'firebase', label: 'Firebase phone auth', description: 'Default — real Firebase phone verification, no SMS cost.' },
+  { value: 'fast2sms', label: 'Fast2SMS', description: 'Real paid SMS to every phone number — only used when explicitly selected here.' },
   {
     value: 'skip',
     label: 'Skip (test bypass)',
