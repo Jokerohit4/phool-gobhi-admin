@@ -7,6 +7,9 @@ import {
   updateOtpConfigAction,
   addOtpSkipAllowlistAction,
   removeOtpSkipAllowlistAction,
+  addWalletTopupPresetAction,
+  removeWalletTopupPresetAction,
+  updateWalletTopupCustomAmountAction,
 } from './actions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
@@ -78,6 +81,14 @@ interface OtpSkipAllowlistEntry {
   createdAt: string;
 }
 
+interface WalletTopupConfig {
+  presets: number[];
+  allowCustomAmount: boolean;
+  minCustomAmount: number | null;
+  maxCustomAmount: number | null;
+  updatedAt: string | null;
+}
+
 const OTP_PROVIDER_OPTIONS: Array<{ value: OtpProvider; label: string; description: string }> = [
   { value: 'firebase', label: 'Firebase phone auth', description: 'Default — real Firebase phone verification, no SMS cost.' },
   { value: 'fast2sms', label: 'Fast2SMS', description: 'Real paid SMS to every phone number — only used when explicitly selected here.' },
@@ -116,6 +127,8 @@ export default async function SettingsPage() {
   const { data: skipAllowlist } = await gatewayJson<{ data: OtpSkipAllowlistEntry[] }>(
     '/api/auth/otp-config/admin/skip-allowlist'
   );
+
+  const { data: topupConfig } = await gatewayJson<{ data: WalletTopupConfig }>('/api/wallet/topup-config');
 
   return (
     <div className="flex flex-col gap-8">
@@ -382,6 +395,99 @@ export default async function SettingsPage() {
             />
 
             <SubmitButton pendingText="Adding…" className="w-fit">Add to skip allowlist</SubmitButton>
+          </ActionForm>
+        </Card>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <PageHeader
+          title="Wallet top-up amounts"
+          subtitle={
+            topupConfig.updatedAt
+              ? `Live for website + app top-up — last updated ${new Date(topupConfig.updatedAt).toLocaleString()}.`
+              : 'Live for website + app top-up — not customized yet, showing defaults.'
+          }
+        />
+
+        <Table>
+          <Thead>
+            <Th>Amount</Th>
+            <Th>Action</Th>
+          </Thead>
+          <tbody>
+            {topupConfig.presets.map((amount) => (
+              <Tr key={amount}>
+                <Td>₹{amount}</Td>
+                <Td>
+                  <ActionForm action={removeWalletTopupPresetAction} confirmMessage={`Remove ₹${amount} as a preset?`}>
+                    <input type="hidden" name="amount" value={amount} />
+                    <SubmitButton variant="danger" pendingText="Removing…">Remove</SubmitButton>
+                  </ActionForm>
+                </Td>
+              </Tr>
+            ))}
+            {topupConfig.presets.length === 0 && (
+              <EmptyRow colSpan={2}>No preset amounts — custom amount only.</EmptyRow>
+            )}
+          </tbody>
+        </Table>
+
+        <Card className="max-w-sm">
+          <ActionForm action={addWalletTopupPresetAction} className="flex flex-col gap-3">
+            <label className="text-sm font-medium" htmlFor="topup-preset-amount">New preset amount (₹)</label>
+            <input
+              id="topup-preset-amount"
+              name="amount"
+              type="number"
+              min={1}
+              step={1}
+              required
+              className="rounded border px-3 py-2 text-sm"
+            />
+            <SubmitButton pendingText="Adding…" className="w-fit">Add preset</SubmitButton>
+          </ActionForm>
+        </Card>
+
+        <Card className="max-w-md">
+          <ActionForm
+            action={updateWalletTopupCustomAmountAction}
+            className="flex flex-col gap-4"
+            confirmMessage="This changes whether customers can type any custom top-up amount, platform-wide. Continue?"
+          >
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input type="checkbox" name="allowCustomAmount" defaultChecked={topupConfig.allowCustomAmount} />
+              Allow customer-entered custom amount
+            </label>
+            <div className="grid grid-cols-2 gap-4">
+              <label className="flex flex-col gap-1 text-sm">
+                Min (₹)
+                <input
+                  type="number"
+                  name="minCustomAmount"
+                  min={1}
+                  step={1}
+                  defaultValue={topupConfig.minCustomAmount ?? ''}
+                  className="rounded border px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                Max (₹)
+                <input
+                  type="number"
+                  name="maxCustomAmount"
+                  min={1}
+                  step={1}
+                  defaultValue={topupConfig.maxCustomAmount ?? ''}
+                  className="rounded border px-3 py-2 text-sm"
+                />
+              </label>
+            </div>
+            <p className="text-sm text-gray-500">
+              Required whenever the toggle above is on. If there are no preset amounts (see table above), this
+              toggle must stay on — customers need at least one way to top up. Amounts above ₹25,000 are rejected
+              regardless of what&rsquo;s set here.
+            </p>
+            <SubmitButton pendingText="Saving…" className="w-fit">Save custom-amount settings</SubmitButton>
           </ActionForm>
         </Card>
       </section>

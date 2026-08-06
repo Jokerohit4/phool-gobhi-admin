@@ -166,3 +166,94 @@ export async function removeOtpSkipAllowlistAction(_prev: ActionState, formData:
   revalidatePath('/settings');
   return { ok: true, message: 'Number removed' };
 }
+
+interface WalletTopupConfigPayload {
+  presets: number[];
+  allowCustomAmount: boolean;
+  minCustomAmount: number | null;
+  maxCustomAmount: number | null;
+}
+
+// The backend's PUT replaces presets/allowCustomAmount/min/max together (it
+// validates the "empty presets requires allowCustomAmount" invariant across
+// all four at once) — so every action here reads the current config first
+// and resubmits the full object, same read-modify-write shape as
+// updateCancellationPolicyAction's tiers array.
+async function getCurrentWalletTopupConfig(): Promise<WalletTopupConfigPayload> {
+  const { data } = await gatewayJson<{ data: WalletTopupConfigPayload }>('/api/wallet/topup-config');
+  return data;
+}
+
+export async function addWalletTopupPresetAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+
+  const amount = Number(formData.get('amount'));
+  if (!Number.isInteger(amount) || amount <= 0) {
+    return { ok: false, message: 'Enter a whole positive rupee amount' };
+  }
+
+  try {
+    const current = await getCurrentWalletTopupConfig();
+    if (current.presets.includes(amount)) {
+      return { ok: false, message: `₹${amount} is already a preset` };
+    }
+    await gatewayJson('/api/wallet/topup-config', {
+      method: 'PUT',
+      body: JSON.stringify({ ...current, presets: [...current.presets, amount] }),
+    });
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to add preset' };
+  }
+
+  revalidatePath('/settings');
+  return { ok: true, message: `Added ₹${amount}` };
+}
+
+export async function removeWalletTopupPresetAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+
+  const amount = Number(formData.get('amount'));
+
+  try {
+    const current = await getCurrentWalletTopupConfig();
+    const presets = current.presets.filter((a) => a !== amount);
+    await gatewayJson('/api/wallet/topup-config', {
+      method: 'PUT',
+      body: JSON.stringify({ ...current, presets }),
+    });
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to remove preset' };
+  }
+
+  revalidatePath('/settings');
+  return { ok: true, message: `Removed ₹${amount}` };
+}
+
+export async function updateWalletTopupCustomAmountAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireSession();
+
+  const allowCustomAmount = formData.get('allowCustomAmount') === 'on';
+  const minRaw = String(formData.get('minCustomAmount') || '').trim();
+  const maxRaw = String(formData.get('maxCustomAmount') || '').trim();
+
+  try {
+    const current = await getCurrentWalletTopupConfig();
+    await gatewayJson('/api/wallet/topup-config', {
+      method: 'PUT',
+      body: JSON.stringify({
+        presets: current.presets,
+        allowCustomAmount,
+        minCustomAmount: allowCustomAmount && minRaw !== '' ? Number(minRaw) : null,
+        maxCustomAmount: allowCustomAmount && maxRaw !== '' ? Number(maxRaw) : null,
+      }),
+    });
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to save custom-amount settings' };
+  }
+
+  revalidatePath('/settings');
+  return { ok: true, message: 'Custom-amount settings updated' };
+}
