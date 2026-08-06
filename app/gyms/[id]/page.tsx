@@ -39,7 +39,7 @@ interface GymDetail {
   rejectionReason: string | null;
   partnerId: number;
   commissionPct: number;
-  images: { id: number; url: string }[];
+  images: { id: number; url: string; mediaType?: 'image' | 'video' }[];
 }
 
 export default async function GymDetailPage({
@@ -121,10 +121,21 @@ export default async function GymDetailPage({
 
         {gym.images.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {gym.images.map((img) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={img.id} src={img.url} alt={gym.name} className="h-24 w-24 rounded object-cover" />
-            ))}
+            {gym.images.map((img) =>
+              img.mediaType === 'video' ? (
+                <video
+                  key={img.id}
+                  src={img.url}
+                  className="h-24 w-24 rounded object-cover"
+                  muted
+                  controls
+                  preload="metadata"
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={img.id} src={img.url} alt={gym.name} className="h-24 w-24 rounded object-cover" />
+              )
+            )}
           </div>
         )}
 

@@ -19,7 +19,7 @@ interface GymSnapshot {
   closeTime: string;
   slotDuration: number;
   sessionPrice: number;
-  images: { id: number; url: string }[];
+  images: { id: number; url: string; mediaType?: 'image' | 'video' }[];
   brandDocs: string[];
   [key: string]: unknown;
 }
@@ -133,9 +133,13 @@ export default async function EditRequestDetailPage({
 
         {changeType === 'image_add' && (
           <div className="flex flex-col gap-2">
-            <p className="text-sm text-gray-500">New photo to add:</p>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={String(payload.url)} alt="Proposed" className="h-40 w-40 rounded object-cover" />
+            <p className="text-sm text-gray-500">New {payload.mediaType === 'video' ? 'video' : 'photo'} to add:</p>
+            {payload.mediaType === 'video' ? (
+              <video src={String(payload.url)} className="h-40 w-40 rounded object-cover" muted controls preload="metadata" />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={String(payload.url)} alt="Proposed" className="h-40 w-40 rounded object-cover" />
+            )}
           </div>
         )}
 
@@ -144,10 +148,16 @@ export default async function EditRequestDetailPage({
             const image = gym.images.find((img) => img.id === payload.imageId);
             return (
               <div className="flex flex-col gap-2">
-                <p className="text-sm text-gray-500">Photo to remove:</p>
+                <p className="text-sm text-gray-500">
+                  {image?.mediaType === 'video' ? 'Video' : 'Photo'} to remove:
+                </p>
                 {image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={image.url} alt="To remove" className="h-40 w-40 rounded object-cover opacity-70" />
+                  image.mediaType === 'video' ? (
+                    <video src={image.url} className="h-40 w-40 rounded object-cover opacity-70" muted controls preload="metadata" />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={image.url} alt="To remove" className="h-40 w-40 rounded object-cover opacity-70" />
+                  )
                 ) : (
                   <p className="text-sm text-gray-500">Photo #{String(payload.imageId)} (no longer on the gym)</p>
                 )}
