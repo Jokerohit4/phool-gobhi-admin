@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
 import type { ActionState } from '@/components/ui/ActionForm';
@@ -56,6 +57,40 @@ export async function updateGymCommissionAction(_prev: ActionState, formData: Fo
   }
   revalidatePath(`/gyms/${gymId}`);
   return { ok: true, message: 'Commission updated' };
+}
+
+// Soft delete/restore — reversible, so this is the safe default when a
+// gym needs to come down (spam listing, partner request, policy issue).
+export async function setGymActiveAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+  const gymId = formData.get('gymId');
+  const isActive = formData.get('isActive') === 'true';
+  try {
+    await gatewayJson(`/api/gyms/admin/${gymId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ isActive }),
+    });
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to update gym status' };
+  }
+  revalidatePath('/gyms');
+  revalidatePath(`/gyms/${gymId}`);
+  return { ok: true, message: isActive ? 'Gym reactivated' : 'Gym deactivated' };
+}
+
+// Hard delete — permanent. The backend itself refuses this (409) if the
+// gym has any booking history, so this can only succeed for gyms that
+// never had real activity.
+export async function deleteGymAdminAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+  const gymId = formData.get('gymId');
+  try {
+    await gatewayJson(`/api/gyms/admin/${gymId}`, { method: 'DELETE' });
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to delete gym' };
+  }
+  revalidatePath('/gyms');
+  redirect('/gyms');
 }
 
 export async function deleteReviewAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

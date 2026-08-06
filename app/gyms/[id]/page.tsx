@@ -2,7 +2,14 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
-import { approveGymAction, rejectGymAction, deleteReviewAction, updateGymCommissionAction } from './actions';
+import {
+  approveGymAction,
+  rejectGymAction,
+  deleteReviewAction,
+  updateGymCommissionAction,
+  setGymActiveAction,
+  deleteGymAdminAction,
+} from './actions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -36,6 +43,7 @@ interface GymDetail {
   amenities: string[];
   brandDocs: string[];
   isApproved: boolean;
+  isActive: boolean;
   rejectionReason: string | null;
   partnerId: number;
   commissionPct: number;
@@ -113,6 +121,14 @@ export default async function GymDetailPage({
               </span>
             ) : (
               <StatusBadge tone="pending">Pending</StatusBadge>
+            )}
+          </dd>
+          <dt className="text-gray-500">Visibility</dt>
+          <dd>
+            {gym.isActive ? (
+              <StatusBadge tone="approved">Active</StatusBadge>
+            ) : (
+              <StatusBadge tone="rejected">Deactivated</StatusBadge>
             )}
           </dd>
         </dl>
@@ -223,6 +239,52 @@ export default async function GymDetailPage({
           </ActionForm>
         </Card>
       )}
+
+      <Card className="flex flex-col gap-4">
+        <h2 className="font-medium">Danger zone</h2>
+
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-gray-500">
+            {gym.isActive
+              ? 'Hides this gym from discovery and booking. Reversible — the gym and its data stay intact.'
+              : 'This gym is currently hidden from discovery and booking.'}
+          </p>
+          <ActionForm
+            action={setGymActiveAction}
+            confirmMessage={
+              gym.isActive
+                ? `Deactivate "${gym.name}"? It will disappear from discovery until reactivated.`
+                : `Reactivate "${gym.name}"?`
+            }
+          >
+            <input type="hidden" name="gymId" value={gym.id} />
+            <input type="hidden" name="isActive" value={gym.isActive ? 'false' : 'true'} />
+            <SubmitButton
+              variant={gym.isActive ? 'danger' : 'primary'}
+              pendingText={gym.isActive ? 'Deactivating…' : 'Reactivating…'}
+              className="w-fit"
+            >
+              {gym.isActive ? 'Deactivate' : 'Reactivate'}
+            </SubmitButton>
+          </ActionForm>
+        </div>
+
+        <div className="flex flex-col gap-2 border-t pt-4">
+          <p className="text-sm text-gray-500">
+            Permanently deletes this gym, its photos, reviews and edit requests. Refused if it has any booking
+            history — deactivate instead in that case.
+          </p>
+          <ActionForm
+            action={deleteGymAdminAction}
+            confirmMessage={`Permanently delete "${gym.name}"? This cannot be undone.`}
+          >
+            <input type="hidden" name="gymId" value={gym.id} />
+            <SubmitButton variant="danger" pendingText="Deleting…" className="w-fit">
+              Delete permanently
+            </SubmitButton>
+          </ActionForm>
+        </div>
+      </Card>
     </div>
   );
 }
