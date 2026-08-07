@@ -6,6 +6,7 @@ import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { formatDateTimeIST } from '@/lib/dateFormat';
 
 interface ContactMessage {
   id: number;
@@ -43,7 +44,7 @@ export default async function MessagesPage() {
                   <p className="text-gray-500">{m.email}</p>
                 </Td>
                 <Td className="max-w-md whitespace-pre-wrap">{m.message}</Td>
-                <Td>{new Date(m.createdAt).toLocaleString()}</Td>
+                <Td>{formatDateTimeIST(m.createdAt)}</Td>
                 <Td>
                   <ActionForm action={setMessageReadAction}>
                     <input type="hidden" name="id" value={m.id} />

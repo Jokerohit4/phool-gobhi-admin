@@ -1,6 +1,7 @@
 'use client';
 
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { formatDateIST } from '@/lib/dateFormat';
 
 export interface TrendPoint {
   day: string;
@@ -23,7 +24,7 @@ function TrendTooltip({
   const { day, value } = payload[0].payload;
   return (
     <div className="rounded border bg-white px-3 py-2 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-800">
-      <div className="font-medium">{new Date(day).toLocaleDateString()}</div>
+      <div className="font-medium">{formatDateIST(day)}</div>
       <div className="tabular-nums text-gray-600 dark:text-gray-300">{valueFormatter(value)}</div>
     </div>
   );
@@ -48,7 +49,7 @@ export function TrendLineChart({
           <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-gray-200 dark:stroke-gray-800" />
           <XAxis
             dataKey="day"
-            tickFormatter={(d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+            tickFormatter={(d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'Asia/Kolkata' })}
             tick={{ fontSize: 12 }}
             tickLine={false}
             axisLine={{ className: 'stroke-gray-300 dark:stroke-gray-700' }}

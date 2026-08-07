@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
+import { formatDateTimeIST } from '@/lib/dateFormat';
 
 interface PartnerBalance {
   userId: number;
@@ -99,7 +100,7 @@ export default async function PayoutsPage() {
                 <Td>{partnerLabel(h)}</Td>
                 <Td>₹{h.amount.toFixed(2)}</Td>
                 <Td>{h.description || '—'}</Td>
-                <Td>{new Date(h.createdAt).toLocaleString()}</Td>
+                <Td>{formatDateTimeIST(h.createdAt)}</Td>
               </Tr>
             ))}
             {history.length === 0 && <EmptyRow colSpan={4}>No payouts recorded yet.</EmptyRow>}

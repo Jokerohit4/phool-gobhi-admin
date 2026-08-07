@@ -6,6 +6,7 @@ import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { formatDateTimeIST } from '@/lib/dateFormat';
 
 interface PlatformReview {
   id: number;
@@ -52,7 +53,7 @@ export default async function ReviewsPage() {
                 </Td>
                 <Td>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</Td>
                 <Td className="max-w-md whitespace-pre-wrap">{r.comment || '—'}</Td>
-                <Td>{new Date(r.createdAt).toLocaleString()}</Td>
+                <Td>{formatDateTimeIST(r.createdAt)}</Td>
                 <Td>
                   <div className="flex flex-wrap gap-2">
                     <ActionForm action={r.isApproved ? unapproveReviewAction : approveReviewAction}>

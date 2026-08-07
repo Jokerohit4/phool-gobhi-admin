@@ -3,6 +3,7 @@ import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
+import { formatDateIST } from '@/lib/dateFormat';
 
 interface Gym {
   id: number;
@@ -87,7 +88,7 @@ export default async function GymsPage({
                   {gym.partnerId}
                 </Link>
               </Td>
-              <Td>{new Date(gym.createdAt).toLocaleDateString()}</Td>
+              <Td>{formatDateIST(gym.createdAt)}</Td>
             </Tr>
           ))}
           {gyms.length === 0 && <EmptyRow colSpan={4}>No gyms in this status.</EmptyRow>}

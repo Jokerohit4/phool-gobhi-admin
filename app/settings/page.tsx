@@ -16,6 +16,7 @@ import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
+import { formatDateIST, formatDateTimeIST } from '@/lib/dateFormat';
 
 interface LaunchGate {
   enabled: boolean;
@@ -172,7 +173,7 @@ export default async function SettingsPage() {
           title="Cancellation policy"
           subtitle={
             policy.updatedAt
-              ? `Live for the app and refund calculation — last updated ${new Date(policy.updatedAt).toLocaleString()}.`
+              ? `Live for the app and refund calculation — last updated ${formatDateTimeIST(policy.updatedAt)} IST.`
               : 'Live for the app and refund calculation — not customized yet, showing defaults.'
           }
         />
@@ -233,7 +234,7 @@ export default async function SettingsPage() {
           title="App version config"
           subtitle={
             appVersionUpdatedAt
-              ? `Controls the force-update gate and update-available nudge in both apps — last updated ${new Date(appVersionUpdatedAt).toLocaleString()}.`
+              ? `Controls the force-update gate and update-available nudge in both apps — last updated ${formatDateTimeIST(appVersionUpdatedAt)} IST.`
               : 'Controls the force-update gate and update-available nudge in both apps — not customized yet, showing defaults.'
           }
         />
@@ -310,7 +311,7 @@ export default async function SettingsPage() {
           title="OTP verification"
           subtitle={
             otpUpdatedAt
-              ? `Controls how customer/partner phone login is verified — last updated ${new Date(otpUpdatedAt).toLocaleString()}.`
+              ? `Controls how customer/partner phone login is verified — last updated ${formatDateTimeIST(otpUpdatedAt)} IST.`
               : 'Controls how customer/partner phone login is verified — not customized yet, showing defaults.'
           }
         />
@@ -362,7 +363,7 @@ export default async function SettingsPage() {
               <Tr key={entry.id}>
                 <Td>{entry.phone}</Td>
                 <Td>{entry.note || '—'}</Td>
-                <Td>{new Date(entry.createdAt).toLocaleDateString()}</Td>
+                <Td>{formatDateIST(entry.createdAt)}</Td>
                 <Td>
                   <ActionForm action={removeOtpSkipAllowlistAction} confirmMessage={`Remove ${entry.phone}?`}>
                     <input type="hidden" name="id" value={entry.id} />
@@ -404,7 +405,7 @@ export default async function SettingsPage() {
           title="Wallet top-up amounts"
           subtitle={
             topupConfig.updatedAt
-              ? `Live for website + app top-up — last updated ${new Date(topupConfig.updatedAt).toLocaleString()}.`
+              ? `Live for website + app top-up — last updated ${formatDateTimeIST(topupConfig.updatedAt)} IST.`
               : 'Live for website + app top-up — not customized yet, showing defaults.'
           }
         />

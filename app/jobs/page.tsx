@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
+import { formatDateIST } from '@/lib/dateFormat';
 
 interface JobOpening {
   id: number;
@@ -64,7 +65,7 @@ export default async function JobsPage() {
                     {job.isActive ? 'Open' : 'Closed'}
                   </span>
                 </Td>
-                <Td>{new Date(job.createdAt).toLocaleDateString()}</Td>
+                <Td>{formatDateIST(job.createdAt)}</Td>
                 <Td className="flex flex-wrap gap-2">
                   <ActionForm action={setJobOpeningActiveAction}>
                     <input type="hidden" name="id" value={job.id} />

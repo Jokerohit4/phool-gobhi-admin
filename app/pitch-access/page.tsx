@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
+import { formatDateIST } from '@/lib/dateFormat';
 
 interface PitchAccessContact {
   id: number;
@@ -40,7 +41,7 @@ export default async function PitchAccessPage() {
                 <Td className="capitalize">{c.type}</Td>
                 <Td>{c.value}</Td>
                 <Td>{c.note || '—'}</Td>
-                <Td>{new Date(c.createdAt).toLocaleDateString()}</Td>
+                <Td>{formatDateIST(c.createdAt)}</Td>
                 <Td>
                   <ActionForm action={removePitchAccessAction} confirmMessage={`Remove ${c.value}?`}>
                     <input type="hidden" name="id" value={c.id} />

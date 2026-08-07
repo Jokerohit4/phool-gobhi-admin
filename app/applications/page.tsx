@@ -6,6 +6,7 @@ import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { formatDateTimeIST } from '@/lib/dateFormat';
 
 interface JobApplication {
   id: number;
@@ -78,7 +79,7 @@ export default async function ApplicationsPage() {
                     <span className="text-gray-400">—</span>
                   )}
                 </Td>
-                <Td>{new Date(a.createdAt).toLocaleString()}</Td>
+                <Td>{formatDateTimeIST(a.createdAt)}</Td>
                 <Td>
                   <ActionForm action={setApplicationReadAction}>
                     <input type="hidden" name="id" value={a.id} />

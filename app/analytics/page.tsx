@@ -11,6 +11,7 @@ import { TrendLineChart } from '@/components/charts/TrendLineChart';
 import { StatTile } from '@/components/charts/StatTile';
 import { SectionHeading } from '@/components/charts/SectionHeading';
 import { toOrderedSteps, withDropoff, labelFor } from '@/lib/analyticsLabels';
+import { formatDateIST, formatDateTimeIST } from '@/lib/dateFormat';
 
 interface EventCountRow {
   event: string;
@@ -312,7 +313,7 @@ async function SupplyView({ days }: { days: string }) {
                   </Link>
                 </Td>
                 <Td>{g.city ?? '—'}</Td>
-                <Td>{new Date(g.approved_ts).toLocaleDateString()}</Td>
+                <Td>{formatDateIST(g.approved_ts)}</Td>
                 <Td className="tabular-nums">
                   {g.booking_count === 0 ? (
                     <span className="flex items-center gap-2">
@@ -323,7 +324,7 @@ async function SupplyView({ days }: { days: string }) {
                     g.booking_count
                   )}
                 </Td>
-                <Td>{g.last_booking_ts ? new Date(g.last_booking_ts).toLocaleDateString() : 'Never'}</Td>
+                <Td>{g.last_booking_ts ? formatDateIST(g.last_booking_ts) : 'Never'}</Td>
               </Tr>
             ))}
             {health.gyms.length === 0 && <EmptyRow colSpan={5}>No gyms approved more than 7 days ago yet.</EmptyRow>}
@@ -369,8 +370,8 @@ async function SupplyView({ days }: { days: string }) {
                     Gym #{g.gym_id}
                   </Link>
                 </Td>
-                <Td>{new Date(g.created_ts).toLocaleString()}</Td>
-                <Td>{g.resolved_ts ? new Date(g.resolved_ts).toLocaleString() : '—'}</Td>
+                <Td>{formatDateTimeIST(g.created_ts)}</Td>
+                <Td>{g.resolved_ts ? formatDateTimeIST(g.resolved_ts) : '—'}</Td>
                 <Td>
                   <StatusBadge tone={g.outcome === 'gym_approved' ? 'approved' : g.outcome === 'gym_rejected' ? 'rejected' : 'pending'}>
                     {g.outcome ? labelFor(g.outcome) : 'Pending'}
@@ -676,7 +677,7 @@ async function RetentionView() {
                 const byOffset = new Map(c.weeks.map((w) => [w.offset, w]));
                 return (
                   <tr key={c.cohortWeek} className="border-t border-gray-100 dark:border-gray-800">
-                    <td className="whitespace-nowrap px-2 py-1.5">{new Date(c.cohortWeek).toLocaleDateString()}</td>
+                    <td className="whitespace-nowrap px-2 py-1.5">{formatDateIST(c.cohortWeek)}</td>
                     <td className="whitespace-nowrap px-2 py-1.5 tabular-nums">{c.cohortSize}</td>
                     {RETENTION_WEEK_OFFSETS.map((o) => {
                       const w = byOffset.get(o);
@@ -753,7 +754,7 @@ async function UserJourneyResults({ distinctId }: { distinctId: string }) {
   for (const event of data.events) {
     const sid = (event.properties?.session_id as string | undefined) ?? null;
     if (sid && sid !== lastSessionId) {
-      rows.push({ boundary: `Session started — ${new Date(event.ts).toLocaleString()}`, event });
+      rows.push({ boundary: `Session started — ${formatDateTimeIST(event.ts)}`, event });
       lastSessionId = sid;
     } else {
       rows.push({ event });
@@ -780,11 +781,11 @@ async function UserJourneyResults({ distinctId }: { distinctId: string }) {
             </div>
             <div>
               <span className="text-gray-500">First seen</span>{' '}
-              <span className="font-medium">{data.summary.firstSeen ? new Date(data.summary.firstSeen).toLocaleDateString() : '—'}</span>
+              <span className="font-medium">{data.summary.firstSeen ? formatDateIST(data.summary.firstSeen) : '—'}</span>
             </div>
             <div>
               <span className="text-gray-500">Last seen</span>{' '}
-              <span className="font-medium">{data.summary.lastSeen ? new Date(data.summary.lastSeen).toLocaleDateString() : '—'}</span>
+              <span className="font-medium">{data.summary.lastSeen ? formatDateIST(data.summary.lastSeen) : '—'}</span>
             </div>
           </div>
         </div>
@@ -808,7 +809,7 @@ async function UserJourneyResults({ distinctId }: { distinctId: string }) {
       </Card>
 
       <Card>
-        <SectionHeading title="Timeline" subtitle="Client taps and server truth events, interleaved chronologically" />
+        <SectionHeading title="Timeline" subtitle="Client taps and server truth events, interleaved chronologically. Times shown in IST." />
         <div className="flex flex-col gap-1">
           {rows.map((row, i) => (
             <div key={i}>
@@ -818,7 +819,7 @@ async function UserJourneyResults({ distinctId }: { distinctId: string }) {
                 </div>
               )}
               <div className="flex items-start gap-3 rounded px-2 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                <span className="w-36 shrink-0 font-mono text-xs text-gray-400">{new Date(row.event.ts).toLocaleString()}</span>
+                <span className="w-36 shrink-0 font-mono text-xs text-gray-400">{formatDateTimeIST(row.event.ts)}</span>
                 <span
                   className={`w-16 shrink-0 rounded-full px-2 py-0.5 text-center text-xs font-medium ${
                     row.event.source === 'server'

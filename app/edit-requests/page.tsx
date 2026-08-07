@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { CHANGE_TYPE_LABELS } from '@/lib/editRequests';
+import { formatDateTimeIST } from '@/lib/dateFormat';
 
 interface EditRequestRow {
   id: number;
@@ -78,7 +79,7 @@ export default async function EditRequestsPage({
               <Td>
                 <StatusBadge tone={r.status}>{CHANGE_TYPE_LABELS[r.changeType] ?? r.changeType}</StatusBadge>
               </Td>
-              <Td>{new Date(r.createdAt).toLocaleString()}</Td>
+              <Td>{formatDateTimeIST(r.createdAt)}</Td>
             </Tr>
           ))}
           {requests.length === 0 && <EmptyRow colSpan={4}>No {status} edit requests.</EmptyRow>}

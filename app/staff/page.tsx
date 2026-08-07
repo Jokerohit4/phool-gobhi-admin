@@ -7,6 +7,7 @@ import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
+import { formatDateIST } from '@/lib/dateFormat';
 
 interface StaffMember {
   id: number;
@@ -49,7 +50,7 @@ export default async function StaffPage() {
                       {s.isActive ? 'Active' : 'Revoked'}
                     </StatusBadge>
                   </Td>
-                  <Td>{new Date(s.createdAt).toLocaleDateString()}</Td>
+                  <Td>{formatDateIST(s.createdAt)}</Td>
                   <Td>
                     {isSelf ? (
                       <span className="text-gray-400">(you)</span>

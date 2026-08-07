@@ -15,6 +15,7 @@ import { Card } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
+import { formatDateIST } from '@/lib/dateFormat';
 
 interface GymReview {
   id: number;
@@ -204,7 +205,7 @@ export default async function GymDetailPage({
             <div key={r.id} className="flex items-start justify-between gap-3 border-b pb-3 last:border-0 last:pb-0">
               <div>
                 <p className="text-sm font-medium">
-                  {r.rating}★ · Customer #{r.customerId} · {new Date(r.createdAt).toLocaleDateString()}
+                  {r.rating}★ · Customer #{r.customerId} · {formatDateIST(r.createdAt)}
                 </p>
                 {r.comment && <p className="mt-1 text-sm text-gray-600">{r.comment}</p>}
               </div>
