@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
-import { CHANGE_TYPE_LABELS } from '@/lib/editRequests';
+import { CHANGE_TYPE_LABELS, DAY_NAMES } from '@/lib/editRequests';
 import { approveEditRequestAction, rejectEditRequestAction } from './actions';
 
 interface GymSnapshot {
@@ -64,6 +64,33 @@ const PROFILE_FIELD_LABELS: Record<string, string> = {
   yearlyPlanPrice: 'Yearly plan price (₹)',
   googlePlaceId: 'Google place',
 };
+
+// Mirrors GymClass's editable fields in gym-service's gymService.js updateClass.
+const CLASS_FIELD_LABELS: Record<string, string> = {
+  name: 'Name',
+  description: 'Description',
+  instructor: 'Instructor',
+  dayOfWeek: 'Day',
+  startTime: 'Start time',
+  endTime: 'End time',
+  capacity: 'Capacity',
+  price: 'Price',
+  isActive: 'Active',
+};
+
+interface OperatingHoursDay {
+  dayOfWeek: number;
+  morningStart: string | null;
+  morningEnd: string | null;
+  eveningStart: string | null;
+  eveningEnd: string | null;
+}
+
+function formatClassFieldValue(key: string, value: unknown) {
+  if (key === 'dayOfWeek') return DAY_NAMES[Number(value)] ?? String(value);
+  if (key === 'price') return value != null ? `₹${value}` : 'Included with subscription';
+  return formatValue(value);
+}
 
 function formatValue(v: unknown) {
   if (v == null || v === '') return '—';
@@ -195,6 +222,62 @@ export default async function EditRequestDetailPage({
 
         {changeType === 'slot_block_delete' && (
           <p className="text-sm">Remove block #{String(payload.blockId)}</p>
+        )}
+
+        {changeType === 'operating_hours_update' && (
+          <dl className="grid grid-cols-3 gap-x-4 gap-y-2 text-sm">
+            <dt className="font-medium text-gray-500">Day</dt>
+            <dt className="font-medium text-gray-500">Morning</dt>
+            <dt className="font-medium text-gray-500">Evening</dt>
+            {(payload.days as OperatingHoursDay[])
+              .slice()
+              .sort((a, b) => a.dayOfWeek - b.dayOfWeek)
+              .map((d) => (
+                <div key={d.dayOfWeek} className="contents">
+                  <dd className="font-medium">{DAY_NAMES[d.dayOfWeek]}</dd>
+                  <dd>{d.morningStart ? `${d.morningStart}–${d.morningEnd}` : '—'}</dd>
+                  <dd>{d.eveningStart ? `${d.eveningStart}–${d.eveningEnd}` : '—'}</dd>
+                </div>
+              ))}
+          </dl>
+        )}
+
+        {changeType === 'class_add' && (
+          <dl className="grid grid-cols-[max-content_1fr] items-baseline gap-x-4 gap-y-2 text-sm">
+            {Object.entries(CLASS_FIELD_LABELS)
+              .filter(([key]) => payload[key] !== undefined)
+              .map(([key, label]) => (
+                <div key={key} className="contents">
+                  <dt className="font-medium text-gray-500">{label}</dt>
+                  <dd>{formatClassFieldValue(key, payload[key])}</dd>
+                </div>
+              ))}
+          </dl>
+        )}
+
+        {changeType === 'class_update' &&
+          (payload.action === 'cancel_occurrence' || payload.action === 'uncancel_occurrence' ? (
+            <p className="text-sm">
+              {payload.action === 'cancel_occurrence' ? 'Cancel' : 'Un-cancel'} class #{String(payload.classId)}{' '}
+              occurrence on <strong>{String(payload.date)}</strong>
+            </p>
+          ) : (
+            <dl className="grid grid-cols-[max-content_1fr] items-baseline gap-x-4 gap-y-2 text-sm">
+              <dt className="font-medium text-gray-500">Class</dt>
+              <dd>#{String(payload.classId)}</dd>
+              {Object.entries(payload)
+                .filter(([key]) => key !== 'classId')
+                .map(([key, value]) => (
+                  <div key={key} className="contents">
+                    <dt className="font-medium text-gray-500">{CLASS_FIELD_LABELS[key] ?? key}</dt>
+                    <dd>{formatClassFieldValue(key, value)}</dd>
+                  </div>
+                ))}
+            </dl>
+          ))}
+
+        {changeType === 'class_delete' && (
+          <p className="text-sm">Remove class #{String(payload.classId)}</p>
         )}
 
         {request.status === 'rejected' && request.rejectionReason && (
