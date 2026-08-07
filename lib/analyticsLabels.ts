@@ -28,6 +28,9 @@ export const EVENT_LABELS: Record<string, string> = {
   buddy_message_sent: 'Message sent',
   buddy_unmatched: 'Unmatched',
   buddy_blocked: 'Blocked',
+  identify: 'Identified',
+  screen_viewed: 'Viewed screen',
+  cta_clicked: 'Clicked CTA',
 };
 
 export function labelFor(event: string): string {

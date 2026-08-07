@@ -144,6 +144,23 @@ const VIEW_GROUPS: { label: string; views: View[] }[] = [
 // derivable from the event name. Server events have no client app context at
 // all (a server never knows which app triggered it), so the closest "origin"
 // there is which backend service emitted the truth event.
+// Postgres jsonb doesn't preserve insertion order (it reorders keys, shortest
+// first), so a long user_agent string can land before the property that
+// actually says what happened (e.g. screen_viewed's screen_name) and eat the
+// whole truncated row width, leaving that row looking blank. ip is worse than
+// noisy: for web traffic it's the BFF's own serverless egress address, not
+// the visitor's, so it flaps between requests and isn't a real signal at all.
+// Both are dropped from the inline summary (still available via the row's
+// title tooltip) so whatever the event's real payload is stays visible.
+const HIDDEN_INLINE_PROPS = ['app', 'platform', 'session_id', 'ip', 'user_agent'];
+
+function formatProperties(properties: Record<string, unknown>, hide: string[]): string {
+  return Object.entries(properties)
+    .filter(([k]) => !hide.includes(k))
+    .map(([k, v]) => `${k}=${String(v)}`)
+    .join(' · ');
+}
+
 function originFor(event: JourneyEvent): string {
   if (event.source === 'client') {
     const app = event.properties?.app as string | undefined;
@@ -815,11 +832,11 @@ async function UserJourneyResults({ distinctId }: { distinctId: string }) {
                   {originFor(row.event)}
                 </span>
                 <span className="font-medium">{labelFor(row.event.event)}</span>
-                <span className="truncate text-xs text-gray-400">
-                  {Object.entries(row.event.properties)
-                    .filter(([k]) => !['app', 'platform', 'session_id'].includes(k))
-                    .map(([k, v]) => `${k}=${String(v)}`)
-                    .join(' · ')}
+                <span
+                  className="truncate text-xs text-gray-400"
+                  title={formatProperties(row.event.properties, ['app', 'platform', 'session_id'])}
+                >
+                  {formatProperties(row.event.properties, HIDDEN_INLINE_PROPS)}
                 </span>
               </div>
             </div>
