@@ -586,7 +586,7 @@ async function RevenueView({ days }: { days: string }) {
         <SectionHeading title="GMV per day" />
         <TrendLineChart
           points={data.days.map((d) => ({ day: d.day, value: d.gmv }))}
-          valueFormatter={(v) => `₹${v.toLocaleString()}`}
+          valueFormat="currency"
         />
       </Card>
       <Card>
@@ -624,7 +624,7 @@ async function GiftBonusView({ days }: { days: string }) {
         />
         <TrendLineChart
           points={data.days.map((d) => ({ day: d.day, value: d.bonusAmount }))}
-          valueFormatter={(v) => `₹${v.toLocaleString()}`}
+          valueFormat="currency"
         />
       </Card>
     </>

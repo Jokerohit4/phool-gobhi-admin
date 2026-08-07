@@ -30,15 +30,27 @@ function TrendTooltip({
   );
 }
 
+// 'currency' vs 'number' rather than a formatter function prop — every
+// caller here is an async Server Component (it fetches its own data
+// directly from the gateway), and a plain function isn't serializable
+// across the Server->Client boundary this component sits on. Passing one
+// throws at render time ("Functions cannot be passed directly to Client
+// Components..."), unconditionally, regardless of how many points there are.
+const VALUE_FORMATTERS: Record<'number' | 'currency', (v: number) => string> = {
+  number: (v) => v.toLocaleString(),
+  currency: (v) => `₹${v.toLocaleString()}`,
+};
+
 // Single-series only, by design — a second measure of different scale (e.g.
 // GMV vs. booking count) gets its own chart, never a second y-axis on this one.
 export function TrendLineChart({
   points,
-  valueFormatter = (v: number) => v.toLocaleString(),
+  valueFormat = 'number',
 }: {
   points: TrendPoint[];
-  valueFormatter?: (v: number) => string;
+  valueFormat?: 'number' | 'currency';
 }) {
+  const valueFormatter = VALUE_FORMATTERS[valueFormat];
   if (points.length === 0) {
     return <div className="py-8 text-center text-sm text-gray-500">No data in this window yet.</div>;
   }
