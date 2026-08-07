@@ -109,6 +109,16 @@ interface UserJourneyData {
   profile: { name: string | null; phone: string | null; role: string | null; type: string | null } | null;
 }
 
+interface AnonSession {
+  distinct_id: string;
+  first_seen: string;
+  last_seen: string;
+  event_count: number;
+  session_count: number;
+  last_screen: string | null;
+  app: string | null;
+}
+
 const VIEWS = ['supply', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy', 'city', 'revenue', 'retention', 'giftBonus', 'user'] as const;
 type View = (typeof VIEWS)[number];
 
@@ -716,8 +726,73 @@ async function UserJourneyView({ distinctId }: { distinctId?: string }) {
           </button>
         </form>
       </Card>
-      {distinctId && <UserJourneyResults distinctId={distinctId} />}
+      {distinctId ? <UserJourneyResults distinctId={distinctId} /> : <RecentAnonSessions />}
     </>
+  );
+}
+
+// Pre-signup visitors have no phone/name on file, so the search box above
+// can never find them — this is the only way to discover an anon_... id
+// worth looking up in the first place. Hidden once a lookup is showing, to
+// keep the browse list from competing with the thing you actually searched for.
+async function RecentAnonSessions() {
+  let sessions: AnonSession[];
+  try {
+    ({
+      data: { sessions },
+    } = await gatewayJson<{ data: { sessions: AnonSession[] } }>('/api/bookings/admin/analytics/anon-sessions?days=7&limit=25'));
+  } catch (err) {
+    return (
+      <Card>
+        <div className="text-sm text-red-600">
+          {err instanceof Error ? err.message : 'Could not load recent anonymous sessions.'}
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <SectionHeading
+        title="Recent anonymous sessions"
+        subtitle="Pre-signup visitors from the last 7 days, most recently active first. Click one to open its journey. Times shown in IST."
+      />
+      {sessions.length === 0 ? (
+        <div className="py-4 text-sm text-gray-500">No anonymous activity in the last 7 days.</div>
+      ) : (
+        <Table>
+          <Thead>
+            <Th>Distinct ID</Th>
+            <Th>App</Th>
+            <Th>Last screen</Th>
+            <Th>Events</Th>
+            <Th>Sessions</Th>
+            <Th>First seen</Th>
+            <Th>Last seen</Th>
+          </Thead>
+          <tbody>
+            {sessions.map((s) => (
+              <Tr key={s.distinct_id}>
+                <Td>
+                  <Link
+                    href={`/analytics?view=user&distinctId=${encodeURIComponent(s.distinct_id)}`}
+                    className="font-mono text-xs underline"
+                  >
+                    {s.distinct_id}
+                  </Link>
+                </Td>
+                <Td>{s.app ?? '—'}</Td>
+                <Td className="max-w-[16rem] truncate">{s.last_screen ?? '—'}</Td>
+                <Td className="tabular-nums">{s.event_count}</Td>
+                <Td className="tabular-nums">{s.session_count}</Td>
+                <Td>{formatDateTimeIST(s.first_seen)}</Td>
+                <Td>{formatDateTimeIST(s.last_seen)}</Td>
+              </Tr>
+            ))}
+          </tbody>
+        </Table>
+      )}
+    </Card>
   );
 }
 
