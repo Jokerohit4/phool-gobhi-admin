@@ -5,6 +5,9 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { ActionForm } from '@/components/ui/ActionForm';
+import { SubmitButton } from '@/components/ui/SubmitButton';
+import { createFunnelAction, deleteFunnelAction } from './actions';
 import { FunnelBarChart } from '@/components/charts/FunnelBarChart';
 import { FunnelStepsTable } from '@/components/charts/FunnelStepsTable';
 import { TrendLineChart } from '@/components/charts/TrendLineChart';
@@ -119,7 +122,34 @@ interface AnonSession {
   app: string | null;
 }
 
-const VIEWS = ['supply', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy', 'city', 'revenue', 'retention', 'giftBonus', 'user'] as const;
+interface EventSearchUser {
+  distinct_id: string;
+  first_seen: string;
+  last_seen: string;
+  event_count: number;
+}
+
+interface FunnelStepDef {
+  event: string;
+  filters: Record<string, string>;
+}
+
+interface SavedFunnelRow {
+  id: number;
+  name: string;
+  steps: FunnelStepDef[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface CustomFunnelResult {
+  steps: (FunnelStepDef & { users: number })[];
+}
+
+const VIEWS = [
+  'supply', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy',
+  'city', 'revenue', 'retention', 'giftBonus', 'user', 'eventSearch', 'funnels',
+] as const;
 type View = (typeof VIEWS)[number];
 
 function isView(value: string | undefined): value is View {
@@ -138,6 +168,8 @@ const VIEW_LABELS: Record<View, string> = {
   retention: 'Retention',
   giftBonus: 'Gift & Bonus Payouts',
   user: 'User Journey',
+  eventSearch: 'Event Search',
+  funnels: 'Custom Funnels',
 };
 
 // Grouped for the tab bar so 9 tabs read as three questions ("how's supply
@@ -146,7 +178,7 @@ const VIEW_LABELS: Record<View, string> = {
 const VIEW_GROUPS: { label: string; views: View[] }[] = [
   { label: 'Funnels', views: ['supply', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy'] },
   { label: 'Breakdowns', views: ['city', 'revenue', 'retention', 'giftBonus'] },
-  { label: 'Lookup', views: ['user'] },
+  { label: 'Explore', views: ['user', 'eventSearch', 'funnels'] },
 ];
 
 // Client events carry the app they came from (customer/partner/website) plus
@@ -190,10 +222,17 @@ function formatHours(h: string | null): string {
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; days?: string; distinctId?: string }>;
+  searchParams: Promise<{
+    view?: string;
+    days?: string;
+    distinctId?: string;
+    event?: string;
+    f1k?: string; f1v?: string; f2k?: string; f2v?: string; f3k?: string; f3v?: string;
+    funnelId?: string;
+  }>;
 }) {
   await requireSession();
-  const { view: rawView, days: rawDays, distinctId } = await searchParams;
+  const { view: rawView, days: rawDays, distinctId, event, f1k, f1v, f2k, f2v, f3k, f3v, funnelId } = await searchParams;
   const view: View = isView(rawView) ? rawView : 'supply';
   const days = rawDays && Number(rawDays) > 0 ? rawDays : '30';
 
@@ -227,7 +266,7 @@ export default async function AnalyticsPage({
             </div>
           ))}
         </div>
-        {view !== 'user' && view !== 'retention' && (
+        {view !== 'user' && view !== 'retention' && view !== 'eventSearch' && view !== 'funnels' && (
           <div className="flex gap-1">
             {['7', '30', '90'].map((d) => (
               <Link
@@ -257,6 +296,10 @@ export default async function AnalyticsPage({
       {view === 'retention' && <RetentionView />}
       {view === 'giftBonus' && <GiftBonusView days={days} />}
       {view === 'user' && <UserJourneyView distinctId={distinctId} />}
+      {view === 'eventSearch' && (
+        <EventSearchView event={event} days={days} f1k={f1k} f1v={f1v} f2k={f2k} f2v={f2v} f3k={f3k} f3v={f3v} />
+      )}
+      {view === 'funnels' && <FunnelsView funnelId={funnelId} days={days} />}
     </div>
   );
 }
@@ -920,5 +963,330 @@ async function UserJourneyResults({ distinctId }: { distinctId: string }) {
         </div>
       </Card>
     </>
+  );
+}
+
+// ---- Event search: "which users did X" -------------------------------------
+
+async function EventSearchView({
+  event,
+  days,
+  f1k, f1v, f2k, f2v, f3k, f3v,
+}: {
+  event?: string;
+  days: string;
+  f1k?: string; f1v?: string; f2k?: string; f2v?: string; f3k?: string; f3v?: string;
+}) {
+  const filters: Record<string, string> = {};
+  if (f1k && f1v) filters[f1k] = f1v;
+  if (f2k && f2v) filters[f2k] = f2v;
+  if (f3k && f3v) filters[f3k] = f3v;
+  const filterPairs: [string | undefined, string | undefined][] = [[f1k, f1v], [f2k, f2v], [f3k, f3v]];
+
+  return (
+    <>
+      <Card>
+        <form action="/analytics" method="get" className="flex flex-col gap-3">
+          <input type="hidden" name="view" value="eventSearch" />
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500">Event name</label>
+              <input
+                type="text"
+                name="event"
+                defaultValue={event ?? ''}
+                placeholder="e.g. screen_viewed"
+                className="w-56 rounded border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500">Days</label>
+              <select
+                name="days"
+                defaultValue={days}
+                className="rounded border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+              >
+                {['7', '30', '90', '365'].map((d) => (
+                  <option key={d} value={d}>{d}d</option>
+                ))}
+              </select>
+            </div>
+            <button type="submit" className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white">
+              Search
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xs text-gray-500">Optional property filters (exact match):</span>
+            {filterPairs.map(([k, v], i) => (
+              <div key={i} className="flex gap-1">
+                <input
+                  type="text"
+                  name={`f${i + 1}k`}
+                  defaultValue={k ?? ''}
+                  placeholder="key"
+                  className="w-28 rounded border px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900"
+                />
+                <input
+                  type="text"
+                  name={`f${i + 1}v`}
+                  defaultValue={v ?? ''}
+                  placeholder="value"
+                  className="w-28 rounded border px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900"
+                />
+              </div>
+            ))}
+          </div>
+        </form>
+      </Card>
+      {event && <EventSearchResults event={event} filters={filters} days={days} />}
+    </>
+  );
+}
+
+async function EventSearchResults({
+  event,
+  filters,
+  days,
+}: {
+  event: string;
+  filters: Record<string, string>;
+  days: string;
+}) {
+  let users: EventSearchUser[];
+  try {
+    ({
+      data: { users },
+    } = await gatewayJson<{ data: { users: EventSearchUser[] } }>(
+      `/api/bookings/admin/analytics/event-search?event=${encodeURIComponent(event)}&filters=${encodeURIComponent(
+        JSON.stringify(filters),
+      )}&days=${days}&limit=50`,
+    ));
+  } catch (err) {
+    return (
+      <Card>
+        <div className="text-sm text-red-600">{err instanceof Error ? err.message : 'Search failed.'}</div>
+      </Card>
+    );
+  }
+
+  const filterSummary = Object.entries(filters).map(([k, v]) => `${k}=${v}`).join(', ');
+
+  return (
+    <Card>
+      <SectionHeading
+        title={`Users who did "${event}"${filterSummary ? ` where ${filterSummary}` : ''}`}
+        subtitle={`Last ${days} days, most recently active first. Times shown in IST. Click a row to open its journey.`}
+      />
+      {users.length === 0 ? (
+        <div className="py-4 text-sm text-gray-500">No matching events in this window.</div>
+      ) : (
+        <Table>
+          <Thead>
+            <Th>Distinct ID</Th>
+            <Th>Events</Th>
+            <Th>First seen</Th>
+            <Th>Last seen</Th>
+          </Thead>
+          <tbody>
+            {users.map((u) => (
+              <Tr key={u.distinct_id}>
+                <Td>
+                  <Link
+                    href={`/analytics?view=user&distinctId=${encodeURIComponent(u.distinct_id)}`}
+                    className="font-mono text-xs underline"
+                  >
+                    {u.distinct_id}
+                  </Link>
+                </Td>
+                <Td className="tabular-nums">{u.event_count}</Td>
+                <Td>{formatDateTimeIST(u.first_seen)}</Td>
+                <Td>{formatDateTimeIST(u.last_seen)}</Td>
+              </Tr>
+            ))}
+          </tbody>
+        </Table>
+      )}
+    </Card>
+  );
+}
+
+// ---- Custom funnels ---------------------------------------------------------
+
+const FUNNEL_STEP_ROWS = 6;
+
+function funnelStepsSummary(steps: FunnelStepDef[]): string {
+  return steps
+    .map((s) => {
+      const filterText = Object.entries(s.filters || {}).map(([k, v]) => `${k}=${v}`).join(', ');
+      return filterText ? `${s.event} (${filterText})` : s.event;
+    })
+    .join(' → ');
+}
+
+async function FunnelsView({ funnelId, days }: { funnelId?: string; days: string }) {
+  let funnels: SavedFunnelRow[];
+  try {
+    ({ data: funnels } = await gatewayJson<{ data: SavedFunnelRow[] }>('/api/bookings/admin/analytics/funnels'));
+  } catch (err) {
+    return (
+      <Card>
+        <div className="text-sm text-red-600">
+          {err instanceof Error ? err.message : 'Could not load saved funnels.'}
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <Card>
+        <SectionHeading
+          title="Saved funnels"
+          subtitle="True sequential order — a step only counts someone who completed every prior step first."
+        />
+        {funnels.length === 0 ? (
+          <div className="py-4 text-sm text-gray-500">No custom funnels yet — create one below.</div>
+        ) : (
+          <Table>
+            <Thead>
+              <Th>Name</Th>
+              <Th>Steps</Th>
+              <Th>Updated</Th>
+              <Th>Action</Th>
+            </Thead>
+            <tbody>
+              {funnels.map((f) => (
+                <Tr key={f.id}>
+                  <Td>{f.name}</Td>
+                  <Td className="max-w-[24rem] truncate text-xs text-gray-500">{funnelStepsSummary(f.steps)}</Td>
+                  <Td>{formatDateIST(f.updatedAt)}</Td>
+                  <Td>
+                    <div className="flex items-center gap-3">
+                      <Link href={`/analytics?view=funnels&funnelId=${f.id}&days=${days}`} className="text-sm underline">
+                        View
+                      </Link>
+                      <ActionForm action={deleteFunnelAction} confirmMessage={`Delete "${f.name}"?`}>
+                        <input type="hidden" name="id" value={f.id} />
+                        <SubmitButton variant="danger" pendingText="Deleting…">Delete</SubmitButton>
+                      </ActionForm>
+                    </div>
+                  </Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </Card>
+
+      <Card>
+        <SectionHeading title="Create a funnel" subtitle="Leave trailing rows blank — at least 2 steps are required." />
+        <ActionForm action={createFunnelAction} className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-gray-500">Name</label>
+            <input
+              type="text"
+              name="name"
+              placeholder="e.g. Booking conversion (Gurugram)"
+              className="w-80 rounded border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
+            />
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-gray-500">
+                  <th className="pb-1 pr-2">Step</th>
+                  <th className="pb-1 pr-2">Event</th>
+                  <th className="pb-1 pr-2">Filter key</th>
+                  <th className="pb-1">Filter value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: FUNNEL_STEP_ROWS }, (_, i) => (
+                  <tr key={i}>
+                    <td className="py-1 pr-2 text-gray-400">{i + 1}</td>
+                    <td className="py-1 pr-2">
+                      <input
+                        type="text"
+                        name={`step${i + 1}_event`}
+                        placeholder="event name"
+                        className="w-48 rounded border px-2 py-1 dark:border-gray-700 dark:bg-gray-900"
+                      />
+                    </td>
+                    <td className="py-1 pr-2">
+                      <input
+                        type="text"
+                        name={`step${i + 1}_filterKey`}
+                        placeholder="optional"
+                        className="w-32 rounded border px-2 py-1 dark:border-gray-700 dark:bg-gray-900"
+                      />
+                    </td>
+                    <td className="py-1">
+                      <input
+                        type="text"
+                        name={`step${i + 1}_filterValue`}
+                        placeholder="optional"
+                        className="w-32 rounded border px-2 py-1 dark:border-gray-700 dark:bg-gray-900"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <SubmitButton className="w-fit" pendingText="Creating…">Create funnel</SubmitButton>
+        </ActionForm>
+      </Card>
+
+      {funnelId && <CustomFunnelResults funnelId={funnelId} days={days} />}
+    </>
+  );
+}
+
+async function CustomFunnelResults({ funnelId, days }: { funnelId: string; days: string }) {
+  let result: CustomFunnelResult;
+  try {
+    ({ data: result } = await gatewayJson<{ data: CustomFunnelResult }>(
+      `/api/bookings/admin/analytics/custom-funnel?funnelId=${encodeURIComponent(funnelId)}&days=${days}`,
+    ));
+  } catch (err) {
+    return (
+      <Card>
+        <div className="text-sm text-red-600">{err instanceof Error ? err.message : 'Could not run this funnel.'}</div>
+      </Card>
+    );
+  }
+
+  const chartSteps = withDropoff(
+    result.steps.map((s) => ({
+      label: Object.keys(s.filters || {}).length ? `${s.event} (${funnelStepsSummary([s])})` : s.event,
+      value: s.users,
+    })),
+  );
+
+  return (
+    <Card>
+      <div className="mb-2 flex items-center justify-between">
+        <SectionHeading title="Result" />
+        <div className="flex gap-1">
+          {['7', '30', '90', '365'].map((d) => (
+            <Link
+              key={d}
+              href={`/analytics?view=funnels&funnelId=${funnelId}&days=${d}`}
+              className={`rounded px-2.5 py-1 text-sm transition-colors ${
+                d === days
+                  ? 'bg-gray-800 font-medium text-white dark:bg-gray-200 dark:text-gray-900'
+                  : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
+              }`}
+            >
+              {d}d
+            </Link>
+          ))}
+        </div>
+      </div>
+      <FunnelBarChart steps={chartSteps} />
+      <div className="mt-3">
+        <FunnelStepsTable steps={chartSteps} />
+      </div>
+    </Card>
   );
 }
