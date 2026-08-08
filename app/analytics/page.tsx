@@ -7,7 +7,9 @@ import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
-import { createFunnelAction, deleteFunnelAction } from './actions';
+import { createFunnelAction, deleteFunnelAction, getKnownEventsAction } from './actions';
+import { EventSearchFields } from '@/components/analytics/EventSearchFields';
+import { FunnelStepRow } from '@/components/analytics/FunnelStepRow';
 import { FunnelBarChart } from '@/components/charts/FunnelBarChart';
 import { FunnelStepsTable } from '@/components/charts/FunnelStepsTable';
 import { TrendLineChart } from '@/components/charts/TrendLineChart';
@@ -981,61 +983,19 @@ async function EventSearchView({
   if (f1k && f1v) filters[f1k] = f1v;
   if (f2k && f2v) filters[f2k] = f2v;
   if (f3k && f3v) filters[f3k] = f3v;
-  const filterPairs: [string | undefined, string | undefined][] = [[f1k, f1v], [f2k, f2v], [f3k, f3v]];
+  const knownEvents = await getKnownEventsAction();
 
   return (
     <>
       <Card>
         <form action="/analytics" method="get" className="flex flex-col gap-3">
           <input type="hidden" name="view" value="eventSearch" />
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-500">Event name</label>
-              <input
-                type="text"
-                name="event"
-                defaultValue={event ?? ''}
-                placeholder="e.g. screen_viewed"
-                className="w-56 rounded border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
-              />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-500">Days</label>
-              <select
-                name="days"
-                defaultValue={days}
-                className="rounded border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
-              >
-                {['7', '30', '90', '365'].map((d) => (
-                  <option key={d} value={d}>{d}d</option>
-                ))}
-              </select>
-            </div>
-            <button type="submit" className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white">
-              Search
-            </button>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs text-gray-500">Optional property filters (exact match):</span>
-            {filterPairs.map(([k, v], i) => (
-              <div key={i} className="flex gap-1">
-                <input
-                  type="text"
-                  name={`f${i + 1}k`}
-                  defaultValue={k ?? ''}
-                  placeholder="key"
-                  className="w-28 rounded border px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900"
-                />
-                <input
-                  type="text"
-                  name={`f${i + 1}v`}
-                  defaultValue={v ?? ''}
-                  placeholder="value"
-                  className="w-28 rounded border px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900"
-                />
-              </div>
-            ))}
-          </div>
+          <EventSearchFields
+            knownEvents={knownEvents}
+            defaultEvent={event}
+            days={days}
+            filterDefaults={[[f1k, f1v], [f2k, f2v], [f3k, f3v]]}
+          />
         </form>
       </Card>
       {event && <EventSearchResults event={event} filters={filters} days={days} />}
@@ -1124,6 +1084,7 @@ function funnelStepsSummary(steps: FunnelStepDef[]): string {
 }
 
 async function FunnelsView({ funnelId, days }: { funnelId?: string; days: string }) {
+  const knownEvents = await getKnownEventsAction();
   let funnels: SavedFunnelRow[];
   try {
     ({ data: funnels } = await gatewayJson<{ data: SavedFunnelRow[] }>('/api/bookings/admin/analytics/funnels'));
@@ -1196,39 +1157,12 @@ async function FunnelsView({ funnelId, days }: { funnelId?: string; days: string
                 <tr className="text-left text-xs text-gray-500">
                   <th className="pb-1 pr-2">Step</th>
                   <th className="pb-1 pr-2">Event</th>
-                  <th className="pb-1 pr-2">Filter key</th>
-                  <th className="pb-1">Filter value</th>
+                  <th className="pb-1">Filter (optional)</th>
                 </tr>
               </thead>
               <tbody>
                 {Array.from({ length: FUNNEL_STEP_ROWS }, (_, i) => (
-                  <tr key={i}>
-                    <td className="py-1 pr-2 text-gray-400">{i + 1}</td>
-                    <td className="py-1 pr-2">
-                      <input
-                        type="text"
-                        name={`step${i + 1}_event`}
-                        placeholder="event name"
-                        className="w-48 rounded border px-2 py-1 dark:border-gray-700 dark:bg-gray-900"
-                      />
-                    </td>
-                    <td className="py-1 pr-2">
-                      <input
-                        type="text"
-                        name={`step${i + 1}_filterKey`}
-                        placeholder="optional"
-                        className="w-32 rounded border px-2 py-1 dark:border-gray-700 dark:bg-gray-900"
-                      />
-                    </td>
-                    <td className="py-1">
-                      <input
-                        type="text"
-                        name={`step${i + 1}_filterValue`}
-                        placeholder="optional"
-                        className="w-32 rounded border px-2 py-1 dark:border-gray-700 dark:bg-gray-900"
-                      />
-                    </td>
-                  </tr>
+                  <FunnelStepRow key={i} index={i + 1} knownEvents={knownEvents} />
                 ))}
               </tbody>
             </table>

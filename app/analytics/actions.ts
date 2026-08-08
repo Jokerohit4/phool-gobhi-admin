@@ -54,3 +54,46 @@ export async function deleteFunnelAction(_prev: ActionState, formData: FormData)
   revalidatePath('/analytics');
   return { ok: true, message: 'Funnel deleted' };
 }
+
+// Read-only Server Functions (not tied to a <form>) — called directly from
+// the client-side filter builders below to drive the event -> property ->
+// value autocomplete cascade. Never throw: a failed suggestion lookup should
+// degrade to "no suggestions," not break the field the admin is typing in.
+
+export async function getKnownEventsAction(): Promise<{ event: string; n: number }[]> {
+  await requireSession();
+  try {
+    const { data } = await gatewayJson<{ data: { events: { event: string; n: number }[] } }>(
+      '/api/bookings/admin/analytics/known-events?limit=100',
+    );
+    return data.events;
+  } catch {
+    return [];
+  }
+}
+
+export async function getKnownPropertyKeysAction(event: string): Promise<string[]> {
+  await requireSession();
+  if (!event.trim()) return [];
+  try {
+    const { data } = await gatewayJson<{ data: { keys: string[] } }>(
+      `/api/bookings/admin/analytics/known-properties?event=${encodeURIComponent(event)}`,
+    );
+    return data.keys;
+  } catch {
+    return [];
+  }
+}
+
+export async function getKnownPropertyValuesAction(event: string, key: string): Promise<{ value: string; n: number }[]> {
+  await requireSession();
+  if (!event.trim() || !key.trim()) return [];
+  try {
+    const { data } = await gatewayJson<{ data: { values: { value: string; n: number }[] } }>(
+      `/api/bookings/admin/analytics/known-values?event=${encodeURIComponent(event)}&key=${encodeURIComponent(key)}&limit=20`,
+    );
+    return data.values;
+  } catch {
+    return [];
+  }
+}
