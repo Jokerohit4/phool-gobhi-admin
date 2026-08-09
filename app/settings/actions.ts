@@ -83,28 +83,49 @@ const APP_VERSION_KEYS: Array<{ app: 'customer' | 'partner'; platform: 'android'
   { app: 'partner', platform: 'ios' },
 ];
 
+interface FeatureFlags {
+  buddy: { enabled: boolean };
+}
+
+const DEFAULT_FEATURES: FeatureFlags = { buddy: { enabled: true } };
+
+// The whole config blob lives in one row (versions + features share the same
+// JSON), so every writer must read-modify-write rather than replace the blob —
+// otherwise saving the app versions would silently drop the feature flags and
+// vice versa.
+async function loadCurrentAppConfig(): Promise<{ versions: Record<string, Record<string, unknown>>; features: FeatureFlags }> {
+  const { data } = await gatewayJson<{ data: Record<string, unknown> }>('/api/auth/app-config/admin');
+  const { features, ...versions } = data;
+  return {
+    versions: versions as Record<string, Record<string, unknown>>,
+    features: { ...DEFAULT_FEATURES, ...((features as Partial<FeatureFlags>) || {}) },
+  };
+}
+
 export async function updateAppVersionConfigAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
   await requireSession();
 
-  const config: Record<string, Record<string, unknown>> = {};
-  for (const { app, platform } of APP_VERSION_KEYS) {
-    const prefix = `${app}_${platform}`;
-    config[app] = config[app] || {};
-    config[app][platform] = {
-      minVersion: String(formData.get(`${prefix}_minVersion`) || '').trim(),
-      latestVersion: String(formData.get(`${prefix}_latestVersion`) || '').trim(),
-      updateUrl: String(formData.get(`${prefix}_updateUrl`) || '').trim(),
-      message: String(formData.get(`${prefix}_message`) || '').trim(),
-    };
-  }
-
   try {
+    const current = await loadCurrentAppConfig();
+
+    const config: Record<string, Record<string, unknown>> = {};
+    for (const { app, platform } of APP_VERSION_KEYS) {
+      const prefix = `${app}_${platform}`;
+      config[app] = config[app] || {};
+      config[app][platform] = {
+        minVersion: String(formData.get(`${prefix}_minVersion`) || '').trim(),
+        latestVersion: String(formData.get(`${prefix}_latestVersion`) || '').trim(),
+        updateUrl: String(formData.get(`${prefix}_updateUrl`) || '').trim(),
+        message: String(formData.get(`${prefix}_message`) || '').trim(),
+      };
+    }
+
     await gatewayJson('/api/auth/app-config/admin', {
       method: 'PUT',
-      body: JSON.stringify({ config }),
+      body: JSON.stringify({ config: { ...config, features: current.features } }),
     });
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : 'Failed to save app version config' };
@@ -112,6 +133,27 @@ export async function updateAppVersionConfigAction(
 
   revalidatePath('/settings');
   return { ok: true, message: 'App version config updated' };
+}
+
+export async function updateFeatureFlagsAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+
+  try {
+    const current = await loadCurrentAppConfig();
+    const features: FeatureFlags = {
+      buddy: { enabled: formData.get('buddyEnabled') === 'on' },
+    };
+
+    await gatewayJson('/api/auth/app-config/admin', {
+      method: 'PUT',
+      body: JSON.stringify({ config: { ...current.versions, features } }),
+    });
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to save feature flags' };
+  }
+
+  revalidatePath('/settings');
+  return { ok: true, message: 'Feature flags updated' };
 }
 
 export async function updateOtpConfigAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

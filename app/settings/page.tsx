@@ -3,6 +3,7 @@ import { gatewayJson } from '@/lib/api';
 import {
   updateCancellationPolicyAction,
   updateAppVersionConfigAction,
+  updateFeatureFlagsAction,
   updateLaunchGateAction,
   updateOtpConfigAction,
   addOtpSkipAllowlistAction,
@@ -62,6 +63,20 @@ const EMPTY_APP_VERSION_ENTRY: AppVersionEntry = {
   message: '',
 };
 
+interface FeatureFlags {
+  buddy: { enabled: boolean };
+}
+
+// Buddy is live today, so the default is enabled — the toggle only does
+// something once an admin deliberately turns it off.
+const DEFAULT_FEATURES: FeatureFlags = { buddy: { enabled: true } };
+
+function withFeatures(raw: Partial<FeatureFlags> | null | undefined): FeatureFlags {
+  return {
+    buddy: { enabled: raw?.buddy?.enabled ?? DEFAULT_FEATURES.buddy.enabled },
+  };
+}
+
 // Defensive fill — tolerates the admin GET returning a partial/missing config
 // (e.g. before the first PUT ever lands) without the page crashing.
 function withDefaults(config: Partial<AppVersionConfig> | null | undefined): AppVersionConfig {
@@ -113,10 +128,11 @@ export default async function SettingsPage() {
   const rows = tiers.slice(0, 4);
 
   const { data: appVersionRaw, updatedAt: appVersionUpdatedAt } = await gatewayJson<{
-    data: Partial<AppVersionConfig>;
+    data: Partial<AppVersionConfig> & Partial<FeatureFlags>;
     updatedAt?: string | null;
   }>('/api/auth/app-config/admin');
   const appVersionConfig = withDefaults(appVersionRaw);
+  const features = withFeatures(appVersionRaw);
 
   const { data: launchGate } = await gatewayJson<{ data: LaunchGate }>('/api/auth/launch-gate/admin');
 
@@ -301,6 +317,34 @@ export default async function SettingsPage() {
             })}
             <SubmitButton pendingText="Saving…" className="w-fit">
               Save app version config
+            </SubmitButton>
+          </ActionForm>
+        </Card>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <PageHeader
+          title="Feature flags"
+          subtitle="Kill-switches for customer-app features. Saved to the same config blob as the app versions above; changes apply on the app's next launch (the app checks this once at startup)."
+        />
+        <Card className="max-w-xl">
+          <ActionForm
+            action={updateFeatureFlagsAction}
+            className="flex flex-col gap-4"
+            confirmMessage="This immediately gates the Gym Buddies tab for every customer app install on next launch. Continue?"
+          >
+            <div className="flex flex-col gap-1">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" name="buddyEnabled" defaultChecked={features.buddy.enabled} />
+                Gym Buddies
+              </label>
+              <p className="text-sm text-gray-500">
+                Off: the Buddies tab (and its routes) disappear from the customer app. Existing matches are not
+                deleted — the flag only hides the feature.
+              </p>
+            </div>
+            <SubmitButton pendingText="Saving…" className="w-fit">
+              Save feature flags
             </SubmitButton>
           </ActionForm>
         </Card>
