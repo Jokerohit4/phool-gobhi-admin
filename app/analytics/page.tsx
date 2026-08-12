@@ -57,6 +57,14 @@ interface SimpleFunnelData {
   steps: EventCountRow[];
 }
 
+interface WebsiteTrafficData {
+  totalSessions: number;
+  uniqueVisitors: number;
+  totalPageViews: number;
+  daily: { day: string; event: 'session_started' | 'screen_viewed'; n: number }[];
+  topPages: { page: string | null; views: number }[];
+}
+
 interface SupplyHealthData {
   gyms: {
     gym_id: string;
@@ -149,7 +157,7 @@ interface CustomFunnelResult {
 }
 
 const VIEWS = [
-  'supply', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy',
+  'traffic', 'supply', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy',
   'city', 'revenue', 'retention', 'giftBonus', 'user', 'eventSearch', 'funnels',
 ] as const;
 type View = (typeof VIEWS)[number];
@@ -159,6 +167,7 @@ function isView(value: string | undefined): value is View {
 }
 
 const VIEW_LABELS: Record<View, string> = {
+  traffic: 'Website Traffic',
   supply: 'Supply',
   conversion: 'Conversion',
   fulfillment: 'Fulfillment',
@@ -178,6 +187,7 @@ const VIEW_LABELS: Record<View, string> = {
 // doing / how's revenue shaped / who is this person") rather than one flat
 // undifferentiated row.
 const VIEW_GROUPS: { label: string; views: View[] }[] = [
+  { label: 'Traffic', views: ['traffic'] },
   { label: 'Funnels', views: ['supply', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy'] },
   { label: 'Breakdowns', views: ['city', 'revenue', 'retention', 'giftBonus'] },
   { label: 'Explore', views: ['user', 'eventSearch', 'funnels'] },
@@ -235,7 +245,7 @@ export default async function AnalyticsPage({
 }) {
   await requireSession();
   const { view: rawView, days: rawDays, distinctId, event, f1k, f1v, f2k, f2v, f3k, f3v, funnelId } = await searchParams;
-  const view: View = isView(rawView) ? rawView : 'supply';
+  const view: View = isView(rawView) ? rawView : 'traffic';
   const days = rawDays && Number(rawDays) > 0 ? rawDays : '30';
 
   return (
@@ -287,6 +297,7 @@ export default async function AnalyticsPage({
         )}
       </div>
 
+      {view === 'traffic' && <TrafficView days={days} />}
       {view === 'supply' && <SupplyView days={days} />}
       {view === 'conversion' && <ConversionView days={days} />}
       {view === 'fulfillment' && <FulfillmentView days={days} />}
@@ -303,6 +314,54 @@ export default async function AnalyticsPage({
       )}
       {view === 'funnels' && <FunnelsView funnelId={funnelId} days={days} />}
     </div>
+  );
+}
+
+async function TrafficView({ days }: { days: string }) {
+  const { data } = await gatewayJson<{ data: WebsiteTrafficData }>(
+    `/api/bookings/admin/analytics/website-traffic?days=${days}`,
+  );
+
+  const sessionsByDay = new Map(data.daily.filter((d) => d.event === 'session_started').map((d) => [d.day, d.n]));
+  const pageviewsByDay = new Map(data.daily.filter((d) => d.event === 'screen_viewed').map((d) => [d.day, d.n]));
+  const allDays = [...new Set(data.daily.map((d) => d.day))].sort();
+  const sessionPoints = allDays.map((day) => ({ day, value: sessionsByDay.get(day) ?? 0 }));
+  const pageviewPoints = allDays.map((day) => ({ day, value: pageviewsByDay.get(day) ?? 0 }));
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <StatTile label="Sessions" value={data.totalSessions.toLocaleString()} hint="session_started, one per tab/visit" />
+        <StatTile label="Unique visitors" value={data.uniqueVisitors.toLocaleString()} hint="distinct browser/user id" />
+        <StatTile label="Page views" value={data.totalPageViews.toLocaleString()} hint="screen_viewed, every route change" />
+      </div>
+      <Card>
+        <SectionHeading title="Sessions per day" />
+        <TrendLineChart points={sessionPoints} />
+      </Card>
+      <Card>
+        <SectionHeading title="Page views per day" />
+        <TrendLineChart points={pageviewPoints} />
+      </Card>
+      <Card>
+        <SectionHeading title="Top pages" subtitle="By screen_viewed count in this window" />
+        <Table>
+          <Thead>
+            <Th>Page</Th>
+            <Th>Views</Th>
+          </Thead>
+          <tbody>
+            {data.topPages.map((p) => (
+              <Tr key={p.page ?? 'unknown'}>
+                <Td>{p.page ?? 'unknown'}</Td>
+                <Td className="tabular-nums">{p.views}</Td>
+              </Tr>
+            ))}
+            {data.topPages.length === 0 && <EmptyRow colSpan={2}>No page views in this window.</EmptyRow>}
+          </tbody>
+        </Table>
+      </Card>
+    </>
   );
 }
 
