@@ -827,7 +827,7 @@ async function RecentAnonSessions() {
                   </Link>
                 </Td>
                 <Td>{s.app ?? '—'}</Td>
-                <Td className="max-w-[16rem] truncate">{s.last_screen ?? '—'}</Td>
+                <Td className="max-w-[16rem] whitespace-normal break-words">{s.last_screen ?? '—'}</Td>
                 <Td className="tabular-nums">{s.event_count}</Td>
                 <Td className="tabular-nums">{s.session_count}</Td>
                 <Td>{formatDateTimeIST(s.first_seen)}</Td>
@@ -938,7 +938,7 @@ async function UserJourneyResults({ distinctId }: { distinctId: string }) {
                   {row.boundary}
                 </div>
               )}
-              <div className="flex items-start gap-3 rounded px-2 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-800/50">
+              <div className="flex flex-wrap items-start gap-3 rounded px-2 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-800/50">
                 <span className="w-36 shrink-0 font-mono text-xs text-gray-400">{formatDateTimeIST(row.event.ts)}</span>
                 <span
                   className={`w-16 shrink-0 rounded-full px-2 py-0.5 text-center text-xs font-medium ${
@@ -949,14 +949,11 @@ async function UserJourneyResults({ distinctId }: { distinctId: string }) {
                 >
                   {row.event.source}
                 </span>
-                <span className="w-32 shrink-0 truncate rounded-full bg-gray-100 px-2 py-0.5 text-center text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                <span className="min-w-32 shrink-0 whitespace-nowrap rounded-full bg-gray-100 px-2 py-0.5 text-center text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                   {originFor(row.event)}
                 </span>
-                <span className="font-medium">{labelFor(row.event.event)}</span>
-                <span
-                  className="truncate text-xs text-gray-400"
-                  title={formatProperties(row.event.properties, ['app', 'platform', 'session_id'])}
-                >
+                <span className="shrink-0 font-medium">{labelFor(row.event.event)}</span>
+                <span className="min-w-0 flex-1 whitespace-normal break-words text-xs text-gray-400">
                   {formatProperties(row.event.properties, HIDDEN_INLINE_PROPS)}
                 </span>
               </div>
@@ -1119,7 +1116,7 @@ async function FunnelsView({ funnelId, days }: { funnelId?: string; days: string
               {funnels.map((f) => (
                 <Tr key={f.id}>
                   <Td>{f.name}</Td>
-                  <Td className="max-w-[24rem] truncate text-xs text-gray-500">{funnelStepsSummary(f.steps)}</Td>
+                  <Td className="max-w-[24rem] whitespace-normal break-words text-xs text-gray-500">{funnelStepsSummary(f.steps)}</Td>
                   <Td>{formatDateIST(f.updatedAt)}</Td>
                   <Td>
                     <div className="flex items-center gap-3">
