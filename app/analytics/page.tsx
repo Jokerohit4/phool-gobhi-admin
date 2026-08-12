@@ -199,15 +199,14 @@ const VIEW_GROUPS: { label: string; views: View[] }[] = [
 // derivable from the event name. Server events have no client app context at
 // all (a server never knows which app triggered it), so the closest "origin"
 // there is which backend service emitted the truth event.
-// Postgres jsonb doesn't preserve insertion order (it reorders keys, shortest
-// first), so a long user_agent string can land before the property that
-// actually says what happened (e.g. screen_viewed's screen_name) and eat the
-// whole truncated row width, leaving that row looking blank. ip is worse than
-// noisy: for web traffic it's the BFF's own serverless egress address, not
-// the visitor's, so it flaps between requests and isn't a real signal at all.
-// Both are dropped from the inline summary (still available via the row's
-// title tooltip) so whatever the event's real payload is stays visible.
-const HIDDEN_INLINE_PROPS = ['app', 'platform', 'session_id', 'ip', 'user_agent'];
+// ip is noise, not signal: for web traffic it's the BFF's own serverless
+// egress address, not the visitor's, so it flaps between requests and never
+// tells you anything real — dropped entirely. user_agent used to be dropped
+// too (Postgres jsonb doesn't preserve insertion order, so a long UA string
+// could land first and eat the whole truncated row width), but now that rows
+// wrap instead of truncating there's no reason to hide the one property that
+// actually answers "was this a real browser or a bot/crawler" — kept visible.
+const HIDDEN_INLINE_PROPS = ['app', 'platform', 'session_id', 'ip'];
 
 function formatProperties(properties: Record<string, unknown>, hide: string[]): string {
   return Object.entries(properties)
