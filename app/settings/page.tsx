@@ -5,9 +5,11 @@ import {
   updateAppVersionConfigAction,
   updateFeatureFlagsAction,
   updateLaunchGateAction,
+  updateMaintenanceAction,
   updateOtpConfigAction,
   addOtpSkipAllowlistAction,
   removeOtpSkipAllowlistAction,
+  updateProfileCompletionBonusAction,
   addWalletTopupPresetAction,
   removeWalletTopupPresetAction,
   updateWalletTopupCustomAmountAction,
@@ -77,6 +79,46 @@ function withFeatures(raw: Partial<FeatureFlags> | null | undefined): FeatureFla
   };
 }
 
+interface MaintenanceConfig {
+  enabled: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
+  message: string;
+}
+
+type MaintenanceConfigMap = Record<'wallet' | 'gyms', MaintenanceConfig>;
+
+const DEFAULT_MAINTENANCE: MaintenanceConfigMap = {
+  wallet: { enabled: false, startsAt: null, endsAt: null, message: '' },
+  gyms: { enabled: false, startsAt: null, endsAt: null, message: '' },
+};
+
+function withMaintenance(
+  raw: Partial<Record<'wallet' | 'gyms', Partial<MaintenanceConfig>>> | null | undefined
+): MaintenanceConfigMap {
+  return {
+    wallet: { ...DEFAULT_MAINTENANCE.wallet, ...(raw?.wallet || {}) },
+    gyms: { ...DEFAULT_MAINTENANCE.gyms, ...(raw?.gyms || {}) },
+  };
+}
+
+const MAINTENANCE_SECTIONS: Array<{
+  feature: keyof MaintenanceConfigMap;
+  label: string;
+  blurb: string;
+}> = [
+  {
+    feature: 'wallet',
+    label: 'Wallet',
+    blurb: 'Blocks wallet top-up, balance, transactions, subscriptions and any booking that moves wallet money.',
+  },
+  {
+    feature: 'gyms',
+    label: 'Gyms',
+    blurb: 'Blocks gym browsing, gym detail, slot booking and QR check-in.',
+  },
+];
+
 // Defensive fill — tolerates the admin GET returning a partial/missing config
 // (e.g. before the first PUT ever lands) without the page crashing.
 function withDefaults(config: Partial<AppVersionConfig> | null | undefined): AppVersionConfig {
@@ -128,11 +170,15 @@ export default async function SettingsPage() {
   const rows = tiers.slice(0, 4);
 
   const { data: appVersionRaw, updatedAt: appVersionUpdatedAt } = await gatewayJson<{
-    data: Partial<AppVersionConfig> & Partial<FeatureFlags>;
+    data: Partial<AppVersionConfig> &
+      Partial<FeatureFlags> & {
+        maintenance?: Partial<Record<'wallet' | 'gyms', Partial<MaintenanceConfig>>>;
+      };
     updatedAt?: string | null;
   }>('/api/auth/app-config/admin');
   const appVersionConfig = withDefaults(appVersionRaw);
   const features = withFeatures(appVersionRaw);
+  const maintenance = withMaintenance(appVersionRaw?.maintenance);
 
   const { data: launchGate } = await gatewayJson<{ data: LaunchGate }>('/api/auth/launch-gate/admin');
 
@@ -146,6 +192,11 @@ export default async function SettingsPage() {
   );
 
   const { data: topupConfig } = await gatewayJson<{ data: WalletTopupConfig }>('/api/wallet/topup-config');
+
+  const { data: profileCompletionBonus, updatedAt: bonusUpdatedAt } = await gatewayJson<{
+    data: { amount: number };
+    updatedAt: string | null;
+  }>('/api/auth/profile-completion-bonus/admin');
 
   return (
     <div className="flex flex-col gap-8">
@@ -182,6 +233,71 @@ export default async function SettingsPage() {
             </SubmitButton>
           </ActionForm>
         </Card>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <PageHeader
+          title="Maintenance windows"
+          subtitle="Put the website's wallet or gyms section (or both) under maintenance — immediately or on a schedule. Blocks the matching pages and APIs on phoolgobhi.com only; the customer/partner apps are not affected."
+        />
+        {MAINTENANCE_SECTIONS.map(({ feature, label, blurb }) => {
+          const entry = maintenance[feature];
+          return (
+            <Card key={feature} className="max-w-xl">
+              <ActionForm
+                action={updateMaintenanceAction}
+                className="flex flex-col gap-4"
+                confirmMessage={`This changes the ${label} maintenance window for every website visitor, immediately. Continue?`}
+              >
+                <input type="hidden" name="feature" value={feature} />
+                <div className="flex flex-col gap-1">
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <input type="checkbox" name="enabled" defaultChecked={entry.enabled} />
+                    Under maintenance (immediate)
+                  </label>
+                  <p className="text-sm text-gray-500">{blurb}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <label className="flex flex-col gap-1 text-sm">
+                    Starts at (IST)
+                    <input
+                      type="datetime-local"
+                      name="startsAt"
+                      defaultValue={utcIsoToLaunchInput(entry.startsAt)}
+                      className="rounded border px-3 py-2 text-sm"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm">
+                    Ends at (IST)
+                    <input
+                      type="datetime-local"
+                      name="endsAt"
+                      defaultValue={utcIsoToLaunchInput(entry.endsAt)}
+                      className="rounded border px-3 py-2 text-sm"
+                    />
+                  </label>
+                </div>
+                <label className="flex flex-col gap-1 text-sm">
+                  Message shown to users
+                  <input
+                    type="text"
+                    name="message"
+                    defaultValue={entry.message}
+                    placeholder={`Optional — e.g. "We'll be back by 10 PM IST"`}
+                    className="rounded border px-3 py-2 text-sm"
+                  />
+                </label>
+                <p className="text-sm text-gray-500">
+                  Off with a start/end: the window still auto-engages while now is between them. On: gated
+                  immediately until you switch it off — a past end time does not auto-release a manual hold.
+                </p>
+                <SubmitButton pendingText="Saving…" className="w-fit">
+                  Save {label} maintenance
+                </SubmitButton>
+              </ActionForm>
+            </Card>
+          );
+        })}
       </section>
 
       <section className="flex flex-col gap-4">
@@ -440,6 +556,46 @@ export default async function SettingsPage() {
             />
 
             <SubmitButton pendingText="Adding…" className="w-fit">Add to skip allowlist</SubmitButton>
+          </ActionForm>
+        </Card>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <PageHeader
+          title="Profile-completion bonus"
+          subtitle={
+            bonusUpdatedAt
+              ? `One-time wallet credit when a customer's profile crosses from incomplete to complete — last updated ${formatDateTimeIST(bonusUpdatedAt)} IST.`
+              : 'One-time wallet credit when a customer\'s profile crosses from incomplete to complete — not customized yet, showing defaults.'
+          }
+        />
+        <Card className="max-w-md">
+          <ActionForm
+            action={updateProfileCompletionBonusAction}
+            className="flex flex-col gap-4"
+            confirmMessage="This changes the wallet reward for every customer completing their profile, immediately (it only applies to profiles completed after the change). Continue?"
+          >
+            <label className="flex flex-col gap-1 text-sm">
+              Bonus amount (₹)
+              <input
+                type="number"
+                name="amount"
+                min={0}
+                max={1000}
+                step={1}
+                required
+                defaultValue={profileCompletionBonus.amount}
+                className="rounded border px-3 py-2 text-sm"
+              />
+            </label>
+            <p className="text-sm text-gray-500">
+              Credited once per user the moment all profile fields (name, photo, gender, date of birth, fitness
+              goals) are set. Set to 0 to disable the bonus — a profile completed while it is disabled is never
+              paid retroactively.
+            </p>
+            <SubmitButton pendingText="Saving…" className="w-fit">
+              Save bonus amount
+            </SubmitButton>
           </ActionForm>
         </Card>
       </section>

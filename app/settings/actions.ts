@@ -89,16 +89,38 @@ interface FeatureFlags {
 
 const DEFAULT_FEATURES: FeatureFlags = { buddy: { enabled: true } };
 
-// The whole config blob lives in one row (versions + features share the same
-// JSON), so every writer must read-modify-write rather than replace the blob —
-// otherwise saving the app versions would silently drop the feature flags and
-// vice versa.
-async function loadCurrentAppConfig(): Promise<{ versions: Record<string, Record<string, unknown>>; features: FeatureFlags }> {
+interface MaintenanceConfig {
+  enabled: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
+  message: string;
+}
+
+type MaintenanceConfigMap = Record<'wallet' | 'gyms', MaintenanceConfig>;
+
+const DEFAULT_MAINTENANCE: MaintenanceConfigMap = {
+  wallet: { enabled: false, startsAt: null, endsAt: null, message: '' },
+  gyms: { enabled: false, startsAt: null, endsAt: null, message: '' },
+};
+
+// The whole config blob lives in one row (versions + features + maintenance
+// share the same JSON), so every writer must read-modify-write rather than
+// replace the blob — otherwise saving the app versions would silently drop
+// the feature flags / maintenance windows and vice versa.
+async function loadCurrentAppConfig(): Promise<{
+  versions: Record<string, Record<string, unknown>>;
+  features: FeatureFlags;
+  maintenance: MaintenanceConfigMap;
+}> {
   const { data } = await gatewayJson<{ data: Record<string, unknown> }>('/api/auth/app-config/admin');
-  const { features, ...versions } = data;
+  const { features, maintenance, ...versions } = data;
   return {
     versions: versions as Record<string, Record<string, unknown>>,
     features: { ...DEFAULT_FEATURES, ...((features as Partial<FeatureFlags>) || {}) },
+    maintenance: {
+      wallet: { ...DEFAULT_MAINTENANCE.wallet, ...((maintenance as Partial<MaintenanceConfigMap>)?.wallet || {}) },
+      gyms: { ...DEFAULT_MAINTENANCE.gyms, ...((maintenance as Partial<MaintenanceConfigMap>)?.gyms || {}) },
+    },
   };
 }
 
@@ -125,7 +147,7 @@ export async function updateAppVersionConfigAction(
 
     await gatewayJson('/api/auth/app-config/admin', {
       method: 'PUT',
-      body: JSON.stringify({ config: { ...config, features: current.features } }),
+      body: JSON.stringify({ config: { ...config, maintenance: current.maintenance, features: current.features } }),
     });
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : 'Failed to save app version config' };
@@ -146,7 +168,7 @@ export async function updateFeatureFlagsAction(_prev: ActionState, formData: For
 
     await gatewayJson('/api/auth/app-config/admin', {
       method: 'PUT',
-      body: JSON.stringify({ config: { ...current.versions, features } }),
+      body: JSON.stringify({ config: { ...current.versions, maintenance: current.maintenance, features } }),
     });
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : 'Failed to save feature flags' };
@@ -154,6 +176,40 @@ export async function updateFeatureFlagsAction(_prev: ActionState, formData: For
 
   revalidatePath('/settings');
   return { ok: true, message: 'Feature flags updated' };
+}
+
+export async function updateMaintenanceAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+
+  const feature = String(formData.get('feature') || '');
+  if (feature !== 'wallet' && feature !== 'gyms') {
+    return { ok: false, message: 'Unknown maintenance target' };
+  }
+
+  const enabled = formData.get('enabled') === 'on';
+  const startsAt = launchInputToUtcIso(String(formData.get('startsAt') || '').trim());
+  const endsAt = launchInputToUtcIso(String(formData.get('endsAt') || '').trim());
+  if (startsAt && endsAt && new Date(startsAt).getTime() > new Date(endsAt).getTime()) {
+    return { ok: false, message: 'Start must be before end' };
+  }
+  const message = String(formData.get('message') || '').trim();
+
+  try {
+    const current = await loadCurrentAppConfig();
+    const maintenance: MaintenanceConfigMap = {
+      ...current.maintenance,
+      [feature]: { enabled, startsAt, endsAt, message },
+    };
+    await gatewayJson('/api/auth/app-config/admin', {
+      method: 'PUT',
+      body: JSON.stringify({ config: { ...current.versions, maintenance, features: current.features } }),
+    });
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to save maintenance window' };
+  }
+
+  revalidatePath('/settings');
+  return { ok: true, message: `${feature === 'wallet' ? 'Wallet' : 'Gyms'} maintenance updated` };
 }
 
 export async function updateOtpConfigAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -172,6 +228,30 @@ export async function updateOtpConfigAction(_prev: ActionState, formData: FormDa
 
   revalidatePath('/settings');
   return { ok: true, message: 'OTP provider updated' };
+}
+
+export async function updateProfileCompletionBonusAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireSession();
+
+  const amount = Number(formData.get('amount'));
+  if (!Number.isInteger(amount) || amount < 0 || amount > 1000) {
+    return { ok: false, message: 'Enter a whole rupee amount between 0 and 1000 (0 disables the bonus)' };
+  }
+
+  try {
+    await gatewayJson('/api/auth/profile-completion-bonus/admin', {
+      method: 'PUT',
+      body: JSON.stringify({ amount }),
+    });
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to save bonus amount' };
+  }
+
+  revalidatePath('/settings');
+  return { ok: true, message: `Profile-completion bonus updated to ₹${amount}` };
 }
 
 export async function addOtpSkipAllowlistAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
