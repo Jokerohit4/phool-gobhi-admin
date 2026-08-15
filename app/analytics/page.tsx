@@ -390,8 +390,8 @@ async function ReachView({ days }: { days: string }) {
   const totalVisitors = data.permission.reduce((sum, p) => sum + p.distinct_visitors, 0);
   const granted = data.permission.find((p) => p.permission === 'granted')?.distinct_visitors ?? 0;
   const grantRate = totalVisitors > 0 ? Math.round((granted / totalVisitors) * 100) : 0;
-  const beyond40 = data.distance.buckets.find((b) => b.label === '40km+')?.count ?? 0;
-  const beyond40Rate = data.distance.resolvedCount > 0 ? Math.round((beyond40 / data.distance.resolvedCount) * 100) : 0;
+  const beyond30 = data.distance.buckets.find((b) => b.label === '30km+')?.count ?? 0;
+  const beyond30Rate = data.distance.resolvedCount > 0 ? Math.round((beyond30 / data.distance.resolvedCount) * 100) : 0;
 
   return (
     <>
@@ -406,10 +406,10 @@ async function ReachView({ days }: { days: string }) {
           value={data.distance.medianKm != null ? `${data.distance.medianKm.toFixed(1)}km` : '—'}
         />
         <StatTile
-          label="Visitors 40km+ from any gym"
-          value={`${beyond40Rate}%`}
-          status={beyond40Rate > 20 ? 'warning' : 'default'}
-          hint={`${beyond40} of ${data.distance.resolvedCount} resolved`}
+          label="Visitors 30km+ from any gym"
+          value={`${beyond30Rate}%`}
+          status={beyond30Rate > 20 ? 'warning' : 'default'}
+          hint={`${beyond30} of ${data.distance.resolvedCount} resolved`}
         />
         <StatTile label="Resolved fixes" value={data.distance.resolvedCount} hint="granted + nearest gym had coordinates" />
       </div>
