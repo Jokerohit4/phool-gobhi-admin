@@ -63,6 +63,10 @@ interface WebsiteTrafficData {
   totalPageViews: number;
   daily: { day: string; event: 'session_started' | 'screen_viewed'; n: number }[];
   topPages: { page: string | null; views: number }[];
+  channels: { channel: string | null; sessions: number; distinct_visitors: number }[];
+  referrers: { referrer_host: string | null; sessions: number }[];
+  campaigns: { utm_source: string | null; utm_campaign: string | null; sessions: number }[];
+  landingPages: { landing_path: string | null; sessions: number }[];
 }
 
 interface LocationReachData {
@@ -378,8 +382,99 @@ async function TrafficView({ days }: { days: string }) {
           </tbody>
         </Table>
       </Card>
+      <Card>
+        <SectionHeading
+          title="Traffic by source"
+          subtitle="How visitors landed — captured once per session, at the very first paint. utm_source wins over referrer when both are present."
+        />
+        <Table>
+          <Thead>
+            <Th>Channel</Th>
+            <Th>Sessions</Th>
+            <Th>Unique visitors</Th>
+          </Thead>
+          <tbody>
+            {data.channels.map((c) => (
+              <Tr key={c.channel ?? 'unknown'}>
+                <Td>{channelLabel(c.channel)}</Td>
+                <Td className="tabular-nums">{c.sessions}</Td>
+                <Td className="tabular-nums">{c.distinct_visitors}</Td>
+              </Tr>
+            ))}
+            {data.channels.length === 0 && <EmptyRow colSpan={3}>No session_started events in this window.</EmptyRow>}
+          </tbody>
+        </Table>
+      </Card>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card>
+          <SectionHeading title="Top referrers" subtitle="Sessions with a document.referrer host, excluding direct/campaign traffic" />
+          <Table>
+            <Thead>
+              <Th>Referrer</Th>
+              <Th>Sessions</Th>
+            </Thead>
+            <tbody>
+              {data.referrers.map((r) => (
+                <Tr key={r.referrer_host ?? 'unknown'}>
+                  <Td>{r.referrer_host ?? 'unknown'}</Td>
+                  <Td className="tabular-nums">{r.sessions}</Td>
+                </Tr>
+              ))}
+              {data.referrers.length === 0 && <EmptyRow colSpan={2}>No referrer-tagged sessions in this window.</EmptyRow>}
+            </tbody>
+          </Table>
+        </Card>
+        <Card>
+          <SectionHeading title="Top campaigns" subtitle="Sessions carrying a utm_source query param (marketing links, QR codes, etc.)" />
+          <Table>
+            <Thead>
+              <Th>Source</Th>
+              <Th>Campaign</Th>
+              <Th>Sessions</Th>
+            </Thead>
+            <tbody>
+              {data.campaigns.map((c, i) => (
+                <Tr key={`${c.utm_source ?? 'unknown'}-${c.utm_campaign ?? 'none'}-${i}`}>
+                  <Td>{c.utm_source ?? 'unknown'}</Td>
+                  <Td>{c.utm_campaign ?? '—'}</Td>
+                  <Td className="tabular-nums">{c.sessions}</Td>
+                </Tr>
+              ))}
+              {data.campaigns.length === 0 && <EmptyRow colSpan={3}>No campaign-tagged sessions in this window.</EmptyRow>}
+            </tbody>
+          </Table>
+        </Card>
+      </div>
+      <Card>
+        <SectionHeading title="Top landing pages" subtitle="First page seen in each session, not overall page views" />
+        <Table>
+          <Thead>
+            <Th>Page</Th>
+            <Th>Sessions</Th>
+          </Thead>
+          <tbody>
+            {data.landingPages.map((p) => (
+              <Tr key={p.landing_path ?? 'unknown'}>
+                <Td>{p.landing_path ?? 'unknown'}</Td>
+                <Td className="tabular-nums">{p.sessions}</Td>
+              </Tr>
+            ))}
+            {data.landingPages.length === 0 && <EmptyRow colSpan={2}>No landing-page data in this window.</EmptyRow>}
+          </tbody>
+        </Table>
+      </Card>
     </>
   );
+}
+
+function channelLabel(channel: string | null): string {
+  if (!channel || channel === 'unknown') return 'Unknown';
+  if (channel === 'direct') return 'Direct';
+  if (channel === 'organic_search') return 'Organic search';
+  if (channel === 'social') return 'Social';
+  if (channel === 'referral') return 'Referral (other)';
+  if (channel.startsWith('campaign:')) return `Campaign: ${channel.slice('campaign:'.length)}`;
+  return channel;
 }
 
 async function ReachView({ days }: { days: string }) {
