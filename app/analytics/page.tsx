@@ -65,6 +65,22 @@ interface WebsiteTrafficData {
   topPages: { page: string | null; views: number }[];
 }
 
+interface LocationReachData {
+  permission: { permission: string | null; n: number; distinct_visitors: number }[];
+  distance: {
+    resolvedCount: number;
+    avgKm: number | null;
+    medianKm: number | null;
+    buckets: { label: string; count: number }[];
+  };
+  visitors: {
+    distinct_id: string;
+    last_seen: string;
+    permission: string | null;
+    nearest_gym_distance_km: number | null;
+  }[];
+}
+
 interface SupplyHealthData {
   gyms: {
     gym_id: string;
@@ -157,7 +173,7 @@ interface CustomFunnelResult {
 }
 
 const VIEWS = [
-  'traffic', 'supply', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy',
+  'traffic', 'reach', 'supply', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy',
   'city', 'revenue', 'retention', 'giftBonus', 'user', 'eventSearch', 'funnels',
 ] as const;
 type View = (typeof VIEWS)[number];
@@ -168,6 +184,7 @@ function isView(value: string | undefined): value is View {
 
 const VIEW_LABELS: Record<View, string> = {
   traffic: 'Website Traffic',
+  reach: 'Location Reach',
   supply: 'Supply',
   conversion: 'Conversion',
   fulfillment: 'Fulfillment',
@@ -187,7 +204,7 @@ const VIEW_LABELS: Record<View, string> = {
 // doing / how's revenue shaped / who is this person") rather than one flat
 // undifferentiated row.
 const VIEW_GROUPS: { label: string; views: View[] }[] = [
-  { label: 'Traffic', views: ['traffic'] },
+  { label: 'Traffic', views: ['traffic', 'reach'] },
   { label: 'Funnels', views: ['supply', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy'] },
   { label: 'Breakdowns', views: ['city', 'revenue', 'retention', 'giftBonus'] },
   { label: 'Explore', views: ['user', 'eventSearch', 'funnels'] },
@@ -297,6 +314,7 @@ export default async function AnalyticsPage({
       </div>
 
       {view === 'traffic' && <TrafficView days={days} />}
+      {view === 'reach' && <ReachView days={days} />}
       {view === 'supply' && <SupplyView days={days} />}
       {view === 'conversion' && <ConversionView days={days} />}
       {view === 'fulfillment' && <FulfillmentView days={days} />}
@@ -357,6 +375,121 @@ async function TrafficView({ days }: { days: string }) {
               </Tr>
             ))}
             {data.topPages.length === 0 && <EmptyRow colSpan={2}>No page views in this window.</EmptyRow>}
+          </tbody>
+        </Table>
+      </Card>
+    </>
+  );
+}
+
+async function ReachView({ days }: { days: string }) {
+  const { data } = await gatewayJson<{ data: LocationReachData }>(
+    `/api/bookings/admin/analytics/location-reach?days=${days}&limit=200`,
+  );
+
+  const totalVisitors = data.permission.reduce((sum, p) => sum + p.distinct_visitors, 0);
+  const granted = data.permission.find((p) => p.permission === 'granted')?.distinct_visitors ?? 0;
+  const grantRate = totalVisitors > 0 ? Math.round((granted / totalVisitors) * 100) : 0;
+  const beyond40 = data.distance.buckets.find((b) => b.label === '40km+')?.count ?? 0;
+  const beyond40Rate = data.distance.resolvedCount > 0 ? Math.round((beyond40 / data.distance.resolvedCount) * 100) : 0;
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatTile
+          label="Location permission granted"
+          value={`${grantRate}%`}
+          hint={`${granted} of ${totalVisitors} visitors`}
+        />
+        <StatTile
+          label="Median distance to nearest gym"
+          value={data.distance.medianKm != null ? `${data.distance.medianKm.toFixed(1)}km` : '—'}
+        />
+        <StatTile
+          label="Visitors 40km+ from any gym"
+          value={`${beyond40Rate}%`}
+          status={beyond40Rate > 20 ? 'warning' : 'default'}
+          hint={`${beyond40} of ${data.distance.resolvedCount} resolved`}
+        />
+        <StatTile label="Resolved fixes" value={data.distance.resolvedCount} hint="granted + nearest gym had coordinates" />
+      </div>
+
+      <Card>
+        <SectionHeading
+          title="Location permission outcome"
+          subtitle="Distinct visitors per outcome — denied/unsupported/timeout/error all mean 'no distance data', not 'gym was far'"
+        />
+        <Table>
+          <Thead>
+            <Th>Outcome</Th>
+            <Th>Visitors</Th>
+            <Th>Events</Th>
+          </Thead>
+          <tbody>
+            {data.permission.map((p) => (
+              <Tr key={p.permission ?? 'unknown'}>
+                <Td>{p.permission ?? 'unknown'}</Td>
+                <Td className="tabular-nums">{p.distinct_visitors}</Td>
+                <Td className="tabular-nums">{p.n}</Td>
+              </Tr>
+            ))}
+            {data.permission.length === 0 && <EmptyRow colSpan={3}>No location_resolved events in this window.</EmptyRow>}
+          </tbody>
+        </Table>
+      </Card>
+
+      <Card>
+        <SectionHeading
+          title="Distance to nearest gym"
+          subtitle="Only visitors who granted location — the TRUE nearest distance, ignoring the 40km discovery cutoff"
+        />
+        <Table>
+          <Thead>
+            <Th>Range</Th>
+            <Th>Visitors</Th>
+          </Thead>
+          <tbody>
+            {data.distance.buckets.map((b) => (
+              <Tr key={b.label}>
+                <Td>{b.label}</Td>
+                <Td className="tabular-nums">{b.count}</Td>
+              </Tr>
+            ))}
+          </tbody>
+        </Table>
+      </Card>
+
+      <Card>
+        <SectionHeading
+          title="Every visitor"
+          subtitle={`Most recent ${data.visitors.length} location resolutions in this window, latest first. Click a row to open its journey.`}
+        />
+        <Table>
+          <Thead>
+            <Th>Distinct ID</Th>
+            <Th>Permission</Th>
+            <Th>Nearest gym</Th>
+            <Th>Last seen</Th>
+          </Thead>
+          <tbody>
+            {data.visitors.map((v) => (
+              <Tr key={v.distinct_id}>
+                <Td>
+                  <Link
+                    href={`/analytics?view=user&distinctId=${encodeURIComponent(v.distinct_id)}`}
+                    className="font-mono text-xs underline"
+                  >
+                    {v.distinct_id}
+                  </Link>
+                </Td>
+                <Td>{v.permission ?? '—'}</Td>
+                <Td className="tabular-nums">
+                  {v.nearest_gym_distance_km != null ? `${v.nearest_gym_distance_km.toFixed(1)}km` : '—'}
+                </Td>
+                <Td>{formatDateTimeIST(v.last_seen)}</Td>
+              </Tr>
+            ))}
+            {data.visitors.length === 0 && <EmptyRow colSpan={4}>No visitors in this window.</EmptyRow>}
           </tbody>
         </Table>
       </Card>
