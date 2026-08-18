@@ -99,6 +99,12 @@ interface CityBreakdownData {
   cities: { city: string; gymsCreated: number; gymsApproved: number; bookings: number; gmv: number }[];
 }
 
+interface BadgeSummaryData {
+  totalBadges: number;
+  uniqueCustomers: number;
+  byGym: { gymId: number; city: string; badges: number }[];
+}
+
 interface RevenueTrendData {
   days: { day: string; bookings: number; gmv: number }[];
 }
@@ -178,7 +184,7 @@ interface CustomFunnelResult {
 
 const VIEWS = [
   'traffic', 'reach', 'supply', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy',
-  'city', 'revenue', 'retention', 'giftBonus', 'user', 'eventSearch', 'funnels',
+  'city', 'revenue', 'retention', 'giftBonus', 'badges', 'user', 'eventSearch', 'funnels',
 ] as const;
 type View = (typeof VIEWS)[number];
 
@@ -199,6 +205,7 @@ const VIEW_LABELS: Record<View, string> = {
   revenue: 'Revenue',
   retention: 'Retention',
   giftBonus: 'Gift & Bonus Payouts',
+  badges: 'Badges',
   user: 'User Journey',
   eventSearch: 'Event Search',
   funnels: 'Custom Funnels',
@@ -210,7 +217,7 @@ const VIEW_LABELS: Record<View, string> = {
 const VIEW_GROUPS: { label: string; views: View[] }[] = [
   { label: 'Traffic', views: ['traffic', 'reach'] },
   { label: 'Funnels', views: ['supply', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy'] },
-  { label: 'Breakdowns', views: ['city', 'revenue', 'retention', 'giftBonus'] },
+  { label: 'Breakdowns', views: ['city', 'revenue', 'retention', 'giftBonus', 'badges'] },
   { label: 'Explore', views: ['user', 'eventSearch', 'funnels'] },
 ];
 
@@ -329,6 +336,7 @@ export default async function AnalyticsPage({
       {view === 'revenue' && <RevenueView days={days} />}
       {view === 'retention' && <RetentionView />}
       {view === 'giftBonus' && <GiftBonusView days={days} />}
+      {view === 'badges' && <BadgesView days={days} />}
       {view === 'user' && <UserJourneyView distinctId={distinctId} />}
       {view === 'eventSearch' && (
         <EventSearchView event={event} days={days} f1k={f1k} f1v={f1v} f2k={f2k} f2v={f2v} f3k={f3k} f3v={f3v} />
@@ -905,6 +913,42 @@ async function CityView({ days }: { days: string }) {
         </tbody>
       </Table>
     </Card>
+  );
+}
+
+async function BadgesView({ days }: { days: string }) {
+  const { data } = await gatewayJson<{ data: BadgeSummaryData }>(`/api/bookings/admin/analytics/badges-summary?days=${days}`);
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <StatTile label="Badges earned" value={data.totalBadges} />
+        <StatTile label="Customers who earned one" value={data.uniqueCustomers} />
+      </div>
+      <Card>
+        <SectionHeading
+          title="Badges by gym (lowest first)"
+          subtitle="Gamification wave 1 — a badge fires on a customer's first-ever attended booking at a gym. Low counts here are a supply-density signal: few customers are having a 'first visit' at that gym."
+        />
+        <Table>
+          <Thead>
+            <Th>Gym ID</Th>
+            <Th>City</Th>
+            <Th>Badges (first-time visits)</Th>
+          </Thead>
+          <tbody>
+            {data.byGym.map((g) => (
+              <Tr key={g.gymId}>
+                <Td className="tabular-nums">{g.gymId}</Td>
+                <Td>{g.city}</Td>
+                <Td className="tabular-nums">{g.badges}</Td>
+              </Tr>
+            ))}
+            {data.byGym.length === 0 && <EmptyRow colSpan={3}>No badges earned in this window.</EmptyRow>}
+          </tbody>
+        </Table>
+      </Card>
+    </>
   );
 }
 
