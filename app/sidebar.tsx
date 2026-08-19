@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: '/edit-requests', label: 'Edit Requests' },
   { href: '/analytics', label: 'Analytics' },
   { href: '/attendance', label: 'Attendance' },
+  { href: '/attendance-saas', label: 'Attendance SaaS' },
   { href: '/payouts', label: 'Payouts' },
   { href: '/staff', label: 'Staff' },
   { href: '/jobs', label: 'Jobs' },

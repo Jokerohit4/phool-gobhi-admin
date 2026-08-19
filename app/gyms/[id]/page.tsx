@@ -7,6 +7,7 @@ import {
   rejectGymAction,
   deleteReviewAction,
   updateGymCommissionAction,
+  updateGymSubscriptionCommissionAction,
   setGymActiveAction,
   deleteGymAdminAction,
 } from './actions';
@@ -16,6 +17,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { formatDateIST } from '@/lib/dateFormat';
+import { describeHoneymoonStatus, SUBSCRIPTION_SAAS_HONEYMOON_DAYS } from '@/lib/honeymoon';
 
 interface GymReview {
   id: number;
@@ -48,8 +50,11 @@ interface GymDetail {
   rejectionReason: string | null;
   partnerId: number;
   commissionPct: number;
+  partnershipStartDate: string | null;
+  subscriptionCommissionPct: number | null;
   images: { id: number; url: string; mediaType?: 'image' | 'video' }[];
 }
+
 
 export default async function GymDetailPage({
   params,
@@ -132,6 +137,8 @@ export default async function GymDetailPage({
               <StatusBadge tone="rejected">Deactivated</StatusBadge>
             )}
           </dd>
+          <dt className="text-gray-500">Attendance-SaaS honeymoon</dt>
+          <dd>{describeHoneymoonStatus(gym.partnershipStartDate)}</dd>
         </dl>
 
         {gym.description && <p className="text-sm">{gym.description}</p>}
@@ -189,6 +196,35 @@ export default async function GymDetailPage({
               max={100}
               step="0.01"
               defaultValue={gym.commissionPct}
+              className="w-28 rounded border px-3 py-2 text-sm"
+            />
+          </label>
+          <SubmitButton pendingText="Saving…" className="w-fit">
+            Save
+          </SubmitButton>
+        </ActionForm>
+      </Card>
+
+      <Card className="flex flex-col gap-3">
+        <h2 className="font-medium">Subscription commission (attendance-SaaS)</h2>
+        <p className="text-sm text-gray-500">
+          Overrides the commission on this gym&apos;s subscription (registration) purchases specifically, after its
+          {' '}{SUBSCRIPTION_SAAS_HONEYMOON_DAYS}-day honeymoon ends — separate from the commission above, which only
+          applies to one-off marketplace bookings. During the honeymoon, subscription purchases are always 0%
+          regardless of this override. Leave blank to use the platform default (currently 1%).
+        </p>
+        <ActionForm action={updateGymSubscriptionCommissionAction} className="flex items-end gap-3">
+          <input type="hidden" name="gymId" value={gym.id} />
+          <label className="flex flex-col gap-1 text-sm">
+            Commission %
+            <input
+              type="number"
+              name="subscriptionCommissionPct"
+              min={0}
+              max={100}
+              step="0.01"
+              placeholder="Default"
+              defaultValue={gym.subscriptionCommissionPct ?? ''}
               className="w-28 rounded border px-3 py-2 text-sm"
             />
           </label>

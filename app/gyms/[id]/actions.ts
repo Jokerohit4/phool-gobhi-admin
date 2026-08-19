@@ -59,6 +59,39 @@ export async function updateGymCommissionAction(_prev: ActionState, formData: Fo
   return { ok: true, message: 'Commission updated' };
 }
 
+// Attendance-SaaS wedge: overrides the post-honeymoon commission wallet-
+// service applies to this gym's subscription (GymSubscription) purchases —
+// separate from commissionPct above, which only governs one-off bookings.
+// Blank input resets to the platform default (currently 1%) rather than
+// pinning a fixed number.
+export async function updateGymSubscriptionCommissionAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireSession();
+  const gymId = formData.get('gymId');
+  const raw = String(formData.get('subscriptionCommissionPct') ?? '').trim();
+  let subscriptionCommissionPct: number | null;
+  if (raw === '') {
+    subscriptionCommissionPct = null;
+  } else {
+    subscriptionCommissionPct = Number(raw);
+    if (Number.isNaN(subscriptionCommissionPct) || subscriptionCommissionPct < 0 || subscriptionCommissionPct > 100) {
+      return { ok: false, message: 'Subscription commission must be a number between 0 and 100, or blank for the default' };
+    }
+  }
+  try {
+    await gatewayJson(`/api/gyms/${gymId}/subscription-commission`, {
+      method: 'PUT',
+      body: JSON.stringify({ subscriptionCommissionPct }),
+    });
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to update subscription commission' };
+  }
+  revalidatePath(`/gyms/${gymId}`);
+  return { ok: true, message: 'Subscription commission updated' };
+}
+
 // Soft delete/restore — reversible, so this is the safe default when a
 // gym needs to come down (spam listing, partner request, policy issue).
 export async function setGymActiveAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
