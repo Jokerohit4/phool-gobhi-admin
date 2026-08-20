@@ -8,6 +8,7 @@ import {
   deleteReviewAction,
   updateGymCommissionAction,
   updateGymSubscriptionCommissionAction,
+  updateGymSubscriptionPricingModeAction,
   setGymActiveAction,
   deleteGymAdminAction,
 } from './actions';
@@ -72,6 +73,10 @@ interface GymDetail {
   commissionPct: number;
   partnershipStartDate: string | null;
   subscriptionCommissionPct: number | null;
+  marketplaceEnabled: boolean;
+  attendanceSaasOptedOut: boolean;
+  subscriptionPricingMode: 'percentage' | 'flatPerUser';
+  subscriptionFlatFeePerUser: number | null;
   images: { id: number; url: string; mediaType?: 'image' | 'video' }[];
 }
 
@@ -206,6 +211,26 @@ export default async function GymDetailPage({
       </Card>
 
       <Card className="flex flex-col gap-3">
+        <h2 className="font-medium">Business models</h2>
+        <p className="text-sm text-gray-500">
+          Which product(s) this gym participates in — a partner&apos;s own self-service choice (Members/Insights
+          screens), not admin-editable here. A gym must keep at least one on.
+        </p>
+        <div className="flex gap-3">
+          {gym.marketplaceEnabled ? (
+            <StatusBadge tone="approved">Marketplace: on</StatusBadge>
+          ) : (
+            <StatusBadge tone="rejected">Marketplace: off</StatusBadge>
+          )}
+          {gym.attendanceSaasOptedOut ? (
+            <StatusBadge tone="rejected">Attendance-SaaS: off</StatusBadge>
+          ) : (
+            <StatusBadge tone="approved">Attendance-SaaS: on</StatusBadge>
+          )}
+        </div>
+      </Card>
+
+      <Card className="flex flex-col gap-3">
         <h2 className="font-medium">Commission</h2>
         <p className="text-sm text-gray-500">
           Platform&apos;s share of this gym&apos;s bookings and subscriptions. Applies to every new booking/subscription
@@ -258,6 +283,43 @@ export default async function GymDetailPage({
             Save
           </SubmitButton>
         </ActionForm>
+
+        <div className="border-t pt-3 dark:border-gray-800">
+          <p className="mb-2 text-sm text-gray-500">
+            Some gyms are a better fit for a flat fee per registered member (e.g. ₹10/user) instead of a cut of
+            subscription revenue — pick the formula per gym. Flat fee is ignored when mode is percentage, and
+            vice versa.
+          </p>
+          <ActionForm action={updateGymSubscriptionPricingModeAction} className="flex flex-wrap items-end gap-3">
+            <input type="hidden" name="gymId" value={gym.id} />
+            <label className="flex flex-col gap-1 text-sm">
+              Pricing mode
+              <select
+                name="subscriptionPricingMode"
+                defaultValue={gym.subscriptionPricingMode}
+                className="w-40 rounded border px-3 py-2 text-sm dark:bg-gray-900 dark:border-gray-800"
+              >
+                <option value="percentage">Percentage of price</option>
+                <option value="flatPerUser">Flat fee per user</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              Flat fee per user (₹)
+              <input
+                type="number"
+                name="subscriptionFlatFeePerUser"
+                min={0}
+                step="0.01"
+                placeholder="Default (₹10)"
+                defaultValue={gym.subscriptionFlatFeePerUser ?? ''}
+                className="w-32 rounded border px-3 py-2 text-sm"
+              />
+            </label>
+            <SubmitButton pendingText="Saving…" className="w-fit">
+              Save
+            </SubmitButton>
+          </ActionForm>
+        </div>
       </Card>
 
       {reviews.length > 0 && (
