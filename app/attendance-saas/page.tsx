@@ -94,6 +94,7 @@ export default async function AttendanceSaasPage() {
           <Th>Active</Th>
           <Th>Revenue</Th>
           <Th>Platform share</Th>
+          <Th>Roster</Th>
         </Thead>
         <tbody>
           {rows.map(({ gym, summary }) => (
@@ -119,9 +120,14 @@ export default async function AttendanceSaasPage() {
               <Td>{summary.activeCount}</Td>
               <Td>₹{summary.totalRevenue.toFixed(2)}</Td>
               <Td>₹{summary.totalPlatformShare.toFixed(2)}</Td>
+              <Td>
+                <Link href={`/attendance-saas/${gym.id}`} className="underline">
+                  View members
+                </Link>
+              </Td>
             </Tr>
           ))}
-          {rows.length === 0 && <EmptyRow colSpan={7}>No approved gyms yet.</EmptyRow>}
+          {rows.length === 0 && <EmptyRow colSpan={8}>No approved gyms yet.</EmptyRow>}
         </tbody>
       </Table>
     </div>
