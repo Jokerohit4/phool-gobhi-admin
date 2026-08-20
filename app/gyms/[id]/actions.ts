@@ -92,6 +92,43 @@ export async function updateGymSubscriptionCommissionAction(
   return { ok: true, message: 'Subscription commission updated' };
 }
 
+// Picks which formula wallet-service applies to this gym's post-honeymoon
+// attendance-SaaS commission: a percentage of the plan price
+// (subscriptionCommissionPct, above), or a flat fee per registration
+// regardless of price. subscriptionFlatFeePerUser is only meaningful when
+// mode is 'flatPerUser'; blank there resets to the platform default.
+export async function updateGymSubscriptionPricingModeAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  await requireSession();
+  const gymId = formData.get('gymId');
+  const subscriptionPricingMode = String(formData.get('subscriptionPricingMode') ?? '');
+  if (subscriptionPricingMode !== 'percentage' && subscriptionPricingMode !== 'flatPerUser') {
+    return { ok: false, message: 'Pricing mode must be "percentage" or "flatPerUser"' };
+  }
+  const rawFee = String(formData.get('subscriptionFlatFeePerUser') ?? '').trim();
+  let subscriptionFlatFeePerUser: number | null;
+  if (rawFee === '') {
+    subscriptionFlatFeePerUser = null;
+  } else {
+    subscriptionFlatFeePerUser = Number(rawFee);
+    if (Number.isNaN(subscriptionFlatFeePerUser) || subscriptionFlatFeePerUser < 0) {
+      return { ok: false, message: 'Flat fee per user must be a non-negative number, or blank for the default' };
+    }
+  }
+  try {
+    await gatewayJson(`/api/gyms/${gymId}/subscription-pricing-mode`, {
+      method: 'PUT',
+      body: JSON.stringify({ subscriptionPricingMode, subscriptionFlatFeePerUser }),
+    });
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to update subscription pricing mode' };
+  }
+  revalidatePath(`/gyms/${gymId}`);
+  return { ok: true, message: 'Subscription pricing mode updated' };
+}
+
 // Soft delete/restore — reversible, so this is the safe default when a
 // gym needs to come down (spam listing, partner request, policy issue).
 export async function setGymActiveAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
