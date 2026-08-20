@@ -16,6 +16,7 @@ interface GymLite {
   city: string;
   partnershipStartDate: string | null;
   subscriptionCommissionPct: number | null;
+  attendanceSaasOptedOut: boolean;
 }
 
 interface SubscriptionSummaryRow {
@@ -63,7 +64,15 @@ export default async function AttendanceSaasPage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Attendance SaaS"
-        subtitle="Per-gym honeymoon status and subscription (registration) revenue — the gym-supply acquisition wedge, separate from marketplace booking commission."
+        subtitle={
+          <>
+            Per-gym honeymoon status and subscription (registration) revenue — the gym-supply acquisition wedge,
+            separate from marketplace booking commission.{' '}
+            <Link href="/attendance-saas/settlements" className="underline">
+              Bank settlements →
+            </Link>
+          </>
+        }
       />
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -106,14 +115,18 @@ export default async function AttendanceSaasPage() {
                 <div className="text-xs text-gray-500">{gym.city}</div>
               </Td>
               <Td>
-                {isInHoneymoon(gym.partnershipStartDate) ? (
+                {gym.attendanceSaasOptedOut ? (
+                  <StatusBadge tone="rejected">Opted out</StatusBadge>
+                ) : isInHoneymoon(gym.partnershipStartDate) ? (
                   <StatusBadge tone="pending">In honeymoon</StatusBadge>
                 ) : gym.partnershipStartDate ? (
                   <StatusBadge tone="approved">Live</StatusBadge>
                 ) : (
                   <StatusBadge tone="rejected">Not started</StatusBadge>
                 )}
-                <div className="text-xs text-gray-500">{describeHoneymoonStatus(gym.partnershipStartDate)}</div>
+                {!gym.attendanceSaasOptedOut && (
+                  <div className="text-xs text-gray-500">{describeHoneymoonStatus(gym.partnershipStartDate)}</div>
+                )}
               </Td>
               <Td>{effectiveRateLabel(gym)}</Td>
               <Td>{summary.subscriptionCount}</Td>
