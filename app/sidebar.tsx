@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { href: '/reviews', label: 'Reviews' },
   { href: '/pitch-access', label: 'Pitch Access' },
   { href: '/gamification/coins', label: 'Coins & Streaks' },
+  { href: '/gamification/challenges', label: 'Challenges' },
   { href: '/settings', label: 'Settings' },
 ];
 
