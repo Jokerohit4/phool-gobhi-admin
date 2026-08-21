@@ -12,6 +12,7 @@ export async function updateEconomyConfigAction(_prev: ActionState, formData: Fo
 
   const coinsPerCheckin = Number(formData.get('coinsPerCheckin'));
   const weeklyTargetBonus = Number(formData.get('weeklyTargetBonus'));
+  const pairedStreakWeeklyBonus = Number(formData.get('pairedStreakWeeklyBonus'));
 
   const milestones: Record<string, number> = {};
   for (let i = 0; i < MILESTONE_ROW_COUNT; i++) {
@@ -24,7 +25,7 @@ export async function updateEconomyConfigAction(_prev: ActionState, formData: Fo
   try {
     await gatewayJson('/api/challenges/admin/coins/economy-config', {
       method: 'PUT',
-      body: JSON.stringify({ coinsPerCheckin, weeklyTargetBonus, milestones }),
+      body: JSON.stringify({ coinsPerCheckin, weeklyTargetBonus, milestones, pairedStreakWeeklyBonus }),
     });
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : 'Failed to save coin economy config' };

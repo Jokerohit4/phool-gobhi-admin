@@ -13,6 +13,7 @@ interface EconomyConfig {
   coinsPerCheckin: number;
   weeklyTargetBonus: number;
   milestones: Record<string, number>;
+  pairedStreakWeeklyBonus: number;
   updatedAt: string | null;
 }
 
@@ -109,6 +110,17 @@ export default async function CoinsPage() {
               ))}
               <p className="text-sm text-gray-500">Leave a row&rsquo;s week blank to remove that milestone.</p>
             </div>
+
+            <label className="flex flex-col gap-1 text-sm">
+              Paired streak weekly bonus (paid to BOTH members when their shared streak survives a week)
+              <input
+                type="number"
+                name="pairedStreakWeeklyBonus"
+                min={0}
+                defaultValue={economy.pairedStreakWeeklyBonus}
+                className="w-40 rounded border px-3 py-2 text-sm"
+              />
+            </label>
 
             <SubmitButton pendingText="Saving…" className="w-fit">
               Save coin economy
