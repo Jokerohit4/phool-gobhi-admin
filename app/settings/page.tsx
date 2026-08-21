@@ -496,7 +496,7 @@ export default async function SettingsPage() {
                 Streaks &amp; coins
               </label>
               <p className="text-sm text-gray-500">
-                Off: the coin wallet and weekly-streak screens disappear, and challenge-service's streak/coin API
+                Off: the coin wallet and weekly-streak screens disappear, and challenge-service&rsquo;s streak/coin API
                 routes 403 server-side — attendance events silently stop being recorded (no backfill on re-enable).
               </p>
             </div>

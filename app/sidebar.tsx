@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { href: '/messages', label: 'Messages' },
   { href: '/reviews', label: 'Reviews' },
   { href: '/pitch-access', label: 'Pitch Access' },
+  { href: '/gamification/coins', label: 'Coins & Streaks' },
   { href: '/settings', label: 'Settings' },
 ];
 
