@@ -85,9 +85,20 @@ const APP_VERSION_KEYS: Array<{ app: 'customer' | 'partner'; platform: 'android'
 
 interface FeatureFlags {
   buddy: { enabled: boolean };
+  badges: { enabled: boolean };
+  streaksCoins: { enabled: boolean };
+  challenges: { enabled: boolean };
+  buddyPairedStreaks: { enabled: boolean };
 }
 
-const DEFAULT_FEATURES: FeatureFlags = { buddy: { enabled: true } };
+// Must match auth-service's own DEFAULT_FEATURES and page.tsx's copy exactly.
+const DEFAULT_FEATURES: FeatureFlags = {
+  buddy: { enabled: true },
+  badges: { enabled: false },
+  streaksCoins: { enabled: false },
+  challenges: { enabled: false },
+  buddyPairedStreaks: { enabled: false },
+};
 
 interface MaintenanceConfig {
   enabled: boolean;
@@ -164,6 +175,10 @@ export async function updateFeatureFlagsAction(_prev: ActionState, formData: For
     const current = await loadCurrentAppConfig();
     const features: FeatureFlags = {
       buddy: { enabled: formData.get('buddyEnabled') === 'on' },
+      badges: { enabled: formData.get('badgesEnabled') === 'on' },
+      streaksCoins: { enabled: formData.get('streaksCoinsEnabled') === 'on' },
+      challenges: { enabled: formData.get('challengesEnabled') === 'on' },
+      buddyPairedStreaks: { enabled: formData.get('buddyPairedStreaksEnabled') === 'on' },
     };
 
     await gatewayJson('/api/auth/app-config/admin', {

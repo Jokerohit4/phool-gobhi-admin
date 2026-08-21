@@ -67,15 +67,36 @@ const EMPTY_APP_VERSION_ENTRY: AppVersionEntry = {
 
 interface FeatureFlags {
   buddy: { enabled: boolean };
+  // Gamification suite — each phase ships behind its own kill-switch,
+  // default OFF (unlike buddy above) until an admin deliberately turns it
+  // on here. See C:\Users\rohit\.claude\plans\delightful-rolling-bubble.md.
+  badges: { enabled: boolean };
+  streaksCoins: { enabled: boolean };
+  challenges: { enabled: boolean };
+  buddyPairedStreaks: { enabled: boolean };
 }
 
 // Buddy is live today, so the default is enabled — the toggle only does
-// something once an admin deliberately turns it off.
-const DEFAULT_FEATURES: FeatureFlags = { buddy: { enabled: true } };
+// something once an admin deliberately turns it off. The gamification flags
+// default off — must match auth-service's own DEFAULT_FEATURES exactly, or
+// this page's "current state" checkboxes could show enabled while the
+// backend still serves disabled (or vice versa) whenever the stored blob
+// predates one of these keys.
+const DEFAULT_FEATURES: FeatureFlags = {
+  buddy: { enabled: true },
+  badges: { enabled: false },
+  streaksCoins: { enabled: false },
+  challenges: { enabled: false },
+  buddyPairedStreaks: { enabled: false },
+};
 
 function withFeatures(raw: Partial<FeatureFlags> | null | undefined): FeatureFlags {
   return {
     buddy: { enabled: raw?.buddy?.enabled ?? DEFAULT_FEATURES.buddy.enabled },
+    badges: { enabled: raw?.badges?.enabled ?? DEFAULT_FEATURES.badges.enabled },
+    streaksCoins: { enabled: raw?.streaksCoins?.enabled ?? DEFAULT_FEATURES.streaksCoins.enabled },
+    challenges: { enabled: raw?.challenges?.enabled ?? DEFAULT_FEATURES.challenges.enabled },
+    buddyPairedStreaks: { enabled: raw?.buddyPairedStreaks?.enabled ?? DEFAULT_FEATURES.buddyPairedStreaks.enabled },
   };
 }
 
@@ -441,13 +462,13 @@ export default async function SettingsPage() {
       <section className="flex flex-col gap-4">
         <PageHeader
           title="Feature flags"
-          subtitle="Kill-switches for customer-app features. Saved to the same config blob as the app versions above; changes apply on the app's next launch (the app checks this once at startup)."
+          subtitle="Kill-switches for customer-app features. Saved to the same config blob as the app versions above; changes apply on the app's next launch (the app checks this once at startup). The gamification flags are also enforced server-side in challenge-service — turning one off blocks its API routes immediately (within ~30s), not just after the app re-checks."
         />
         <Card className="max-w-xl">
           <ActionForm
             action={updateFeatureFlagsAction}
             className="flex flex-col gap-4"
-            confirmMessage="This immediately gates the Gym Buddies tab for every customer app install on next launch. Continue?"
+            confirmMessage="This immediately gates these features for every customer app install (gamification flags also take effect server-side within ~30s). Continue?"
           >
             <div className="flex flex-col gap-1">
               <label className="flex items-center gap-2 text-sm font-medium">
@@ -457,6 +478,50 @@ export default async function SettingsPage() {
               <p className="text-sm text-gray-500">
                 Off: the Buddies tab (and its routes) disappear from the customer app. Existing matches are not
                 deleted — the flag only hides the feature.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" name="badgesEnabled" defaultChecked={features.badges.enabled} />
+                Badges (Explore Map + Badge Shelf)
+              </label>
+              <p className="text-sm text-gray-500">
+                Off: the Explore Map nav icon and Badge Shelf disappear from the customer app. Badges are derived
+                live from attendance history — nothing is deleted by turning this off.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" name="streaksCoinsEnabled" defaultChecked={features.streaksCoins.enabled} />
+                Streaks &amp; coins
+              </label>
+              <p className="text-sm text-gray-500">
+                Off: the coin wallet and weekly-streak screens disappear, and challenge-service's streak/coin API
+                routes 403 server-side — attendance events silently stop being recorded (no backfill on re-enable).
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" name="challengesEnabled" defaultChecked={features.challenges.enabled} />
+                Challenges
+              </label>
+              <p className="text-sm text-gray-500">
+                Off: the Challenges tab disappears from the customer app and its API routes 403 server-side.
+                Requires Streaks &amp; coins to be meaningful (challenge rewards are paid in coins).
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  name="buddyPairedStreaksEnabled"
+                  defaultChecked={features.buddyPairedStreaks.enabled}
+                />
+                Buddy paired streaks
+              </label>
+              <p className="text-sm text-gray-500">
+                Off: the paired-streak opt-in disappears from buddy chat/match screens. Requires Gym Buddies and
+                Streaks &amp; coins both on.
               </p>
             </div>
             <SubmitButton pendingText="Saving…" className="w-fit">
