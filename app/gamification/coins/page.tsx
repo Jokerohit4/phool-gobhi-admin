@@ -1,6 +1,11 @@
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
-import { updateEconomyConfigAction, createCatalogItemAction, setCatalogItemActiveAction } from './actions';
+import {
+  updateEconomyConfigAction,
+  createCatalogItemAction,
+  setCatalogItemActiveAction,
+  setCoinFeatureFlagsAction,
+} from './actions';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
@@ -14,8 +19,19 @@ interface EconomyConfig {
   weeklyTargetBonus: number;
   milestones: Record<string, number>;
   pairedStreakWeeklyBonus: number;
+  qualifyingCheckinsPerWeek: number;
   updatedAt: string | null;
 }
+
+interface FeatureFlags {
+  streaksCoins: { enabled: boolean };
+  buddyPairedStreaks: { enabled: boolean };
+}
+
+const DEFAULT_FEATURES: FeatureFlags = {
+  streaksCoins: { enabled: false },
+  buddyPairedStreaks: { enabled: false },
+};
 
 const CATALOG_CATEGORIES = ['subscription_discount', 'priority_booking', 'buddy_unlock', 'brand_product'] as const;
 
@@ -38,6 +54,12 @@ export default async function CoinsPage() {
 
   const { data: economy } = await gatewayJson<{ data: EconomyConfig }>('/api/challenges/admin/coins/economy-config');
   const { data: catalog } = await gatewayJson<{ data: CatalogItem[] }>('/api/challenges/admin/coins/catalog');
+  const { data: appConfig } = await gatewayJson<{ data: Record<string, unknown> }>('/api/auth/app-config/admin');
+  const rawFeatures = (appConfig.features as Partial<FeatureFlags>) || {};
+  const features: FeatureFlags = {
+    streaksCoins: { ...DEFAULT_FEATURES.streaksCoins, ...(rawFeatures.streaksCoins || {}) },
+    buddyPairedStreaks: { ...DEFAULT_FEATURES.buddyPairedStreaks, ...(rawFeatures.buddyPairedStreaks || {}) },
+  };
 
   const milestoneEntries = Object.entries(economy.milestones || {})
     .map(([week, amount]) => ({ week: Number(week), amount }))
@@ -46,6 +68,49 @@ export default async function CoinsPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <section className="flex flex-col gap-4">
+        <PageHeader
+          title="Coin system switches"
+          subtitle="Kill-switches for the whole coin/streak system, right next to the numbers they gate. Same underlying flags as Settings > Feature flags — changing one here changes it everywhere, within ~30s server-side."
+        />
+        <Card className="max-w-xl">
+          <ActionForm
+            action={setCoinFeatureFlagsAction}
+            className="flex flex-col gap-4"
+            confirmMessage="This immediately changes what's live for every customer. Continue?"
+          >
+            <div className="flex flex-col gap-1">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" name="streaksCoinsEnabled" defaultChecked={features.streaksCoins.enabled} />
+                Coins &amp; streaks enabled
+              </label>
+              <p className="text-sm text-gray-500">
+                Off: no coins are issued for any check-in, weekly target, or milestone — the entire economy below
+                stops paying out immediately, for every customer. Nothing is deleted; re-enabling resumes payouts
+                going forward with no backfill.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  name="buddyPairedStreaksEnabled"
+                  defaultChecked={features.buddyPairedStreaks.enabled}
+                />
+                Paired-streak bonus enabled
+              </label>
+              <p className="text-sm text-gray-500">
+                Off: the paired-streak weekly bonus (below) stops paying out. Requires Coins &amp; streaks above to
+                also be on to mean anything.
+              </p>
+            </div>
+            <SubmitButton pendingText="Saving…" className="w-fit">
+              Save switches
+            </SubmitButton>
+          </ActionForm>
+        </Card>
+      </section>
+
       <section className="flex flex-col gap-4">
         <PageHeader
           title="Coin economy"
@@ -81,6 +146,18 @@ export default async function CoinsPage() {
                   defaultValue={economy.weeklyTargetBonus}
                   className="rounded border px-3 py-2 text-sm"
                 />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                Qualifying check-ins / week
+                <input
+                  type="number"
+                  name="qualifyingCheckinsPerWeek"
+                  min={1}
+                  max={7}
+                  defaultValue={economy.qualifyingCheckinsPerWeek}
+                  className="rounded border px-3 py-2 text-sm"
+                />
+                <span className="text-xs text-gray-500">How many check-ins in a week are needed for that week to count toward a streak.</span>
               </label>
             </div>
 
