@@ -89,6 +89,7 @@ interface FeatureFlags {
   streaksCoins: { enabled: boolean };
   challenges: { enabled: boolean };
   buddyPairedStreaks: { enabled: boolean };
+  healthMetrics: { enabled: boolean };
 }
 
 // Must match auth-service's own DEFAULT_FEATURES and page.tsx's copy exactly.
@@ -98,6 +99,7 @@ const DEFAULT_FEATURES: FeatureFlags = {
   streaksCoins: { enabled: false },
   challenges: { enabled: false },
   buddyPairedStreaks: { enabled: false },
+  healthMetrics: { enabled: false },
 };
 
 interface MaintenanceConfig {
@@ -179,6 +181,7 @@ export async function updateFeatureFlagsAction(_prev: ActionState, formData: For
       streaksCoins: { enabled: formData.get('streaksCoinsEnabled') === 'on' },
       challenges: { enabled: formData.get('challengesEnabled') === 'on' },
       buddyPairedStreaks: { enabled: formData.get('buddyPairedStreaksEnabled') === 'on' },
+      healthMetrics: { enabled: formData.get('healthMetricsEnabled') === 'on' },
     };
 
     await gatewayJson('/api/auth/app-config/admin', {

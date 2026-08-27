@@ -74,6 +74,7 @@ interface FeatureFlags {
   streaksCoins: { enabled: boolean };
   challenges: { enabled: boolean };
   buddyPairedStreaks: { enabled: boolean };
+  healthMetrics: { enabled: boolean };
 }
 
 // Buddy is live today, so the default is enabled — the toggle only does
@@ -88,6 +89,7 @@ const DEFAULT_FEATURES: FeatureFlags = {
   streaksCoins: { enabled: false },
   challenges: { enabled: false },
   buddyPairedStreaks: { enabled: false },
+  healthMetrics: { enabled: false },
 };
 
 function withFeatures(raw: Partial<FeatureFlags> | null | undefined): FeatureFlags {
@@ -97,6 +99,7 @@ function withFeatures(raw: Partial<FeatureFlags> | null | undefined): FeatureFla
     streaksCoins: { enabled: raw?.streaksCoins?.enabled ?? DEFAULT_FEATURES.streaksCoins.enabled },
     challenges: { enabled: raw?.challenges?.enabled ?? DEFAULT_FEATURES.challenges.enabled },
     buddyPairedStreaks: { enabled: raw?.buddyPairedStreaks?.enabled ?? DEFAULT_FEATURES.buddyPairedStreaks.enabled },
+    healthMetrics: { enabled: raw?.healthMetrics?.enabled ?? DEFAULT_FEATURES.healthMetrics.enabled },
   };
 }
 
@@ -522,6 +525,16 @@ export default async function SettingsPage() {
               <p className="text-sm text-gray-500">
                 Off: the paired-streak opt-in disappears from buddy chat/match screens. Requires Gym Buddies and
                 Streaks &amp; coins both on.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" name="healthMetricsEnabled" defaultChecked={features.healthMetrics.enabled} />
+                Health &amp; Activity
+              </label>
+              <p className="text-sm text-gray-500">
+                Off: exercise logging, routines, active workouts and the home-screen activity rings disappear from
+                the customer app. Still new/unverified in dev — leave off until manually tested end-to-end.
               </p>
             </div>
             <SubmitButton pendingText="Saving…" className="w-fit">
