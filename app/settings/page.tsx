@@ -18,6 +18,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
+import { Toggle } from '@/components/ui/Toggle';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { formatDateIST, formatDateTimeIST } from '@/lib/dateFormat';
 
@@ -194,14 +195,14 @@ export default async function SettingsPage() {
   const rows = tiers.slice(0, 4);
 
   const { data: appVersionRaw, updatedAt: appVersionUpdatedAt } = await gatewayJson<{
-    data: Partial<AppVersionConfig> &
-      Partial<FeatureFlags> & {
-        maintenance?: Partial<Record<'wallet' | 'gyms', Partial<MaintenanceConfig>>>;
-      };
+    data: Partial<AppVersionConfig> & {
+      features?: Partial<FeatureFlags>;
+      maintenance?: Partial<Record<'wallet' | 'gyms', Partial<MaintenanceConfig>>>;
+    };
     updatedAt?: string | null;
   }>('/api/auth/app-config/admin');
   const appVersionConfig = withDefaults(appVersionRaw);
-  const features = withFeatures(appVersionRaw);
+  const features = withFeatures(appVersionRaw?.features);
   const maintenance = withMaintenance(appVersionRaw?.maintenance);
 
   const { data: launchGate } = await gatewayJson<{ data: LaunchGate }>('/api/auth/launch-gate/admin');
@@ -235,8 +236,8 @@ export default async function SettingsPage() {
             className="flex flex-col gap-4"
             confirmMessage="This changes whether gym browsing and booking are gated for every visitor, immediately. Continue?"
           >
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <input type="checkbox" name="enabled" defaultChecked={launchGate.enabled} />
+            <label className="flex items-center gap-3 text-sm font-medium">
+              <Toggle name="enabled" defaultChecked={launchGate.enabled} />
               Gate enabled
             </label>
             <label className="flex flex-col gap-1 text-sm">
@@ -275,8 +276,8 @@ export default async function SettingsPage() {
               >
                 <input type="hidden" name="feature" value={feature} />
                 <div className="flex flex-col gap-1">
-                  <label className="flex items-center gap-2 text-sm font-medium">
-                    <input type="checkbox" name="enabled" defaultChecked={entry.enabled} />
+                  <label className="flex items-center gap-3 text-sm font-medium">
+                    <Toggle name="enabled" defaultChecked={entry.enabled} />
                     Under maintenance (immediate)
                   </label>
                   <p className="text-sm text-gray-500">{blurb}</p>
@@ -367,12 +368,8 @@ export default async function SettingsPage() {
                     defaultValue={Math.round(tier.refundRate * 100)}
                     className="rounded border px-3 py-2 text-sm"
                   />
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      name={`tier${i}_blocked`}
-                      defaultChecked={tier.blocked}
-                    />
+                  <label className="flex items-center gap-3 text-sm">
+                    <Toggle name={`tier${i}_blocked`} defaultChecked={tier.blocked} />
                     Blocked
                   </label>
                 </div>
@@ -474,8 +471,8 @@ export default async function SettingsPage() {
             confirmMessage="This immediately gates these features for every customer app install (gamification flags also take effect server-side within ~30s). Continue?"
           >
             <div className="flex flex-col gap-1">
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <input type="checkbox" name="buddyEnabled" defaultChecked={features.buddy.enabled} />
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="buddyEnabled" defaultChecked={features.buddy.enabled} />
                 Gym Buddies
               </label>
               <p className="text-sm text-gray-500">
@@ -484,8 +481,8 @@ export default async function SettingsPage() {
               </p>
             </div>
             <div className="flex flex-col gap-1 border-t pt-4">
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <input type="checkbox" name="badgesEnabled" defaultChecked={features.badges.enabled} />
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="badgesEnabled" defaultChecked={features.badges.enabled} />
                 Badges (Explore Map + Badge Shelf)
               </label>
               <p className="text-sm text-gray-500">
@@ -494,8 +491,8 @@ export default async function SettingsPage() {
               </p>
             </div>
             <div className="flex flex-col gap-1 border-t pt-4">
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <input type="checkbox" name="streaksCoinsEnabled" defaultChecked={features.streaksCoins.enabled} />
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="streaksCoinsEnabled" defaultChecked={features.streaksCoins.enabled} />
                 Streaks &amp; coins
               </label>
               <p className="text-sm text-gray-500">
@@ -504,8 +501,8 @@ export default async function SettingsPage() {
               </p>
             </div>
             <div className="flex flex-col gap-1 border-t pt-4">
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <input type="checkbox" name="challengesEnabled" defaultChecked={features.challenges.enabled} />
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="challengesEnabled" defaultChecked={features.challenges.enabled} />
                 Challenges
               </label>
               <p className="text-sm text-gray-500">
@@ -514,12 +511,8 @@ export default async function SettingsPage() {
               </p>
             </div>
             <div className="flex flex-col gap-1 border-t pt-4">
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <input
-                  type="checkbox"
-                  name="buddyPairedStreaksEnabled"
-                  defaultChecked={features.buddyPairedStreaks.enabled}
-                />
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="buddyPairedStreaksEnabled" defaultChecked={features.buddyPairedStreaks.enabled} />
                 Buddy paired streaks
               </label>
               <p className="text-sm text-gray-500">
@@ -528,8 +521,8 @@ export default async function SettingsPage() {
               </p>
             </div>
             <div className="flex flex-col gap-1 border-t pt-4">
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <input type="checkbox" name="healthMetricsEnabled" defaultChecked={features.healthMetrics.enabled} />
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="healthMetricsEnabled" defaultChecked={features.healthMetrics.enabled} />
                 Health &amp; Activity
               </label>
               <p className="text-sm text-gray-500">
@@ -733,8 +726,8 @@ export default async function SettingsPage() {
             className="flex flex-col gap-4"
             confirmMessage="This changes whether customers can type any custom top-up amount, platform-wide. Continue?"
           >
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <input type="checkbox" name="allowCustomAmount" defaultChecked={topupConfig.allowCustomAmount} />
+            <label className="flex items-center gap-3 text-sm font-medium">
+              <Toggle name="allowCustomAmount" defaultChecked={topupConfig.allowCustomAmount} />
               Allow customer-entered custom amount
             </label>
             <div className="grid grid-cols-2 gap-4">
