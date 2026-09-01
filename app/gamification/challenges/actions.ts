@@ -38,6 +38,10 @@ export async function createChallengeAction(_prev: ActionState, formData: FormDa
   const city = String(formData.get('city') || '').trim();
   const targetCount = Number(formData.get('targetCount'));
   const rewardCoins = Number(formData.get('rewardCoins'));
+  const latRaw = String(formData.get('lat') || '').trim();
+  const lngRaw = String(formData.get('lng') || '').trim();
+  const lat = latRaw ? Number(latRaw) : undefined;
+  const lng = lngRaw ? Number(lngRaw) : undefined;
 
   if (!challengeDefinitionId || !city || !Number.isInteger(targetCount) || targetCount <= 0) {
     return { ok: false, message: 'Definition, city and a positive targetCount are required' };
@@ -46,7 +50,7 @@ export async function createChallengeAction(_prev: ActionState, formData: FormDa
   try {
     await gatewayJson('/api/challenges/admin/challenges', {
       method: 'POST',
-      body: JSON.stringify({ challengeDefinitionId, city, targetCount, rewardCoins }),
+      body: JSON.stringify({ challengeDefinitionId, city, targetCount, rewardCoins, lat, lng }),
     });
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : 'Failed to create challenge' };

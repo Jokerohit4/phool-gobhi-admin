@@ -24,6 +24,8 @@ interface ChallengeInstance {
   status: string;
   targetCount: number;
   rewardCoins: number;
+  lat: number | null;
+  lng: number | null;
   challengeDefinition: ChallengeDefinition;
   checkpointSpots: { id: number }[];
   _count: { enrollments: number };
@@ -59,6 +61,7 @@ export default async function ChallengesPage() {
           <Thead>
             <Th>Title</Th>
             <Th>City</Th>
+            <Th>Anchor</Th>
             <Th>Type</Th>
             <Th>Target</Th>
             <Th>Reward</Th>
@@ -71,6 +74,7 @@ export default async function ChallengesPage() {
               <Tr key={c.id}>
                 <Td>{c.challengeDefinition.title}</Td>
                 <Td>{c.city}</Td>
+                <Td className="font-mono text-xs">{c.lat != null && c.lng != null ? `${c.lat}, ${c.lng}` : '—'}</Td>
                 <Td>{c.challengeDefinition.type}</Td>
                 <Td>{c.targetCount}</Td>
                 <Td>{c.rewardCoins} coins</Td>
@@ -96,7 +100,7 @@ export default async function ChallengesPage() {
                 </Td>
               </Tr>
             ))}
-            {challenges.length === 0 && <EmptyRow colSpan={8}>No challenges yet.</EmptyRow>}
+            {challenges.length === 0 && <EmptyRow colSpan={9}>No challenges yet.</EmptyRow>}
           </tbody>
         </Table>
       </section>
@@ -120,6 +124,18 @@ export default async function ChallengesPage() {
 
             <label className="text-sm font-medium" htmlFor="rewardCoins">Reward coins</label>
             <input id="rewardCoins" name="rewardCoins" type="number" min={0} required className="rounded border px-3 py-2 text-sm" />
+
+            <div className="flex gap-3">
+              <div className="flex flex-1 flex-col gap-1">
+                <label className="text-sm font-medium" htmlFor="lat">Latitude (anchor)</label>
+                <input id="lat" name="lat" type="number" step="any" placeholder="e.g. 26.7596" className="rounded border px-3 py-2 text-sm" />
+              </div>
+              <div className="flex flex-1 flex-col gap-1">
+                <label className="text-sm font-medium" htmlFor="lng">Longitude (anchor)</label>
+                <input id="lng" name="lng" type="number" step="any" placeholder="e.g. 83.3727" className="rounded border px-3 py-2 text-sm" />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500">Anchor for the 20km discovery radius (city center for gym-native, cluster centroid for city quests).</p>
 
             <SubmitButton pendingText="Creating…" className="w-fit">Add challenge</SubmitButton>
           </ActionForm>
