@@ -92,9 +92,9 @@ const DEFAULT_FEATURES: FeatureFlags = {
   streaksCoins: { enabled: false },
   challenges: { enabled: false },
   buddyPairedStreaks: { enabled: false },
-  healthMetrics: { enabled: true },
-  healthPersonalisation: { enabled: true },
-  recapSharing: { enabled: true },
+  healthMetrics: { enabled: false },
+  healthPersonalisation: { enabled: false },
+  recapSharing: { enabled: false },
 };
 
 function withFeatures(raw: Partial<FeatureFlags> | null | undefined): FeatureFlags {

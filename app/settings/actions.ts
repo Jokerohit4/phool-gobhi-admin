@@ -97,13 +97,13 @@ interface FeatureFlags {
 // Must match auth-service's own DEFAULT_FEATURES and page.tsx's copy exactly.
 const DEFAULT_FEATURES: FeatureFlags = {
   buddy: { enabled: true },
-  badges: { enabled: true },
-  streaksCoins: { enabled: true },
-  challenges: { enabled: true },
-  buddyPairedStreaks: { enabled: true },
-  healthMetrics: { enabled: true },
-  healthPersonalisation: { enabled: true },
-  recapSharing: { enabled: true },
+  badges: { enabled: false },
+  streaksCoins: { enabled: false },
+  challenges: { enabled: false },
+  buddyPairedStreaks: { enabled: false },
+  healthMetrics: { enabled: false },
+  healthPersonalisation: { enabled: false },
+  recapSharing: { enabled: false },
 };
 
 interface MaintenanceConfig {
