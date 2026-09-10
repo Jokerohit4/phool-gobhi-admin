@@ -76,6 +76,8 @@ interface FeatureFlags {
   challenges: { enabled: boolean };
   buddyPairedStreaks: { enabled: boolean };
   healthMetrics: { enabled: boolean };
+  healthPersonalisation: { enabled: boolean };
+  recapSharing: { enabled: boolean };
 }
 
 // Buddy is live today, so the default is enabled — the toggle only does
@@ -91,6 +93,8 @@ const DEFAULT_FEATURES: FeatureFlags = {
   challenges: { enabled: false },
   buddyPairedStreaks: { enabled: false },
   healthMetrics: { enabled: false },
+  healthPersonalisation: { enabled: false },
+  recapSharing: { enabled: false },
 };
 
 function withFeatures(raw: Partial<FeatureFlags> | null | undefined): FeatureFlags {
@@ -101,6 +105,12 @@ function withFeatures(raw: Partial<FeatureFlags> | null | undefined): FeatureFla
     challenges: { enabled: raw?.challenges?.enabled ?? DEFAULT_FEATURES.challenges.enabled },
     buddyPairedStreaks: { enabled: raw?.buddyPairedStreaks?.enabled ?? DEFAULT_FEATURES.buddyPairedStreaks.enabled },
     healthMetrics: { enabled: raw?.healthMetrics?.enabled ?? DEFAULT_FEATURES.healthMetrics.enabled },
+    // Read but not rendered here: both are edited on the Health page, next to
+    // the warning explaining why they need counsel before being switched on.
+    healthPersonalisation: {
+      enabled: raw?.healthPersonalisation?.enabled ?? DEFAULT_FEATURES.healthPersonalisation.enabled,
+    },
+    recapSharing: { enabled: raw?.recapSharing?.enabled ?? DEFAULT_FEATURES.recapSharing.enabled },
   };
 }
 
