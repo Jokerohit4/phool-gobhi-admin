@@ -90,16 +90,20 @@ interface FeatureFlags {
   challenges: { enabled: boolean };
   buddyPairedStreaks: { enabled: boolean };
   healthMetrics: { enabled: boolean };
+  healthPersonalisation: { enabled: boolean };
+  recapSharing: { enabled: boolean };
 }
 
 // Must match auth-service's own DEFAULT_FEATURES and page.tsx's copy exactly.
 const DEFAULT_FEATURES: FeatureFlags = {
   buddy: { enabled: true },
-  badges: { enabled: false },
-  streaksCoins: { enabled: false },
-  challenges: { enabled: false },
-  buddyPairedStreaks: { enabled: false },
-  healthMetrics: { enabled: false },
+  badges: { enabled: true },
+  streaksCoins: { enabled: true },
+  challenges: { enabled: true },
+  buddyPairedStreaks: { enabled: true },
+  healthMetrics: { enabled: true },
+  healthPersonalisation: { enabled: true },
+  recapSharing: { enabled: true },
 };
 
 interface MaintenanceConfig {
@@ -182,6 +186,11 @@ export async function updateFeatureFlagsAction(_prev: ActionState, formData: For
       challenges: { enabled: formData.get('challengesEnabled') === 'on' },
       buddyPairedStreaks: { enabled: formData.get('buddyPairedStreaksEnabled') === 'on' },
       healthMetrics: { enabled: formData.get('healthMetricsEnabled') === 'on' },
+      // Added 2026-09-10. Until then these two were the only flags the
+      // portal could not reach, so their state was whatever authController's
+      // DEFAULT_FEATURES said and turning either off needed a deploy.
+      healthPersonalisation: { enabled: formData.get('healthPersonalisationEnabled') === 'on' },
+      recapSharing: { enabled: formData.get('recapSharingEnabled') === 'on' },
     };
 
     await gatewayJson('/api/auth/app-config/admin', {

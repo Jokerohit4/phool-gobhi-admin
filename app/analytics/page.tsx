@@ -650,11 +650,18 @@ async function ReachView({ days }: { days: string }) {
 }
 
 async function SupplyView({ days }: { days: string }) {
-  const [{ data: funnel }, { data: sla }, { data: health }] = await Promise.all([
-    gatewayJson<{ data: OnboardingFunnelData }>(`/api/bookings/admin/analytics/onboarding-funnel?days=${days}`),
-    gatewayJson<{ data: ApprovalSlaData }>(`/api/bookings/admin/analytics/approval-sla?days=${days}`),
-    gatewayJson<{ data: SupplyHealthData }>(`/api/bookings/admin/analytics/supply-health`),
-  ]);
+  let funnel: OnboardingFunnelData = { stepCounts: [], byStep: [], weeklyApprovals: [], runRatePerWeek: 0 };
+  let sla: ApprovalSlaData = { gyms: [], medianHoursToResolve: null };
+  let health: SupplyHealthData = { gyms: [] };
+  try {
+    [{ data: funnel }, { data: sla }, { data: health }] = await Promise.all([
+      gatewayJson<{ data: OnboardingFunnelData }>(`/api/bookings/admin/analytics/onboarding-funnel?days=${days}`),
+      gatewayJson<{ data: ApprovalSlaData }>(`/api/bookings/admin/analytics/approval-sla?days=${days}`),
+      gatewayJson<{ data: SupplyHealthData }>(`/api/bookings/admin/analytics/supply-health`),
+    ]);
+  } catch {
+    // partial data — render what we got
+  }
 
   const steps = withDropoff(
     toOrderedSteps(

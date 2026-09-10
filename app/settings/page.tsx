@@ -76,6 +76,8 @@ interface FeatureFlags {
   challenges: { enabled: boolean };
   buddyPairedStreaks: { enabled: boolean };
   healthMetrics: { enabled: boolean };
+  healthPersonalisation: { enabled: boolean };
+  recapSharing: { enabled: boolean };
 }
 
 // Buddy is live today, so the default is enabled — the toggle only does
@@ -90,7 +92,9 @@ const DEFAULT_FEATURES: FeatureFlags = {
   streaksCoins: { enabled: false },
   challenges: { enabled: false },
   buddyPairedStreaks: { enabled: false },
-  healthMetrics: { enabled: false },
+  healthMetrics: { enabled: true },
+  healthPersonalisation: { enabled: true },
+  recapSharing: { enabled: true },
 };
 
 function withFeatures(raw: Partial<FeatureFlags> | null | undefined): FeatureFlags {
@@ -101,6 +105,10 @@ function withFeatures(raw: Partial<FeatureFlags> | null | undefined): FeatureFla
     challenges: { enabled: raw?.challenges?.enabled ?? DEFAULT_FEATURES.challenges.enabled },
     buddyPairedStreaks: { enabled: raw?.buddyPairedStreaks?.enabled ?? DEFAULT_FEATURES.buddyPairedStreaks.enabled },
     healthMetrics: { enabled: raw?.healthMetrics?.enabled ?? DEFAULT_FEATURES.healthMetrics.enabled },
+    healthPersonalisation: {
+      enabled: raw?.healthPersonalisation?.enabled ?? DEFAULT_FEATURES.healthPersonalisation.enabled,
+    },
+    recapSharing: { enabled: raw?.recapSharing?.enabled ?? DEFAULT_FEATURES.recapSharing.enabled },
   };
 }
 
@@ -527,7 +535,33 @@ export default async function SettingsPage() {
               </label>
               <p className="text-sm text-gray-500">
                 Off: exercise logging, routines, active workouts and the home-screen activity rings disappear from
-                the customer app. Still new/unverified in dev — leave off until manually tested end-to-end.
+                the customer app. The two switches below sit on top of this one — with Health &amp; Activity off,
+                neither does anything.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle
+                  name="healthPersonalisationEnabled"
+                  defaultChecked={features.healthPersonalisation.enabled}
+                />
+                Training personalisation
+              </label>
+              <p className="text-sm text-gray-500">
+                The only consent-bearing write in health-service: choosing a non-neutral programming mode records
+                that consent was given and under which privacy version. Off: the training-preferences screen
+                disappears and suggestions stay neutral for everyone. Nothing already stored is deleted.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="recapSharingEnabled" defaultChecked={features.recapSharing.enabled} />
+                Weekly recap sharing
+              </label>
+              <p className="text-sm text-gray-500">
+                The only feature producing an artifact meant to leave the platform. The card carries numbers only —
+                no name, gym or photo — so there is no PII on it by construction. Off: the recap screen and its
+                share sheet disappear.
               </p>
             </div>
             <SubmitButton pendingText="Saving…" className="w-fit">
