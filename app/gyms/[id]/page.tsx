@@ -18,7 +18,6 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { formatDateIST } from '@/lib/dateFormat';
-import { describeHoneymoonStatus, SUBSCRIPTION_SAAS_HONEYMOON_DAYS } from '@/lib/honeymoon';
 
 interface GymReview {
   id: number;
@@ -140,8 +139,8 @@ export default async function GymDetailPage({
               <StatusBadge tone="rejected">Deactivated</StatusBadge>
             )}
           </dd>
-          <dt className="text-gray-500">Attendance-SaaS honeymoon</dt>
-          <dd>{describeHoneymoonStatus(gym.partnershipStartDate)}</dd>
+          <dt className="text-gray-500">Attendance-SaaS live since</dt>
+          <dd>{gym.partnershipStartDate ? formatDateIST(gym.partnershipStartDate) : 'Not started — set on first approval'}</dd>
         </dl>
 
         {gym.description && <p className="text-sm">{gym.description}</p>}
@@ -211,10 +210,9 @@ export default async function GymDetailPage({
       <Card className="flex flex-col gap-3">
         <h2 className="font-medium">Subscription pricing mode (attendance-SaaS)</h2>
         <p className="text-sm text-gray-500">
-          Picks the formula used for this gym&apos;s post-honeymoon subscription (registration) commission — either a
+          Picks the formula used for this gym&apos;s subscription (registration) commission — either a
           percentage of the plan price, or a flat fee charged once per customer regardless of price. Platform default
-          is a flat fee of ₹1/customer. During the {SUBSCRIPTION_SAAS_HONEYMOON_DAYS}-day honeymoon, subscription
-          purchases are always free regardless of this setting.
+          is a flat fee of ₹1/customer, applied from the first registration — there is no free/honeymoon period.
         </p>
         <ActionForm action={updateGymSubscriptionPricingModeAction} className="flex items-end gap-3">
           <input type="hidden" name="gymId" value={gym.id} />
@@ -251,9 +249,9 @@ export default async function GymDetailPage({
         <h2 className="font-medium">Subscription commission % (percentage mode only)</h2>
         <p className="text-sm text-gray-500">
           Only takes effect when the pricing mode above is set to &quot;Percentage of price&quot; — overrides the
-          commission on this gym&apos;s subscription (registration) purchases specifically, after its
-          {' '}{SUBSCRIPTION_SAAS_HONEYMOON_DAYS}-day honeymoon ends — separate from the commission above, which only
-          applies to one-off marketplace bookings. Leave blank to use the platform default (currently 1%).
+          commission on this gym&apos;s subscription (registration) purchases specifically — separate from the
+          commission above, which only applies to one-off marketplace bookings. Leave blank to use the platform
+          default (currently 1%).
         </p>
         <ActionForm action={updateGymSubscriptionCommissionAction} className="flex items-end gap-3">
           <input type="hidden" name="gymId" value={gym.id} />

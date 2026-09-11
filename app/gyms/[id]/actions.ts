@@ -59,7 +59,7 @@ export async function updateGymCommissionAction(_prev: ActionState, formData: Fo
   return { ok: true, message: 'Commission updated' };
 }
 
-// Attendance-SaaS wedge: overrides the post-honeymoon commission wallet-
+// Attendance-SaaS wedge: overrides the commission wallet-
 // service applies to this gym's subscription (GymSubscription) purchases —
 // separate from commissionPct above, which only governs one-off bookings.
 // Blank input resets to the platform default (currently 1%) rather than
@@ -93,7 +93,7 @@ export async function updateGymSubscriptionCommissionAction(
 }
 
 // Attendance-SaaS wedge: picks which formula wallet-service applies to this
-// gym's post-honeymoon GymSubscription commission — a percentage of the plan
+// gym's GymSubscription commission — a percentage of the plan
 // price (subscriptionCommissionPct above) or a flat fee per registration
 // regardless of price. Blank flat-fee input resets to the platform default
 // (currently Rs 1) rather than pinning a fixed number.
