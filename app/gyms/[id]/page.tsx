@@ -8,6 +8,7 @@ import {
   deleteReviewAction,
   updateGymCommissionAction,
   updateGymSubscriptionCommissionAction,
+  updateGymSubscriptionPricingModeAction,
   setGymActiveAction,
   deleteGymAdminAction,
 } from './actions';
@@ -52,6 +53,8 @@ interface GymDetail {
   commissionPct: number;
   partnershipStartDate: string | null;
   subscriptionCommissionPct: number | null;
+  subscriptionPricingMode: 'percentage' | 'flatPerUser';
+  subscriptionFlatFeePerUser: number | null;
   images: { id: number; url: string; mediaType?: 'image' | 'video' }[];
 }
 
@@ -206,12 +209,51 @@ export default async function GymDetailPage({
       </Card>
 
       <Card className="flex flex-col gap-3">
-        <h2 className="font-medium">Subscription commission (attendance-SaaS)</h2>
+        <h2 className="font-medium">Subscription pricing mode (attendance-SaaS)</h2>
         <p className="text-sm text-gray-500">
-          Overrides the commission on this gym&apos;s subscription (registration) purchases specifically, after its
+          Picks the formula used for this gym&apos;s post-honeymoon subscription (registration) commission — either a
+          percentage of the plan price, or a flat fee charged once per customer regardless of price. Platform default
+          is a flat fee of ₹1/customer. During the {SUBSCRIPTION_SAAS_HONEYMOON_DAYS}-day honeymoon, subscription
+          purchases are always free regardless of this setting.
+        </p>
+        <ActionForm action={updateGymSubscriptionPricingModeAction} className="flex items-end gap-3">
+          <input type="hidden" name="gymId" value={gym.id} />
+          <label className="flex flex-col gap-1 text-sm">
+            Pricing mode
+            <select
+              name="subscriptionPricingMode"
+              defaultValue={gym.subscriptionPricingMode}
+              className="w-48 rounded border px-3 py-2 text-sm"
+            >
+              <option value="flatPerUser">Flat fee per customer</option>
+              <option value="percentage">Percentage of price</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            Flat fee (₹)
+            <input
+              type="number"
+              name="subscriptionFlatFeePerUser"
+              min={0}
+              step="0.01"
+              placeholder="Default (₹1)"
+              defaultValue={gym.subscriptionFlatFeePerUser ?? ''}
+              className="w-28 rounded border px-3 py-2 text-sm"
+            />
+          </label>
+          <SubmitButton pendingText="Saving…" className="w-fit">
+            Save
+          </SubmitButton>
+        </ActionForm>
+      </Card>
+
+      <Card className="flex flex-col gap-3">
+        <h2 className="font-medium">Subscription commission % (percentage mode only)</h2>
+        <p className="text-sm text-gray-500">
+          Only takes effect when the pricing mode above is set to &quot;Percentage of price&quot; — overrides the
+          commission on this gym&apos;s subscription (registration) purchases specifically, after its
           {' '}{SUBSCRIPTION_SAAS_HONEYMOON_DAYS}-day honeymoon ends — separate from the commission above, which only
-          applies to one-off marketplace bookings. During the honeymoon, subscription purchases are always 0%
-          regardless of this override. Leave blank to use the platform default (currently 1%).
+          applies to one-off marketplace bookings. Leave blank to use the platform default (currently 1%).
         </p>
         <ActionForm action={updateGymSubscriptionCommissionAction} className="flex items-end gap-3">
           <input type="hidden" name="gymId" value={gym.id} />
