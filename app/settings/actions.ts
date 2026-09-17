@@ -85,9 +85,26 @@ const APP_VERSION_KEYS: Array<{ app: 'customer' | 'partner'; platform: 'android'
 
 interface FeatureFlags {
   buddy: { enabled: boolean };
+  badges: { enabled: boolean };
+  streaksCoins: { enabled: boolean };
+  challenges: { enabled: boolean };
+  buddyPairedStreaks: { enabled: boolean };
+  healthMetrics: { enabled: boolean };
+  healthPersonalisation: { enabled: boolean };
+  recapSharing: { enabled: boolean };
 }
 
-const DEFAULT_FEATURES: FeatureFlags = { buddy: { enabled: true } };
+// Must match auth-service's own DEFAULT_FEATURES and page.tsx's copy exactly.
+const DEFAULT_FEATURES: FeatureFlags = {
+  buddy: { enabled: true },
+  badges: { enabled: false },
+  streaksCoins: { enabled: false },
+  challenges: { enabled: false },
+  buddyPairedStreaks: { enabled: false },
+  healthMetrics: { enabled: false },
+  healthPersonalisation: { enabled: false },
+  recapSharing: { enabled: false },
+};
 
 interface MaintenanceConfig {
   enabled: boolean;
@@ -164,6 +181,16 @@ export async function updateFeatureFlagsAction(_prev: ActionState, formData: For
     const current = await loadCurrentAppConfig();
     const features: FeatureFlags = {
       buddy: { enabled: formData.get('buddyEnabled') === 'on' },
+      badges: { enabled: formData.get('badgesEnabled') === 'on' },
+      streaksCoins: { enabled: formData.get('streaksCoinsEnabled') === 'on' },
+      challenges: { enabled: formData.get('challengesEnabled') === 'on' },
+      buddyPairedStreaks: { enabled: formData.get('buddyPairedStreaksEnabled') === 'on' },
+      healthMetrics: { enabled: formData.get('healthMetricsEnabled') === 'on' },
+      // Added 2026-09-10. Until then these two were the only flags the
+      // portal could not reach, so their state was whatever authController's
+      // DEFAULT_FEATURES said and turning either off needed a deploy.
+      healthPersonalisation: { enabled: formData.get('healthPersonalisationEnabled') === 'on' },
+      recapSharing: { enabled: formData.get('recapSharingEnabled') === 'on' },
     };
 
     await gatewayJson('/api/auth/app-config/admin', {

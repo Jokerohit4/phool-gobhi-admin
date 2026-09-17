@@ -18,6 +18,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
+import { Toggle } from '@/components/ui/Toggle';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { formatDateIST, formatDateTimeIST } from '@/lib/dateFormat';
 
@@ -67,15 +68,47 @@ const EMPTY_APP_VERSION_ENTRY: AppVersionEntry = {
 
 interface FeatureFlags {
   buddy: { enabled: boolean };
+  // Gamification suite — each phase ships behind its own kill-switch,
+  // default OFF (unlike buddy above) until an admin deliberately turns it
+  // on here. See C:\Users\rohit\.claude\plans\delightful-rolling-bubble.md.
+  badges: { enabled: boolean };
+  streaksCoins: { enabled: boolean };
+  challenges: { enabled: boolean };
+  buddyPairedStreaks: { enabled: boolean };
+  healthMetrics: { enabled: boolean };
+  healthPersonalisation: { enabled: boolean };
+  recapSharing: { enabled: boolean };
 }
 
 // Buddy is live today, so the default is enabled — the toggle only does
-// something once an admin deliberately turns it off.
-const DEFAULT_FEATURES: FeatureFlags = { buddy: { enabled: true } };
+// something once an admin deliberately turns it off. The gamification flags
+// default off — must match auth-service's own DEFAULT_FEATURES exactly, or
+// this page's "current state" checkboxes could show enabled while the
+// backend still serves disabled (or vice versa) whenever the stored blob
+// predates one of these keys.
+const DEFAULT_FEATURES: FeatureFlags = {
+  buddy: { enabled: true },
+  badges: { enabled: false },
+  streaksCoins: { enabled: false },
+  challenges: { enabled: false },
+  buddyPairedStreaks: { enabled: false },
+  healthMetrics: { enabled: false },
+  healthPersonalisation: { enabled: false },
+  recapSharing: { enabled: false },
+};
 
 function withFeatures(raw: Partial<FeatureFlags> | null | undefined): FeatureFlags {
   return {
     buddy: { enabled: raw?.buddy?.enabled ?? DEFAULT_FEATURES.buddy.enabled },
+    badges: { enabled: raw?.badges?.enabled ?? DEFAULT_FEATURES.badges.enabled },
+    streaksCoins: { enabled: raw?.streaksCoins?.enabled ?? DEFAULT_FEATURES.streaksCoins.enabled },
+    challenges: { enabled: raw?.challenges?.enabled ?? DEFAULT_FEATURES.challenges.enabled },
+    buddyPairedStreaks: { enabled: raw?.buddyPairedStreaks?.enabled ?? DEFAULT_FEATURES.buddyPairedStreaks.enabled },
+    healthMetrics: { enabled: raw?.healthMetrics?.enabled ?? DEFAULT_FEATURES.healthMetrics.enabled },
+    healthPersonalisation: {
+      enabled: raw?.healthPersonalisation?.enabled ?? DEFAULT_FEATURES.healthPersonalisation.enabled,
+    },
+    recapSharing: { enabled: raw?.recapSharing?.enabled ?? DEFAULT_FEATURES.recapSharing.enabled },
   };
 }
 
@@ -170,14 +203,14 @@ export default async function SettingsPage() {
   const rows = tiers.slice(0, 4);
 
   const { data: appVersionRaw, updatedAt: appVersionUpdatedAt } = await gatewayJson<{
-    data: Partial<AppVersionConfig> &
-      Partial<FeatureFlags> & {
-        maintenance?: Partial<Record<'wallet' | 'gyms', Partial<MaintenanceConfig>>>;
-      };
+    data: Partial<AppVersionConfig> & {
+      features?: Partial<FeatureFlags>;
+      maintenance?: Partial<Record<'wallet' | 'gyms', Partial<MaintenanceConfig>>>;
+    };
     updatedAt?: string | null;
   }>('/api/auth/app-config/admin');
   const appVersionConfig = withDefaults(appVersionRaw);
-  const features = withFeatures(appVersionRaw);
+  const features = withFeatures(appVersionRaw?.features);
   const maintenance = withMaintenance(appVersionRaw?.maintenance);
 
   const { data: launchGate } = await gatewayJson<{ data: LaunchGate }>('/api/auth/launch-gate/admin');
@@ -211,8 +244,8 @@ export default async function SettingsPage() {
             className="flex flex-col gap-4"
             confirmMessage="This changes whether gym browsing and booking are gated for every visitor, immediately. Continue?"
           >
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <input type="checkbox" name="enabled" defaultChecked={launchGate.enabled} />
+            <label className="flex items-center gap-3 text-sm font-medium">
+              <Toggle name="enabled" defaultChecked={launchGate.enabled} />
               Gate enabled
             </label>
             <label className="flex flex-col gap-1 text-sm">
@@ -251,8 +284,8 @@ export default async function SettingsPage() {
               >
                 <input type="hidden" name="feature" value={feature} />
                 <div className="flex flex-col gap-1">
-                  <label className="flex items-center gap-2 text-sm font-medium">
-                    <input type="checkbox" name="enabled" defaultChecked={entry.enabled} />
+                  <label className="flex items-center gap-3 text-sm font-medium">
+                    <Toggle name="enabled" defaultChecked={entry.enabled} />
                     Under maintenance (immediate)
                   </label>
                   <p className="text-sm text-gray-500">{blurb}</p>
@@ -343,12 +376,8 @@ export default async function SettingsPage() {
                     defaultValue={Math.round(tier.refundRate * 100)}
                     className="rounded border px-3 py-2 text-sm"
                   />
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      name={`tier${i}_blocked`}
-                      defaultChecked={tier.blocked}
-                    />
+                  <label className="flex items-center gap-3 text-sm">
+                    <Toggle name={`tier${i}_blocked`} defaultChecked={tier.blocked} />
                     Blocked
                   </label>
                 </div>
@@ -441,22 +470,98 @@ export default async function SettingsPage() {
       <section className="flex flex-col gap-4">
         <PageHeader
           title="Feature flags"
-          subtitle="Kill-switches for customer-app features. Saved to the same config blob as the app versions above; changes apply on the app's next launch (the app checks this once at startup)."
+          subtitle="Kill-switches for customer-app features. Saved to the same config blob as the app versions above; changes apply on the app's next launch (the app checks this once at startup). The gamification flags are also enforced server-side in challenge-service — turning one off blocks its API routes immediately (within ~30s), not just after the app re-checks."
         />
         <Card className="max-w-xl">
           <ActionForm
             action={updateFeatureFlagsAction}
             className="flex flex-col gap-4"
-            confirmMessage="This immediately gates the Gym Buddies tab for every customer app install on next launch. Continue?"
+            confirmMessage="This immediately gates these features for every customer app install (gamification flags also take effect server-side within ~30s). Continue?"
           >
             <div className="flex flex-col gap-1">
-              <label className="flex items-center gap-2 text-sm font-medium">
-                <input type="checkbox" name="buddyEnabled" defaultChecked={features.buddy.enabled} />
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="buddyEnabled" defaultChecked={features.buddy.enabled} />
                 Gym Buddies
               </label>
               <p className="text-sm text-gray-500">
                 Off: the Buddies tab (and its routes) disappear from the customer app. Existing matches are not
                 deleted — the flag only hides the feature.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="badgesEnabled" defaultChecked={features.badges.enabled} />
+                Badges (Explore Map + Badge Shelf)
+              </label>
+              <p className="text-sm text-gray-500">
+                Off: the Explore Map nav icon and Badge Shelf disappear from the customer app. Badges are derived
+                live from attendance history — nothing is deleted by turning this off.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="streaksCoinsEnabled" defaultChecked={features.streaksCoins.enabled} />
+                Streaks &amp; coins
+              </label>
+              <p className="text-sm text-gray-500">
+                Off: the coin wallet and weekly-streak screens disappear, and challenge-service&rsquo;s streak/coin API
+                routes 403 server-side — attendance events silently stop being recorded (no backfill on re-enable).
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="challengesEnabled" defaultChecked={features.challenges.enabled} />
+                Challenges
+              </label>
+              <p className="text-sm text-gray-500">
+                Off: the Challenges tab disappears from the customer app and its API routes 403 server-side.
+                Requires Streaks &amp; coins to be meaningful (challenge rewards are paid in coins).
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="buddyPairedStreaksEnabled" defaultChecked={features.buddyPairedStreaks.enabled} />
+                Buddy paired streaks
+              </label>
+              <p className="text-sm text-gray-500">
+                Off: the paired-streak opt-in disappears from buddy chat/match screens. Requires Gym Buddies and
+                Streaks &amp; coins both on.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="healthMetricsEnabled" defaultChecked={features.healthMetrics.enabled} />
+                Health &amp; Activity
+              </label>
+              <p className="text-sm text-gray-500">
+                Off: exercise logging, routines, active workouts and the home-screen activity rings disappear from
+                the customer app. The two switches below sit on top of this one — with Health &amp; Activity off,
+                neither does anything.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle
+                  name="healthPersonalisationEnabled"
+                  defaultChecked={features.healthPersonalisation.enabled}
+                />
+                Training personalisation
+              </label>
+              <p className="text-sm text-gray-500">
+                The only consent-bearing write in health-service: choosing a non-neutral programming mode records
+                that consent was given and under which privacy version. Off: the training-preferences screen
+                disappears and suggestions stay neutral for everyone. Nothing already stored is deleted.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="recapSharingEnabled" defaultChecked={features.recapSharing.enabled} />
+                Weekly recap sharing
+              </label>
+              <p className="text-sm text-gray-500">
+                The only feature producing an artifact meant to leave the platform. The card carries numbers only —
+                no name, gym or photo — so there is no PII on it by construction. Off: the recap screen and its
+                share sheet disappear.
               </p>
             </div>
             <SubmitButton pendingText="Saving…" className="w-fit">
@@ -655,8 +760,8 @@ export default async function SettingsPage() {
             className="flex flex-col gap-4"
             confirmMessage="This changes whether customers can type any custom top-up amount, platform-wide. Continue?"
           >
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <input type="checkbox" name="allowCustomAmount" defaultChecked={topupConfig.allowCustomAmount} />
+            <label className="flex items-center gap-3 text-sm font-medium">
+              <Toggle name="allowCustomAmount" defaultChecked={topupConfig.allowCustomAmount} />
               Allow customer-entered custom amount
             </label>
             <div className="grid grid-cols-2 gap-4">

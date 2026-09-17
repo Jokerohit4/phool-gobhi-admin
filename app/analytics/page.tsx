@@ -10,6 +10,7 @@ import { SubmitButton } from '@/components/ui/SubmitButton';
 import { createFunnelAction, deleteFunnelAction, getKnownEventsAction } from './actions';
 import { EventSearchFields } from '@/components/analytics/EventSearchFields';
 import { FunnelStepRow } from '@/components/analytics/FunnelStepRow';
+import { TrafficGeoFilters } from '@/components/analytics/TrafficGeoFilters';
 import { FunnelBarChart } from '@/components/charts/FunnelBarChart';
 import { FunnelStepsTable } from '@/components/charts/FunnelStepsTable';
 import { TrendLineChart } from '@/components/charts/TrendLineChart';
@@ -67,6 +68,9 @@ interface WebsiteTrafficData {
   referrers: { referrer_host: string | null; sessions: number }[];
   campaigns: { utm_source: string | null; utm_campaign: string | null; sessions: number }[];
   landingPages: { landing_path: string | null; sessions: number }[];
+  // Optional: only sent by backends that ship the geo-tag coverage count —
+  // admin deploys independently of booking-service, so tolerate the old shape.
+  geoCoverage?: { tagged: number; untagged: number };
 }
 
 interface LocationReachData {
@@ -268,12 +272,24 @@ export default async function AnalyticsPage({
     event?: string;
     f1k?: string; f1v?: string; f2k?: string; f2v?: string; f3k?: string; f3v?: string;
     funnelId?: string;
+    country?: string;
+    city?: string;
   }>;
 }) {
   await requireSession();
-  const { view: rawView, days: rawDays, distinctId, event, f1k, f1v, f2k, f2v, f3k, f3v, funnelId } = await searchParams;
+  const { view: rawView, days: rawDays, distinctId, event, f1k, f1v, f2k, f2v, f3k, f3v, funnelId, country: rawCountry, city: rawCity } = await searchParams;
   const view: View = isView(rawView) ? rawView : 'traffic';
   const days = rawDays && Number(rawDays) > 0 ? rawDays : '30';
+  // India is the default lens (launch market is Bengaluru + Delhi NCR); an
+  // explicitly empty ?country= means "All countries", so only an ABSENT param
+  // falls back to the default — hence the undefined check, not truthiness.
+  const country = rawCountry === undefined ? 'India' : rawCountry;
+  const city = rawCity ?? '';
+  // Days toggles must keep the traffic filters; other views don't use them.
+  const trafficFilterQs =
+    view === 'traffic'
+      ? `&country=${encodeURIComponent(country)}${city ? `&city=${encodeURIComponent(city)}` : ''}`
+      : '';
 
   return (
     <div className="flex flex-col gap-4">
@@ -310,7 +326,7 @@ export default async function AnalyticsPage({
             {['7', '30', '90'].map((d) => (
               <Link
                 key={d}
-                href={`/analytics?view=${view}&days=${d}`}
+                href={`/analytics?view=${view}&days=${d}${trafficFilterQs}`}
                 className={`rounded px-2.5 py-1 text-sm transition-colors ${
                   d === days
                     ? 'bg-gray-800 font-medium text-white dark:bg-gray-200 dark:text-gray-900'
@@ -324,7 +340,7 @@ export default async function AnalyticsPage({
         )}
       </div>
 
-      {view === 'traffic' && <TrafficView days={days} />}
+      {view === 'traffic' && <TrafficView days={days} country={country} city={city} />}
       {view === 'reach' && <ReachView days={days} />}
       {view === 'supply' && <SupplyView days={days} />}
       {view === 'conversion' && <ConversionView days={days} />}
@@ -346,19 +362,60 @@ export default async function AnalyticsPage({
   );
 }
 
-async function TrafficView({ days }: { days: string }) {
-  const { data } = await gatewayJson<{ data: WebsiteTrafficData }>(
-    `/api/bookings/admin/analytics/website-traffic?days=${days}`,
-  );
+// Suggestion lists for the traffic geo dropdowns — actual countries/cities
+// observed on geo-tagged website sessions, most common first, rather than a
+// hardcoded atlas (the tag only exists where Vercel's edge could resolve it).
+// Cosmetic: a failed lookup degrades to an empty dropdown, never blocks the
+// view. Scoped to session_started since that's the per-visit grain these
+// filters slice; screen_viewed adds no new locations.
+async function trafficGeoValues(key: string, scopeCountry?: string): Promise<string[]> {
+  try {
+    const scope = scopeCountry ? `&filterKey=geo_country&filterValue=${encodeURIComponent(scopeCountry)}` : '';
+    const { data } = await gatewayJson<{ data: { values: { value: string }[] } }>(
+      `/api/bookings/admin/analytics/known-values?event=session_started&key=${key}&limit=100${scope}`,
+    );
+    return data.values.map((v) => v.value);
+  } catch {
+    return [];
+  }
+}
+
+async function TrafficView({ days, country, city }: { days: string; country: string; city: string }) {
+  const [{ data }, countryOptions, cityOptionsRaw] = await Promise.all([
+    gatewayJson<{ data: WebsiteTrafficData }>(
+      `/api/bookings/admin/analytics/website-traffic?days=${days}&country=${encodeURIComponent(country)}${
+        city ? `&city=${encodeURIComponent(city)}` : ''
+      }`,
+    ),
+    trafficGeoValues('geo_country'),
+    // City options scoped to the selected country so India shows Indian cities;
+    // "All countries" shows every city seen anywhere.
+    trafficGeoValues('geo_city', country || undefined),
+  ]);
+  // The applied filter must stay selectable even if suggestions failed or the
+  // value fell outside the top-100 window.
+  const cities = city && !cityOptionsRaw.includes(city) ? [...cityOptionsRaw, city] : cityOptionsRaw;
+  const countries = country && !countryOptions.includes(country) ? [...countryOptions, country] : countryOptions;
 
   const sessionsByDay = new Map(data.daily.filter((d) => d.event === 'session_started').map((d) => [d.day, d.n]));
   const pageviewsByDay = new Map(data.daily.filter((d) => d.event === 'screen_viewed').map((d) => [d.day, d.n]));
   const allDays = [...new Set(data.daily.map((d) => d.day))].sort();
   const sessionPoints = allDays.map((day) => ({ day, value: sessionsByDay.get(day) ?? 0 }));
   const pageviewPoints = allDays.map((day) => ({ day, value: pageviewsByDay.get(day) ?? 0 }));
+  const coverage = data.geoCoverage;
 
   return (
     <>
+      <Card>
+        <TrafficGeoFilters days={days} country={country} city={city} countries={countries} cities={cities} />
+        {coverage && coverage.untagged > 0 && (
+          <p className="mt-3 border-t border-gray-100 pt-2 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
+            Location tagging started {coverage.tagged.toLocaleString()} sessions ago — the other{' '}
+            {coverage.untagged.toLocaleString()} in this window predate it and only appear under &ldquo;All
+            countries&rdquo;.
+          </p>
+        )}
+      </Card>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <StatTile label="Sessions" value={data.totalSessions.toLocaleString()} hint="session_started, one per tab/visit" />
         <StatTile label="Unique visitors" value={data.uniqueVisitors.toLocaleString()} hint="distinct browser/user id" />
@@ -601,11 +658,18 @@ async function ReachView({ days }: { days: string }) {
 }
 
 async function SupplyView({ days }: { days: string }) {
-  const [{ data: funnel }, { data: sla }, { data: health }] = await Promise.all([
-    gatewayJson<{ data: OnboardingFunnelData }>(`/api/bookings/admin/analytics/onboarding-funnel?days=${days}`),
-    gatewayJson<{ data: ApprovalSlaData }>(`/api/bookings/admin/analytics/approval-sla?days=${days}`),
-    gatewayJson<{ data: SupplyHealthData }>(`/api/bookings/admin/analytics/supply-health`),
-  ]);
+  let funnel: OnboardingFunnelData = { stepCounts: [], byStep: [], weeklyApprovals: [], runRatePerWeek: 0 };
+  let sla: ApprovalSlaData = { gyms: [], medianHoursToResolve: null };
+  let health: SupplyHealthData = { gyms: [] };
+  try {
+    [{ data: funnel }, { data: sla }, { data: health }] = await Promise.all([
+      gatewayJson<{ data: OnboardingFunnelData }>(`/api/bookings/admin/analytics/onboarding-funnel?days=${days}`),
+      gatewayJson<{ data: ApprovalSlaData }>(`/api/bookings/admin/analytics/approval-sla?days=${days}`),
+      gatewayJson<{ data: SupplyHealthData }>(`/api/bookings/admin/analytics/supply-health`),
+    ]);
+  } catch {
+    // partial data — render what we got
+  }
 
   const steps = withDropoff(
     toOrderedSteps(

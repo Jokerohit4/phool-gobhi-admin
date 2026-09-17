@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: '/edit-requests', label: 'Edit Requests' },
   { href: '/analytics', label: 'Analytics' },
   { href: '/attendance', label: 'Attendance' },
+  { href: '/attendance-saas', label: 'Attendance SaaS' },
   { href: '/payouts', label: 'Payouts' },
   { href: '/staff', label: 'Staff' },
   { href: '/jobs', label: 'Jobs' },
@@ -15,6 +16,9 @@ const NAV_ITEMS = [
   { href: '/messages', label: 'Messages' },
   { href: '/reviews', label: 'Reviews' },
   { href: '/pitch-access', label: 'Pitch Access' },
+  { href: '/health', label: 'Health & Activity' },
+  { href: '/gamification/coins', label: 'Coins & Streaks' },
+  { href: '/gamification/challenges', label: 'Challenges' },
   { href: '/settings', label: 'Settings' },
 ];
 
