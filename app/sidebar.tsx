@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { href: '/health', label: 'Health & Activity' },
   { href: '/gamification/coins', label: 'Coins & Streaks' },
   { href: '/gamification/challenges', label: 'Challenges' },
+  { href: '/health', label: 'Health & Training' },
   { href: '/settings', label: 'Settings' },
 ];
 

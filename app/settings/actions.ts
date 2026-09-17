@@ -180,6 +180,14 @@ export async function updateFeatureFlagsAction(_prev: ActionState, formData: For
   try {
     const current = await loadCurrentAppConfig();
     const features: FeatureFlags = {
+      // Spread first so any flag this form does not render is PRESERVED
+      // rather than dropped. Rebuilding the object from scratch used to wipe
+      // healthPersonalisation and recapSharing — the two legal gates, edited
+      // on the Health page — every time anyone saved this form. They fall
+      // back to false in auth-service, so the failure was silent and
+      // fail-safe rather than dangerous, but it still reset them without
+      // telling anyone. Any flag added elsewhere in future survives too.
+      ...current.features,
       buddy: { enabled: formData.get('buddyEnabled') === 'on' },
       badges: { enabled: formData.get('badgesEnabled') === 'on' },
       streaksCoins: { enabled: formData.get('streaksCoinsEnabled') === 'on' },
