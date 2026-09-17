@@ -123,7 +123,7 @@ export async function updateGymSubscriptionPricingModeAction(
       body: JSON.stringify({ subscriptionPricingMode, subscriptionFlatFeePerUser }),
     });
   } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : 'Failed to update pricing mode' };
+return { ok: false, message: err instanceof Error ? err.message : 'Failed to update pricing mode' };
   }
   revalidatePath(`/gyms/${gymId}`);
   return { ok: true, message: 'Subscription pricing mode updated' };
