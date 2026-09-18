@@ -78,6 +78,11 @@ interface FeatureFlags {
   healthMetrics: { enabled: boolean };
   healthPersonalisation: { enabled: boolean };
   recapSharing: { enabled: boolean };
+  brandedOnboarding: { enabled: boolean };
+  homeTrackHome: { enabled: boolean };
+  fitnessAssistant: { enabled: boolean };
+  cycleTracking: { enabled: boolean };
+  nonPartnerAttendance: { enabled: boolean };
 }
 
 // Buddy is live today, so the default is enabled — the toggle only does
@@ -95,6 +100,11 @@ const DEFAULT_FEATURES: FeatureFlags = {
   healthMetrics: { enabled: false },
   healthPersonalisation: { enabled: false },
   recapSharing: { enabled: false },
+  brandedOnboarding: { enabled: false },
+  homeTrackHome: { enabled: false },
+  fitnessAssistant: { enabled: false },
+  cycleTracking: { enabled: false },
+  nonPartnerAttendance: { enabled: false },
 };
 
 function withFeatures(raw: Partial<FeatureFlags> | null | undefined): FeatureFlags {
@@ -109,6 +119,11 @@ function withFeatures(raw: Partial<FeatureFlags> | null | undefined): FeatureFla
       enabled: raw?.healthPersonalisation?.enabled ?? DEFAULT_FEATURES.healthPersonalisation.enabled,
     },
     recapSharing: { enabled: raw?.recapSharing?.enabled ?? DEFAULT_FEATURES.recapSharing.enabled },
+    brandedOnboarding: { enabled: raw?.brandedOnboarding?.enabled ?? DEFAULT_FEATURES.brandedOnboarding.enabled },
+    homeTrackHome: { enabled: raw?.homeTrackHome?.enabled ?? DEFAULT_FEATURES.homeTrackHome.enabled },
+    fitnessAssistant: { enabled: raw?.fitnessAssistant?.enabled ?? DEFAULT_FEATURES.fitnessAssistant.enabled },
+    cycleTracking: { enabled: raw?.cycleTracking?.enabled ?? DEFAULT_FEATURES.cycleTracking.enabled },
+    nonPartnerAttendance: { enabled: raw?.nonPartnerAttendance?.enabled ?? DEFAULT_FEATURES.nonPartnerAttendance.enabled },
   };
 }
 
@@ -562,6 +577,72 @@ export default async function SettingsPage() {
                 The only feature producing an artifact meant to leave the platform. The card carries numbers only —
                 no name, gym or photo — so there is no PII on it by construction. Off: the recap screen and its
                 share sheet disappear.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle
+                  name="brandedOnboardingEnabled"
+                  defaultChecked={features.brandedOnboarding.enabled}
+                />
+                Branded onboarding (do you work out / where)
+              </label>
+              <p className="text-sm text-gray-500">
+                The branching signup flow that asks whether someone already trains and where, then records an app
+                mode from the answers. This flag gates <strong>collection only</strong> — it does not change anyone&apos;s
+                home screen, so it is safe to turn on early to see the real split between home, partner-gym and
+                non-partner-gym users. Off: the existing two-step onboarding runs unchanged and nothing is written.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="homeTrackHomeEnabled" defaultChecked={features.homeTrackHome.enabled} />
+                Home-track home screen
+              </label>
+              <p className="text-sm text-gray-500">
+                Lets the onboarding answers actually change the app: someone who already trains at home gets a
+                workout/progress home screen instead of gym discovery, and pay-per-session is demoted to a single card.
+                Needs <strong>branded onboarding</strong> (to know who they are) and <strong>health metrics</strong>
+                {' '}(the workout widgets it leads with) both on. Off: everyone keeps the current home screen no matter
+                what they answered.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="fitnessAssistantEnabled" defaultChecked={features.fitnessAssistant.enabled} />
+                Fitness assistant (AI chat)
+              </label>
+              <p className="text-sm text-gray-500">
+                An AI assistant that answers training questions using the user&apos;s own check-in and workout history.
+                Every user must accept a disclaimer before their first message, and that consent goes stale
+                automatically if the wording changes. Needs <strong>health metrics</strong> on as well (it reads the
+                workout data). Off: the assistant disappears and its endpoints refuse. Nothing already stored is
+                deleted — transcripts go only with the account.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="cycleTrackingEnabled" defaultChecked={features.cycleTracking.enabled} />
+                Cycle tracking
+              </label>
+              <p className="text-sm text-gray-500">
+                Stores cycle dates and phase history server-side, and adapts training suggestions around them. This is
+                the <strong>most sensitive data the platform holds</strong> and it reverses an earlier decision
+                (FR-27) to keep it off our servers entirely. Users must opt in separately even when this is on, and
+                training load still moves only through the existing programming mode. Leave off until the consent
+                wording has been reviewed.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="nonPartnerAttendanceEnabled" defaultChecked={features.nonPartnerAttendance.enabled} />
+                Non-partner gym check-ins
+              </label>
+              <p className="text-sm text-gray-500">
+                Lets someone name any gym from Google Places and log visits there with GPS, even if we have no
+                partnership. Their streaks and history then work like anyone else&apos;s, and the gyms they name become a
+                ranked partner-acquisition list under Gyms. Each place lookup is a billable Places call, so this is the
+                kill switch for that cost. Off: the search refuses; visits already logged stay visible to the user.
               </p>
             </div>
             <SubmitButton pendingText="Saving…" className="w-fit">

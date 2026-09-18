@@ -92,6 +92,11 @@ interface FeatureFlags {
   healthMetrics: { enabled: boolean };
   healthPersonalisation: { enabled: boolean };
   recapSharing: { enabled: boolean };
+  brandedOnboarding: { enabled: boolean };
+  homeTrackHome: { enabled: boolean };
+  fitnessAssistant: { enabled: boolean };
+  cycleTracking: { enabled: boolean };
+  nonPartnerAttendance: { enabled: boolean };
 }
 
 // Must match auth-service's own DEFAULT_FEATURES and page.tsx's copy exactly.
@@ -104,6 +109,11 @@ const DEFAULT_FEATURES: FeatureFlags = {
   healthMetrics: { enabled: false },
   healthPersonalisation: { enabled: false },
   recapSharing: { enabled: false },
+  brandedOnboarding: { enabled: false },
+  homeTrackHome: { enabled: false },
+  fitnessAssistant: { enabled: false },
+  cycleTracking: { enabled: false },
+  nonPartnerAttendance: { enabled: false },
 };
 
 interface MaintenanceConfig {
@@ -199,6 +209,11 @@ export async function updateFeatureFlagsAction(_prev: ActionState, formData: For
       // DEFAULT_FEATURES said and turning either off needed a deploy.
       healthPersonalisation: { enabled: formData.get('healthPersonalisationEnabled') === 'on' },
       recapSharing: { enabled: formData.get('recapSharingEnabled') === 'on' },
+      brandedOnboarding: { enabled: formData.get('brandedOnboardingEnabled') === 'on' },
+      homeTrackHome: { enabled: formData.get('homeTrackHomeEnabled') === 'on' },
+      fitnessAssistant: { enabled: formData.get('fitnessAssistantEnabled') === 'on' },
+      cycleTracking: { enabled: formData.get('cycleTrackingEnabled') === 'on' },
+      nonPartnerAttendance: { enabled: formData.get('nonPartnerAttendanceEnabled') === 'on' },
     };
 
     await gatewayJson('/api/auth/app-config/admin', {
