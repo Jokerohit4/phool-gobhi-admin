@@ -77,12 +77,15 @@ export function PropertyFilterRow({
   const [values, setValues] = useState<{ value: string; n: number }[]>([]);
   const [settledKey, setSettledKey] = useState(defaultKey ?? '');
 
+  // The effects only FETCH. Clearing on an empty event/key is derived at
+  // render (see effectiveKeys/effectiveValues below) rather than written back
+  // into state: a synchronous setState inside an effect schedules a second
+  // render pass before paint, which is what react-hooks/set-state-in-effect
+  // flags. Suggestions that are simply absent when there is nothing to
+  // suggest need no stored state at all.
   useEffect(() => {
+    if (!event) return;
     let active = true;
-    if (!event) {
-      setKeys([]);
-      return;
-    }
     getKnownPropertyKeysAction(event).then((k) => {
       if (active) setKeys(k);
     });
@@ -92,11 +95,8 @@ export function PropertyFilterRow({
   }, [event]);
 
   useEffect(() => {
+    if (!event || !settledKey) return;
     let active = true;
-    if (!event || !settledKey) {
-      setValues([]);
-      return;
-    }
     getKnownPropertyValuesAction(event, settledKey).then((v) => {
       if (active) setValues(v);
     });
@@ -104,6 +104,12 @@ export function PropertyFilterRow({
       active = false;
     };
   }, [event, settledKey]);
+
+  // Stale results from a previous event/key are never shown: without these,
+  // clearing the event box would keep offering the old event's suggestions
+  // until a new fetch resolved.
+  const effectiveKeys = event ? keys : [];
+  const effectiveValues = event && settledKey ? values : [];
 
   return (
     <div className="flex gap-1">
@@ -117,7 +123,7 @@ export function PropertyFilterRow({
         onBlur={(e) => setSettledKey(e.target.value.trim())}
       />
       <datalist id={keyListId}>
-        {keys.map((k) => (
+        {effectiveKeys.map((k) => (
           <option key={k} value={k} />
         ))}
       </datalist>
@@ -130,7 +136,7 @@ export function PropertyFilterRow({
         className={INPUT_CLASS}
       />
       <datalist id={valueListId}>
-        {values.map((v) => (
+        {effectiveValues.map((v) => (
           <option key={v.value} value={v.value}>{`${v.value} (${v.n})`}</option>
         ))}
       </datalist>
