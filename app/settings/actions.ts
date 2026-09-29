@@ -90,6 +90,8 @@ interface FeatureFlags {
   challenges: { enabled: boolean };
   buddyPairedStreaks: { enabled: boolean };
   healthMetrics: { enabled: boolean };
+  healthLedger: { enabled: boolean };
+  foodPhotoLogging: { enabled: boolean };
   healthPersonalisation: { enabled: boolean };
   recapSharing: { enabled: boolean };
   brandedOnboarding: { enabled: boolean };
@@ -107,6 +109,8 @@ const DEFAULT_FEATURES: FeatureFlags = {
   challenges: { enabled: false },
   buddyPairedStreaks: { enabled: false },
   healthMetrics: { enabled: false },
+  healthLedger: { enabled: false },
+  foodPhotoLogging: { enabled: false },
   healthPersonalisation: { enabled: false },
   recapSharing: { enabled: false },
   brandedOnboarding: { enabled: false },
@@ -204,6 +208,14 @@ export async function updateFeatureFlagsAction(_prev: ActionState, formData: For
       challenges: { enabled: formData.get('challengesEnabled') === 'on' },
       buddyPairedStreaks: { enabled: formData.get('buddyPairedStreaksEnabled') === 'on' },
       healthMetrics: { enabled: formData.get('healthMetricsEnabled') === 'on' },
+      // These two had no toggle anywhere in the portal until this one, so
+      // healthLedger could only be switched on by editing the config blob or
+      // changing auth-service's default and deploying. The ledger was therefore
+      // unreachable on any environment that hadn't had a code change made for
+      // it - which is exactly what shipping a feature behind a flag is supposed
+      // to avoid. foodPhotoLogging is the separable photo sub-flag and stays off.
+      healthLedger: { enabled: formData.get('healthLedgerEnabled') === 'on' },
+      foodPhotoLogging: { enabled: formData.get('foodPhotoLoggingEnabled') === 'on' },
       // Added 2026-09-10. Until then these two were the only flags the
       // portal could not reach, so their state was whatever authController's
       // DEFAULT_FEATURES said and turning either off needed a deploy.

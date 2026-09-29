@@ -76,6 +76,15 @@ interface FeatureFlags {
   challenges: { enabled: boolean };
   buddyPairedStreaks: { enabled: boolean };
   healthMetrics: { enabled: boolean };
+  // The health ledger (food log, targets, saved meals). Layered on
+  // healthMetrics, not a peer of it: health-service's ledgerGated chain is
+  // [requireAuth, healthMetrics, healthLedger], so this is inert while Health &
+  // Activity is off.
+  healthLedger: { enabled: boolean };
+  // Sub-flag of healthLedger. The only part of the ledger that puts a user's
+  // image on a third party's infrastructure, so it stays separable and off
+  // until Zero Data Retention is confirmed on that provider account.
+  foodPhotoLogging: { enabled: boolean };
   healthPersonalisation: { enabled: boolean };
   recapSharing: { enabled: boolean };
   brandedOnboarding: { enabled: boolean };
@@ -98,6 +107,8 @@ const DEFAULT_FEATURES: FeatureFlags = {
   challenges: { enabled: false },
   buddyPairedStreaks: { enabled: false },
   healthMetrics: { enabled: false },
+  healthLedger: { enabled: false },
+  foodPhotoLogging: { enabled: false },
   healthPersonalisation: { enabled: false },
   recapSharing: { enabled: false },
   brandedOnboarding: { enabled: false },
@@ -115,6 +126,8 @@ function withFeatures(raw: Partial<FeatureFlags> | null | undefined): FeatureFla
     challenges: { enabled: raw?.challenges?.enabled ?? DEFAULT_FEATURES.challenges.enabled },
     buddyPairedStreaks: { enabled: raw?.buddyPairedStreaks?.enabled ?? DEFAULT_FEATURES.buddyPairedStreaks.enabled },
     healthMetrics: { enabled: raw?.healthMetrics?.enabled ?? DEFAULT_FEATURES.healthMetrics.enabled },
+    healthLedger: { enabled: raw?.healthLedger?.enabled ?? DEFAULT_FEATURES.healthLedger.enabled },
+    foodPhotoLogging: { enabled: raw?.foodPhotoLogging?.enabled ?? DEFAULT_FEATURES.foodPhotoLogging.enabled },
     healthPersonalisation: {
       enabled: raw?.healthPersonalisation?.enabled ?? DEFAULT_FEATURES.healthPersonalisation.enabled,
     },
@@ -550,8 +563,31 @@ export default async function SettingsPage() {
               </label>
               <p className="text-sm text-gray-500">
                 Off: exercise logging, routines, active workouts and the home-screen activity rings disappear from
-                the customer app. The two switches below sit on top of this one — with Health &amp; Activity off,
-                neither does anything.
+                the customer app. The switches below sit on top of this one — with Health &amp; Activity off,
+                none of them do anything.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="healthLedgerEnabled" defaultChecked={features.healthLedger.enabled} />
+                Health Ledger
+              </label>
+              <p className="text-sm text-gray-500">
+                Off: the food log, daily targets, saved meals and the consent screens behind them are refused by
+                the API with FEATURE_DISABLED. Also needs Health &amp; Activity on. It collects personal data, so
+                this stays off until you mean it.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1 border-t pt-4">
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="foodPhotoLoggingEnabled" defaultChecked={features.foodPhotoLogging.enabled} />
+                Food Photo Logging
+              </label>
+              <p className="text-sm text-gray-500">
+                Off: food can be logged by search and by saved meal, but not by photograph. Kept separate because
+                it is the only part of the ledger that sends a user&rsquo;s image to a third-party model
+                provider. Needs Health Ledger on. Do not turn this on until Zero Data Retention is confirmed on
+                that provider&rsquo;s account.
               </p>
             </div>
             <div className="flex flex-col gap-1 border-t pt-4">
