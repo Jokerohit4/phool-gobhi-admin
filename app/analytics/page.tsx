@@ -187,7 +187,7 @@ interface CustomFunnelResult {
 }
 
 const VIEWS = [
-  'traffic', 'reach', 'supply', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy',
+  'traffic', 'reach', 'supply', 'customerOnboarding', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy',
   'city', 'revenue', 'retention', 'giftBonus', 'badges', 'user', 'eventSearch', 'funnels',
 ] as const;
 type View = (typeof VIEWS)[number];
@@ -200,6 +200,7 @@ const VIEW_LABELS: Record<View, string> = {
   traffic: 'Website Traffic',
   reach: 'Location Reach',
   supply: 'Supply',
+  customerOnboarding: 'Customer Onboarding',
   conversion: 'Conversion',
   fulfillment: 'Fulfillment',
   activation: 'Activation',
@@ -220,7 +221,7 @@ const VIEW_LABELS: Record<View, string> = {
 // undifferentiated row.
 const VIEW_GROUPS: { label: string; views: View[] }[] = [
   { label: 'Traffic', views: ['traffic', 'reach'] },
-  { label: 'Funnels', views: ['supply', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy'] },
+  { label: 'Funnels', views: ['supply', 'customerOnboarding', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy'] },
   { label: 'Breakdowns', views: ['city', 'revenue', 'retention', 'giftBonus', 'badges'] },
   { label: 'Explore', views: ['user', 'eventSearch', 'funnels'] },
 ];
@@ -343,6 +344,7 @@ export default async function AnalyticsPage({
       {view === 'traffic' && <TrafficView days={days} country={country} city={city} />}
       {view === 'reach' && <ReachView days={days} />}
       {view === 'supply' && <SupplyView days={days} />}
+      {view === 'customerOnboarding' && <CustomerOnboardingView days={days} />}
       {view === 'conversion' && <ConversionView days={days} />}
       {view === 'fulfillment' && <FulfillmentView days={days} />}
       {view === 'activation' && <ActivationView days={days} />}
@@ -824,6 +826,170 @@ async function SupplyView({ days }: { days: string }) {
           </tbody>
         </Table>
       </Card>
+    </>
+  );
+}
+
+// ---- Customer onboarding funnel (onboarding audit P1/P2) --------------------
+// Per-step drop-off for the customer app's signup flow, from the
+// onboarding_step_viewed / _completed / _permission_result / onboarding_completed
+// events (booking-service getCustomerOnboardingFunnel). Distinct from the
+// Supply view's partner onboarding, which is gym supply, not customers.
+interface CustomerOnboardingFunnelData {
+  steps: { step: string | null; surface: string; viewed: number; completed: number }[];
+  permissions: { permission: string | null; granted: number; asked: number }[];
+  completedByTrainingLocation: { training_location: string; users: number }[];
+}
+
+// Order of the signup flow. The training step only exists with the
+// brandedOnboarding flag on, so a window with none of it shows zeros there
+// rather than hiding the row — a zero is information.
+const CUSTOMER_ONBOARDING_STEPS = ['details', 'training', 'permissions'] as const;
+const CUSTOMER_STEP_LABELS: Record<string, string> = {
+  details: 'Profile details',
+  training: 'How you train',
+  permissions: 'Permissions',
+};
+const SURFACE_LABELS: Record<string, string> = {
+  signup: 'Signup',
+  resume: 'Resume prompt',
+  profile_edit: 'Profile edit',
+};
+const TRAINING_LOCATION_LABELS: Record<string, string> = {
+  home: 'Home',
+  gym: 'Gym',
+  fitness_centre: 'Gym (legacy "fitness centre")',
+  other: 'Somewhere else',
+  unanswered: 'Not answered',
+};
+
+function pct(n: number, d: number): string {
+  return d > 0 ? `${Math.round((n / d) * 100)}%` : '—';
+}
+
+async function CustomerOnboardingView({ days }: { days: string }) {
+  // Own try/catch, never a bare Promise.all: a failing endpoint renders an
+  // empty view with a note, never takes the whole page down.
+  let data: CustomerOnboardingFunnelData = { steps: [], permissions: [], completedByTrainingLocation: [] };
+  let failed = false;
+  try {
+    ({ data } = await gatewayJson<{ data: CustomerOnboardingFunnelData }>(
+      `/api/bookings/admin/analytics/customer-onboarding-funnel?days=${days}`,
+    ));
+  } catch {
+    failed = true;
+  }
+
+  const signup = data.steps.filter((r) => r.surface === 'signup');
+  const bySignupStep = new Map(signup.map((r) => [r.step ?? '', r]));
+  // viewed -> completed for each step, in flow order: the funnel a new user
+  // actually walks.
+  const funnel = withDropoff(
+    CUSTOMER_ONBOARDING_STEPS.flatMap((step) => {
+      const row = bySignupStep.get(step);
+      const label = CUSTOMER_STEP_LABELS[step] ?? step;
+      return [
+        { label: `${label} — viewed`, value: row?.viewed ?? 0 },
+        { label: `${label} — completed`, value: row?.completed ?? 0 },
+      ];
+    }),
+  );
+  const completedTotal = data.completedByTrainingLocation.reduce((n, r) => n + r.users, 0);
+
+  return (
+    <>
+      {failed && (
+        <Card>
+          <p className="text-sm text-amber-700 dark:text-amber-400">
+            Couldn&apos;t load the customer onboarding funnel. Showing nothing rather than a partial picture.
+          </p>
+        </Card>
+      )}
+      <Card>
+        <SectionHeading
+          title="Signup onboarding funnel"
+          subtitle="Distinct users who saw and finished each step of the customer app's signup flow"
+        />
+        <FunnelBarChart steps={funnel} />
+        <div className="mt-3">
+          <FunnelStepsTable steps={funnel} />
+        </div>
+      </Card>
+
+      <Card>
+        <SectionHeading
+          title="By surface"
+          subtitle="Signup, the resume prompt at Main (for accounts that skipped it), and Profile → How you train"
+        />
+        <Table>
+          <Thead>
+            <Th>Surface</Th>
+            <Th>Step</Th>
+            <Th>Viewed</Th>
+            <Th>Completed</Th>
+            <Th>Completion</Th>
+          </Thead>
+          <tbody>
+            {data.steps.map((r) => (
+              <Tr key={`${r.surface}-${r.step}`}>
+                <Td>{SURFACE_LABELS[r.surface] ?? r.surface}</Td>
+                <Td>{CUSTOMER_STEP_LABELS[r.step ?? ''] ?? r.step ?? 'unknown'}</Td>
+                <Td className="tabular-nums">{r.viewed}</Td>
+                <Td className="tabular-nums">{r.completed}</Td>
+                <Td className="tabular-nums">{pct(r.completed, r.viewed)}</Td>
+              </Tr>
+            ))}
+            {data.steps.length === 0 && <EmptyRow colSpan={5}>No onboarding events in this window.</EmptyRow>}
+          </tbody>
+        </Table>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <SectionHeading title="Permission grant rate" subtitle="What the OS actually answered, not taps" />
+          <Table>
+            <Thead>
+              <Th>Permission</Th>
+              <Th>Asked</Th>
+              <Th>Granted</Th>
+              <Th>Rate</Th>
+            </Thead>
+            <tbody>
+              {data.permissions.map((r) => (
+                <Tr key={r.permission ?? 'unknown'}>
+                  <Td>{r.permission ?? 'unknown'}</Td>
+                  <Td className="tabular-nums">{r.asked}</Td>
+                  <Td className="tabular-nums">{r.granted}</Td>
+                  <Td className="tabular-nums">{pct(r.granted, r.asked)}</Td>
+                </Tr>
+              ))}
+              {data.permissions.length === 0 && <EmptyRow colSpan={4}>No permission prompts in this window.</EmptyRow>}
+            </tbody>
+          </Table>
+        </Card>
+        <Card>
+          <SectionHeading title="Finished onboarding, by where they train" />
+          <Table>
+            <Thead>
+              <Th>Training location</Th>
+              <Th>Users</Th>
+              <Th>Share</Th>
+            </Thead>
+            <tbody>
+              {data.completedByTrainingLocation.map((r) => (
+                <Tr key={r.training_location}>
+                  <Td>{TRAINING_LOCATION_LABELS[r.training_location] ?? r.training_location}</Td>
+                  <Td className="tabular-nums">{r.users}</Td>
+                  <Td className="tabular-nums">{pct(r.users, completedTotal)}</Td>
+                </Tr>
+              ))}
+              {data.completedByTrainingLocation.length === 0 && (
+                <EmptyRow colSpan={3}>No completed onboardings in this window.</EmptyRow>
+              )}
+            </tbody>
+          </Table>
+        </Card>
+      </div>
     </>
   );
 }
