@@ -1,4 +1,4 @@
-import { requireSession } from '@/lib/auth';
+﻿import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
 import {
   updateCancellationPolicyAction,
@@ -14,6 +14,7 @@ import {
   removeWalletTopupPresetAction,
   updateWalletTopupCustomAmountAction,
 } from './actions';
+import { loadFlagRegistry, type FlagRegistryEntry } from './flagRegistry';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
@@ -27,7 +28,7 @@ interface LaunchGate {
   launchAt: string | null;
 }
 
-// Inverse of launchInputToUtcIso in actions.ts — same fixed +5:30 IST offset,
+// Inverse of launchInputToUtcIso in actions.ts â€” same fixed +5:30 IST offset,
 // converting the stored UTC instant to the wall-clock string a
 // datetime-local input expects, so the field round-trips through IST
 // regardless of the admin's own browser timezone.
@@ -53,10 +54,10 @@ interface AppVersionEntry {
 type AppVersionConfig = Record<'customer' | 'partner', Record<'android' | 'ios', AppVersionEntry>>;
 
 const APP_VERSION_ROWS: Array<{ app: 'customer' | 'partner'; platform: 'android' | 'ios'; label: string }> = [
-  { app: 'customer', platform: 'android', label: 'Customer — Android' },
-  { app: 'customer', platform: 'ios', label: 'Customer — iOS' },
-  { app: 'partner', platform: 'android', label: 'Partner — Android' },
-  { app: 'partner', platform: 'ios', label: 'Partner — iOS' },
+  { app: 'customer', platform: 'android', label: 'Customer â€” Android' },
+  { app: 'customer', platform: 'ios', label: 'Customer â€” iOS' },
+  { app: 'partner', platform: 'android', label: 'Partner â€” Android' },
+  { app: 'partner', platform: 'ios', label: 'Partner â€” iOS' },
 ];
 
 const EMPTY_APP_VERSION_ENTRY: AppVersionEntry = {
@@ -66,78 +67,50 @@ const EMPTY_APP_VERSION_ENTRY: AppVersionEntry = {
   message: '',
 };
 
-interface FeatureFlags {
-  buddy: { enabled: boolean };
-  // Gamification suite — each phase ships behind its own kill-switch,
-  // default OFF (unlike buddy above) until an admin deliberately turns it
-  // on here. See C:\Users\rohit\.claude\plans\delightful-rolling-bubble.md.
-  badges: { enabled: boolean };
-  streaksCoins: { enabled: boolean };
-  challenges: { enabled: boolean };
-  buddyPairedStreaks: { enabled: boolean };
-  healthMetrics: { enabled: boolean };
-  // The health ledger (food log, targets, saved meals). Layered on
-  // healthMetrics, not a peer of it: health-service's ledgerGated chain is
-  // [requireAuth, healthMetrics, healthLedger], so this is inert while Health &
-  // Activity is off.
-  healthLedger: { enabled: boolean };
-  // Sub-flag of healthLedger. The only part of the ledger that puts a user's
-  // image on a third party's infrastructure, so it stays separable and off
-  // until Zero Data Retention is confirmed on that provider account.
-  foodPhotoLogging: { enabled: boolean };
-  healthPersonalisation: { enabled: boolean };
-  recapSharing: { enabled: boolean };
-  brandedOnboarding: { enabled: boolean };
-  homeTrackHome: { enabled: boolean };
-  fitnessAssistant: { enabled: boolean };
-  cycleTracking: { enabled: boolean };
-  nonPartnerAttendance: { enabled: boolean };
-}
+// The feature-flag list is NOT declared in this file any more.
+//
+// This page used to carry its own fifteen flag names plus a DEFAULT_FEATURES
+// literal that had to "match auth-service's own DEFAULT_FEATURES exactly" â€” a
+// comment that was an admission the two could drift, and they did. `runTracker`
+// shipped server-side and was the only flag off in dev, and was absent here, so
+// it was unreachable from this page: switching it on needed a code change and a
+// deploy. Nothing here failed when it drifted; the toggle simply did not exist.
+//
+// The list, the defaults, the grouping and the rationale for each flag now come
+// from auth-service's registry (GET /api/auth/app-config/registry, exposed as
+// loadFlagRegistry in ./actions). `features` is kept only as an open map for the
+// config blob's shape.
+type FeatureFlags = Record<string, { enabled: boolean }>;
 
-// Buddy is live today, so the default is enabled — the toggle only does
-// something once an admin deliberately turns it off. The gamification flags
-// default off — must match auth-service's own DEFAULT_FEATURES exactly, or
-// this page's "current state" checkboxes could show enabled while the
-// backend still serves disabled (or vice versa) whenever the stored blob
-// predates one of these keys.
-const DEFAULT_FEATURES: FeatureFlags = {
-  buddy: { enabled: true },
-  badges: { enabled: false },
-  streaksCoins: { enabled: false },
-  challenges: { enabled: false },
-  buddyPairedStreaks: { enabled: false },
-  healthMetrics: { enabled: false },
-  healthLedger: { enabled: false },
-  foodPhotoLogging: { enabled: false },
-  healthPersonalisation: { enabled: false },
-  recapSharing: { enabled: false },
-  brandedOnboarding: { enabled: false },
-  homeTrackHome: { enabled: false },
-  fitnessAssistant: { enabled: false },
-  cycleTracking: { enabled: false },
-  nonPartnerAttendance: { enabled: false },
+const FLAG_GROUP_ORDER = ['training', 'health', 'gamification', 'social', 'onboarding', 'ops'] as const;
+
+const FLAG_GROUP_LABELS: Record<string, string> = {
+  training: 'Workout tracking',
+  health: 'Health & metrics',
+  gamification: 'Gamification',
+  social: 'Social',
+  onboarding: 'Onboarding',
+  ops: 'Operations',
 };
 
-function withFeatures(raw: Partial<FeatureFlags> | null | undefined): FeatureFlags {
-  return {
-    buddy: { enabled: raw?.buddy?.enabled ?? DEFAULT_FEATURES.buddy.enabled },
-    badges: { enabled: raw?.badges?.enabled ?? DEFAULT_FEATURES.badges.enabled },
-    streaksCoins: { enabled: raw?.streaksCoins?.enabled ?? DEFAULT_FEATURES.streaksCoins.enabled },
-    challenges: { enabled: raw?.challenges?.enabled ?? DEFAULT_FEATURES.challenges.enabled },
-    buddyPairedStreaks: { enabled: raw?.buddyPairedStreaks?.enabled ?? DEFAULT_FEATURES.buddyPairedStreaks.enabled },
-    healthMetrics: { enabled: raw?.healthMetrics?.enabled ?? DEFAULT_FEATURES.healthMetrics.enabled },
-    healthLedger: { enabled: raw?.healthLedger?.enabled ?? DEFAULT_FEATURES.healthLedger.enabled },
-    foodPhotoLogging: { enabled: raw?.foodPhotoLogging?.enabled ?? DEFAULT_FEATURES.foodPhotoLogging.enabled },
-    healthPersonalisation: {
-      enabled: raw?.healthPersonalisation?.enabled ?? DEFAULT_FEATURES.healthPersonalisation.enabled,
-    },
-    recapSharing: { enabled: raw?.recapSharing?.enabled ?? DEFAULT_FEATURES.recapSharing.enabled },
-    brandedOnboarding: { enabled: raw?.brandedOnboarding?.enabled ?? DEFAULT_FEATURES.brandedOnboarding.enabled },
-    homeTrackHome: { enabled: raw?.homeTrackHome?.enabled ?? DEFAULT_FEATURES.homeTrackHome.enabled },
-    fitnessAssistant: { enabled: raw?.fitnessAssistant?.enabled ?? DEFAULT_FEATURES.fitnessAssistant.enabled },
-    cycleTracking: { enabled: raw?.cycleTracking?.enabled ?? DEFAULT_FEATURES.cycleTracking.enabled },
-    nonPartnerAttendance: { enabled: raw?.nonPartnerAttendance?.enabled ?? DEFAULT_FEATURES.nonPartnerAttendance.enabled },
-  };
+function flagLabel(name: string): string {
+  // Split camelCase into words rather than shipping a second nameâ†’display map,
+  // which would be one more list to keep in sync.
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/^./, (c) => c.toUpperCase());
+}
+
+function groupFlags(flags: FlagRegistryEntry[]): Array<[string, FlagRegistryEntry[]]> {
+  const byGroup = new Map<string, FlagRegistryEntry[]>();
+  for (const flag of flags) {
+    const list = byGroup.get(flag.group) || [];
+    list.push(flag);
+    byGroup.set(flag.group, list);
+  }
+  return [...byGroup.entries()].sort(
+    (a, b) => FLAG_GROUP_ORDER.indexOf(a[0] as never) - FLAG_GROUP_ORDER.indexOf(b[0] as never)
+  );
 }
 
 interface MaintenanceConfig {
@@ -180,7 +153,7 @@ const MAINTENANCE_SECTIONS: Array<{
   },
 ];
 
-// Defensive fill — tolerates the admin GET returning a partial/missing config
+// Defensive fill â€” tolerates the admin GET returning a partial/missing config
 // (e.g. before the first PUT ever lands) without the page crashing.
 function withDefaults(config: Partial<AppVersionConfig> | null | undefined): AppVersionConfig {
   const merged = {} as AppVersionConfig;
@@ -209,12 +182,12 @@ interface WalletTopupConfig {
 }
 
 const OTP_PROVIDER_OPTIONS: Array<{ value: OtpProvider; label: string; description: string }> = [
-  { value: 'firebase', label: 'Firebase phone auth', description: 'Default — real Firebase phone verification, no SMS cost.' },
-  { value: 'fast2sms', label: 'Fast2SMS', description: 'Real paid SMS to every phone number — only used when explicitly selected here.' },
+  { value: 'firebase', label: 'Firebase phone auth', description: 'Default â€” real Firebase phone verification, no SMS cost.' },
+  { value: 'fast2sms', label: 'Fast2SMS', description: 'Real paid SMS to every phone number â€” only used when explicitly selected here.' },
   {
     value: 'skip',
     label: 'Skip (test bypass)',
-    description: 'Allowlisted numbers below verify with 123456, no real OTP sent. Every other number falls back to real Firebase phone verification — Fast2SMS never fires unless it’s explicitly selected above.',
+    description: 'Allowlisted numbers below verify with 123456, no real OTP sent. Every other number falls back to real Firebase phone verification â€” Fast2SMS never fires unless itâ€™s explicitly selected above.',
   },
 ];
 
@@ -238,8 +211,13 @@ export default async function SettingsPage() {
     updatedAt?: string | null;
   }>('/api/auth/app-config/admin');
   const appVersionConfig = withDefaults(appVersionRaw);
-  const features = withFeatures(appVersionRaw?.features);
   const maintenance = withMaintenance(appVersionRaw?.maintenance);
+
+  // The flag list to render, from the server's registry. If this fails the page
+  // still renders everything else â€” but the feature-flag section says so instead
+  // of showing an empty list that reads as "every flag is off", which would be
+  // the most dangerous possible failure mode for a kill-switch page.
+  const { flags: flagRegistry, failed: flagRegistryFailed } = await loadFlagRegistry();
 
   const { data: launchGate } = await gatewayJson<{ data: LaunchGate }>('/api/auth/launch-gate/admin');
 
@@ -289,7 +267,7 @@ export default async function SettingsPage() {
               Disabled: the site is always live. Enabled with a date: gated until that instant, then opens
               automatically. Enabled with no date: gated indefinitely (manual hold).
             </p>
-            <SubmitButton pendingText="Saving…" className="w-fit">
+            <SubmitButton pendingText="Savingâ€¦" className="w-fit">
               Save launch gate
             </SubmitButton>
           </ActionForm>
@@ -299,7 +277,7 @@ export default async function SettingsPage() {
       <section className="flex flex-col gap-4">
         <PageHeader
           title="Maintenance windows"
-          subtitle="Put the website's wallet or gyms section (or both) under maintenance — immediately or on a schedule. Blocks the matching pages and APIs on phoolgobhi.com only; the customer/partner apps are not affected."
+          subtitle="Put the website's wallet or gyms section (or both) under maintenance â€” immediately or on a schedule. Blocks the matching pages and APIs on phoolgobhi.com only; the customer/partner apps are not affected."
         />
         {MAINTENANCE_SECTIONS.map(({ feature, label, blurb }) => {
           const entry = maintenance[feature];
@@ -344,15 +322,15 @@ export default async function SettingsPage() {
                     type="text"
                     name="message"
                     defaultValue={entry.message}
-                    placeholder={`Optional — e.g. "We'll be back by 10 PM IST"`}
+                    placeholder={`Optional â€” e.g. "We'll be back by 10 PM IST"`}
                     className="rounded border px-3 py-2 text-sm"
                   />
                 </label>
                 <p className="text-sm text-gray-500">
                   Off with a start/end: the window still auto-engages while now is between them. On: gated
-                  immediately until you switch it off — a past end time does not auto-release a manual hold.
+                  immediately until you switch it off â€” a past end time does not auto-release a manual hold.
                 </p>
-                <SubmitButton pendingText="Saving…" className="w-fit">
+                <SubmitButton pendingText="Savingâ€¦" className="w-fit">
                   Save {label} maintenance
                 </SubmitButton>
               </ActionForm>
@@ -366,8 +344,8 @@ export default async function SettingsPage() {
           title="Cancellation policy"
           subtitle={
             policy.updatedAt
-              ? `Live for the app and refund calculation — last updated ${formatDateTimeIST(policy.updatedAt)} IST.`
-              : 'Live for the app and refund calculation — not customized yet, showing defaults.'
+              ? `Live for the app and refund calculation â€” last updated ${formatDateTimeIST(policy.updatedAt)} IST.`
+              : 'Live for the app and refund calculation â€” not customized yet, showing defaults.'
           }
         />
         <Card className="max-w-2xl">
@@ -411,7 +389,7 @@ export default async function SettingsPage() {
                 </div>
               );
             })}
-            <SubmitButton pendingText="Saving…" className="w-fit">
+            <SubmitButton pendingText="Savingâ€¦" className="w-fit">
               Save policy
             </SubmitButton>
           </ActionForm>
@@ -423,8 +401,8 @@ export default async function SettingsPage() {
           title="App version config"
           subtitle={
             appVersionUpdatedAt
-              ? `Controls the force-update gate and update-available nudge in both apps — last updated ${formatDateTimeIST(appVersionUpdatedAt)} IST.`
-              : 'Controls the force-update gate and update-available nudge in both apps — not customized yet, showing defaults.'
+              ? `Controls the force-update gate and update-available nudge in both apps â€” last updated ${formatDateTimeIST(appVersionUpdatedAt)} IST.`
+              : 'Controls the force-update gate and update-available nudge in both apps â€” not customized yet, showing defaults.'
           }
         />
         <Card className="max-w-3xl">
@@ -480,7 +458,7 @@ export default async function SettingsPage() {
                         type="text"
                         name={`${prefix}_message`}
                         defaultValue={entry.message}
-                        placeholder="Optional — shown on the update screen/dialog"
+                        placeholder="Optional â€” shown on the update screen/dialog"
                         className="rounded border px-3 py-2 text-sm"
                       />
                     </label>
@@ -488,7 +466,7 @@ export default async function SettingsPage() {
                 </div>
               );
             })}
-            <SubmitButton pendingText="Saving…" className="w-fit">
+            <SubmitButton pendingText="Savingâ€¦" className="w-fit">
               Save app version config
             </SubmitButton>
           </ActionForm>
@@ -498,7 +476,7 @@ export default async function SettingsPage() {
       <section className="flex flex-col gap-4">
         <PageHeader
           title="Feature flags"
-          subtitle="Kill-switches for customer-app features. Saved to the same config blob as the app versions above; changes apply on the app's next launch (the app checks this once at startup). The gamification flags are also enforced server-side in challenge-service — turning one off blocks its API routes immediately (within ~30s), not just after the app re-checks."
+          subtitle="Kill-switches for customer-app features. Saved to the same config blob as the app versions above; changes apply on the app's next launch (the app checks this once at startup). The gamification flags are also enforced server-side in challenge-service â€” turning one off blocks its API routes immediately (within ~30s), not just after the app re-checks."
         />
         <Card className="max-w-xl">
           <ActionForm
@@ -506,182 +484,77 @@ export default async function SettingsPage() {
             className="flex flex-col gap-4"
             confirmMessage="This immediately gates these features for every customer app install (gamification flags also take effect server-side within ~30s). Continue?"
           >
-            <div className="flex flex-col gap-1">
-              <label className="flex items-center gap-3 text-sm font-medium">
-                <Toggle name="buddyEnabled" defaultChecked={features.buddy.enabled} />
-                Gym Buddies
-              </label>
-              <p className="text-sm text-gray-500">
-                Off: the Buddies tab (and its routes) disappear from the customer app. Existing matches are not
-                deleted — the flag only hides the feature.
+            {flagRegistryFailed ? (
+              // The one thing this page must never do is render an empty flag
+              // list: "no rows" reads as "everything is switched off" to whoever
+              // is trying to turn a feature back on in an incident. Say the
+              // registry is unreachable instead.
+              <p className="text-sm text-red-600">
+                Could not load the feature-flag registry from auth-service, so toggles are not shown rather than
+                shown wrong. Check that auth-service is reachable and its
+                <code> featureFlagRegistry </code> module deployed, then reload. Saving is also blocked while this is
+                the case, so no flag can be silently turned off by an incomplete form.
               </p>
-            </div>
-            <div className="flex flex-col gap-1 border-t pt-4">
-              <label className="flex items-center gap-3 text-sm font-medium">
-                <Toggle name="badgesEnabled" defaultChecked={features.badges.enabled} />
-                Badges (Explore Map + Badge Shelf)
-              </label>
-              <p className="text-sm text-gray-500">
-                Off: the Explore Map nav icon and Badge Shelf disappear from the customer app. Badges are derived
-                live from attendance history — nothing is deleted by turning this off.
-              </p>
-            </div>
-            <div className="flex flex-col gap-1 border-t pt-4">
-              <label className="flex items-center gap-3 text-sm font-medium">
-                <Toggle name="streaksCoinsEnabled" defaultChecked={features.streaksCoins.enabled} />
-                Streaks &amp; coins
-              </label>
-              <p className="text-sm text-gray-500">
-                Off: the coin wallet and weekly-streak screens disappear, and challenge-service&rsquo;s streak/coin API
-                routes 403 server-side — attendance events silently stop being recorded (no backfill on re-enable).
-              </p>
-            </div>
-            <div className="flex flex-col gap-1 border-t pt-4">
-              <label className="flex items-center gap-3 text-sm font-medium">
-                <Toggle name="challengesEnabled" defaultChecked={features.challenges.enabled} />
-                Challenges
-              </label>
-              <p className="text-sm text-gray-500">
-                Off: the Challenges tab disappears from the customer app and its API routes 403 server-side.
-                Requires Streaks &amp; coins to be meaningful (challenge rewards are paid in coins).
-              </p>
-            </div>
-            <div className="flex flex-col gap-1 border-t pt-4">
-              <label className="flex items-center gap-3 text-sm font-medium">
-                <Toggle name="buddyPairedStreaksEnabled" defaultChecked={features.buddyPairedStreaks.enabled} />
-                Buddy paired streaks
-              </label>
-              <p className="text-sm text-gray-500">
-                Off: the paired-streak opt-in disappears from buddy chat/match screens. Requires Gym Buddies and
-                Streaks &amp; coins both on.
-              </p>
-            </div>
-            <div className="flex flex-col gap-1 border-t pt-4">
-              <label className="flex items-center gap-3 text-sm font-medium">
-                <Toggle name="healthMetricsEnabled" defaultChecked={features.healthMetrics.enabled} />
-                Health &amp; Activity
-              </label>
-              <p className="text-sm text-gray-500">
-                Off: exercise logging, routines, active workouts and the home-screen activity rings disappear from
-                the customer app. The switches below sit on top of this one — with Health &amp; Activity off,
-                none of them do anything.
-              </p>
-            </div>
-            <div className="flex flex-col gap-1 border-t pt-4">
-              <label className="flex items-center gap-3 text-sm font-medium">
-                <Toggle name="healthLedgerEnabled" defaultChecked={features.healthLedger.enabled} />
-                Health Ledger
-              </label>
-              <p className="text-sm text-gray-500">
-                Off: the food log, daily targets, saved meals and the consent screens behind them are refused by
-                the API with FEATURE_DISABLED. Also needs Health &amp; Activity on. It collects personal data, so
-                this stays off until you mean it.
-              </p>
-            </div>
-            <div className="flex flex-col gap-1 border-t pt-4">
-              <label className="flex items-center gap-3 text-sm font-medium">
-                <Toggle name="foodPhotoLoggingEnabled" defaultChecked={features.foodPhotoLogging.enabled} />
-                Food Photo Logging
-              </label>
-              <p className="text-sm text-gray-500">
-                Off: food can be logged by search and by saved meal, but not by photograph. Kept separate because
-                it is the only part of the ledger that sends a user&rsquo;s image to a third-party model
-                provider. Needs Health Ledger on. Do not turn this on until Zero Data Retention is confirmed on
-                that provider&rsquo;s account.
-              </p>
-            </div>
-            <div className="flex flex-col gap-1 border-t pt-4">
-              <label className="flex items-center gap-3 text-sm font-medium">
-                <Toggle
-                  name="healthPersonalisationEnabled"
-                  defaultChecked={features.healthPersonalisation.enabled}
-                />
-                Training personalisation
-              </label>
-              <p className="text-sm text-gray-500">
-                The only consent-bearing write in health-service: choosing a non-neutral programming mode records
-                that consent was given and under which privacy version. Off: the training-preferences screen
-                disappears and suggestions stay neutral for everyone. Nothing already stored is deleted.
-              </p>
-            </div>
-            <div className="flex flex-col gap-1 border-t pt-4">
-              <label className="flex items-center gap-3 text-sm font-medium">
-                <Toggle name="recapSharingEnabled" defaultChecked={features.recapSharing.enabled} />
-                Weekly recap sharing
-              </label>
-              <p className="text-sm text-gray-500">
-                The only feature producing an artifact meant to leave the platform. The card carries numbers only —
-                no name, gym or photo — so there is no PII on it by construction. Off: the recap screen and its
-                share sheet disappear.
-              </p>
-            </div>
-            <div className="flex flex-col gap-1 border-t pt-4">
-              <label className="flex items-center gap-3 text-sm font-medium">
-                <Toggle
-                  name="brandedOnboardingEnabled"
-                  defaultChecked={features.brandedOnboarding.enabled}
-                />
-                Branded onboarding (do you work out / where)
-              </label>
-              <p className="text-sm text-gray-500">
-                The branching signup flow that asks whether someone already trains and where, then records an app
-                mode from the answers. This flag gates <strong>collection only</strong> — it does not change anyone&apos;s
-                home screen, so it is safe to turn on early to see the real split between home, partner-gym and
-                non-partner-gym users. Off: the existing two-step onboarding runs unchanged and nothing is written.
-              </p>
-            </div>
-            <div className="flex flex-col gap-1 border-t pt-4">
-              <label className="flex items-center gap-3 text-sm font-medium">
-                <Toggle name="homeTrackHomeEnabled" defaultChecked={features.homeTrackHome.enabled} />
-                Home-track home screen
-              </label>
-              <p className="text-sm text-gray-500">
-                Lets the onboarding answers actually change the app: someone who already trains at home gets a
-                workout/progress home screen instead of gym discovery, and pay-per-session is demoted to a single card.
-                Needs <strong>branded onboarding</strong> (to know who they are) and <strong>health metrics</strong>
-                {' '}(the workout widgets it leads with) both on. Off: everyone keeps the current home screen no matter
-                what they answered.
-              </p>
-            </div>
-            <div className="flex flex-col gap-1 border-t pt-4">
-              <label className="flex items-center gap-3 text-sm font-medium">
-                <Toggle name="fitnessAssistantEnabled" defaultChecked={features.fitnessAssistant.enabled} />
-                Fitness assistant (AI chat)
-              </label>
-              <p className="text-sm text-gray-500">
-                An AI assistant that answers training questions using the user&apos;s own check-in and workout history.
-                Every user must accept a disclaimer before their first message, and that consent goes stale
-                automatically if the wording changes. Needs <strong>health metrics</strong> on as well (it reads the
-                workout data). Off: the assistant disappears and its endpoints refuse. Nothing already stored is
-                deleted — transcripts go only with the account.
-              </p>
-            </div>
-            <div className="flex flex-col gap-1 border-t pt-4">
-              <label className="flex items-center gap-3 text-sm font-medium">
-                <Toggle name="cycleTrackingEnabled" defaultChecked={features.cycleTracking.enabled} />
-                Cycle tracking
-              </label>
-              <p className="text-sm text-gray-500">
-                Stores cycle dates and phase history server-side, and adapts training suggestions around them. This is
-                the <strong>most sensitive data the platform holds</strong> and it reverses an earlier decision
-                (FR-27) to keep it off our servers entirely. Users must opt in separately even when this is on, and
-                training load still moves only through the existing programming mode. Leave off until the consent
-                wording has been reviewed.
-              </p>
-            </div>
-            <div className="flex flex-col gap-1 border-t pt-4">
-              <label className="flex items-center gap-3 text-sm font-medium">
-                <Toggle name="nonPartnerAttendanceEnabled" defaultChecked={features.nonPartnerAttendance.enabled} />
-                Non-partner gym check-ins
-              </label>
-              <p className="text-sm text-gray-500">
-                Lets someone name any gym from Google Places and log visits there with GPS, even if we have no
-                partnership. Their streaks and history then work like anyone else&apos;s, and the gyms they name become a
-                ranked partner-acquisition list under Gyms. Each place lookup is a billable Places call, so this is the
-                kill switch for that cost. Off: the search refuses; visits already logged stay visible to the user.
-              </p>
-            </div>
-            <SubmitButton pendingText="Saving…" className="w-fit">
+            ) : (
+              groupFlags(flagRegistry).map(([group, groupFlagList]) => (
+                <div key={group} className="flex flex-col gap-4 border-t pt-4 first:border-t-0 first:pt-0">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    {FLAG_GROUP_LABELS[group] || group}
+                  </h3>
+                  {groupFlagList.map((flag) => {
+                    // Live value, not the stored blob: the registry endpoint
+                    // resolves each flag against its default, so this shows what
+                    // is actually being served rather than what was last written.
+                    const checked = flag.enabled;
+                    // Dependencies resolve across the WHOLE registry, not just
+                    // this group. Reading them group-locally reported every
+                    // cross-group dependency as unmet — which is how
+                    // homeTrackHome (Onboarding group, depends on
+                    // workoutTracking in Workout tracking) would have told the
+                    // operator it was inert while workout tracking was on.
+                    // crossGroup is tracked separately so the message can point
+                    // at where to look.
+                    const unmetDeps = flag.deps.filter(
+                      (dep) => !flagRegistry.find((f) => f.name === dep)?.enabled
+                    );
+                    const crossGroupDeps = unmetDeps.filter(
+                      (dep) => !groupFlagList.some((f) => f.name === dep)
+                    );
+                    return (
+                      <div key={flag.name} className="flex flex-col gap-1">
+                        <label className="flex items-center gap-3 text-sm font-medium">
+                          <Toggle name={flag.clientKey || flag.name} defaultChecked={checked} />
+                          {flagLabel(flag.name)}
+                        </label>
+                        {unmetDeps.length > 0 && (
+                          <p className="text-xs text-amber-700">
+                            Inert while{' '}
+                            {unmetDeps.map((dep, i) => (
+                              <span key={dep}>
+                                {i > 0 && ', '}
+                                <strong>{flagLabel(dep)}</strong>
+                                {crossGroupDeps.includes(dep) && (
+                                  <span className="font-normal"> (another section)</span>
+                                )}
+                              </span>
+                            ))}{' '}
+                            {unmetDeps.length === 1 ? 'is' : 'are'} off — this toggle
+                            controls the flag, but the feature will not respond until{' '}
+                            {unmetDeps.length === 1 ? 'it is' : 'they are'} on.
+                          </p>
+                        )}
+                        <p className="text-sm text-gray-500">{flag.blastRadius}</p>
+                        <details className="text-xs text-gray-500">
+                          <summary className="cursor-pointer">Why this flag exists</summary>
+                          <p className="mt-1 whitespace-pre-wrap">{flag.rationale}</p>
+                        </details>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))
+            )}
+            <SubmitButton pendingText="Savingâ€¦" className="w-fit">
               Save feature flags
             </SubmitButton>
           </ActionForm>
@@ -693,15 +566,15 @@ export default async function SettingsPage() {
           title="OTP verification"
           subtitle={
             otpUpdatedAt
-              ? `Controls how customer/partner phone login is verified — last updated ${formatDateTimeIST(otpUpdatedAt)} IST.`
-              : 'Controls how customer/partner phone login is verified — not customized yet, showing defaults.'
+              ? `Controls how customer/partner phone login is verified â€” last updated ${formatDateTimeIST(otpUpdatedAt)} IST.`
+              : 'Controls how customer/partner phone login is verified â€” not customized yet, showing defaults.'
           }
         />
         <Card className="max-w-2xl">
           <ActionForm
             action={updateOtpConfigAction}
             className="flex flex-col gap-4"
-            confirmMessage="This changes how OTP verification works for every customer/partner login, platform-wide — including 'skip', which disables OTP verification entirely. Continue?"
+            confirmMessage="This changes how OTP verification works for every customer/partner login, platform-wide â€” including 'skip', which disables OTP verification entirely. Continue?"
           >
             <div className="flex flex-col gap-3">
               {OTP_PROVIDER_OPTIONS.map((opt) => (
@@ -723,11 +596,11 @@ export default async function SettingsPage() {
             </div>
             {otpConfig.provider === 'skip' && (
               <p className="rounded border border-amber-400 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                Skip mode is live — allowlisted numbers below bypass real OTP with code 123456. Every other
+                Skip mode is live â€” allowlisted numbers below bypass real OTP with code 123456. Every other
                 number still receives a real Fast2SMS OTP.
               </p>
             )}
-            <SubmitButton pendingText="Saving…" className="w-fit">
+            <SubmitButton pendingText="Savingâ€¦" className="w-fit">
               Save OTP provider
             </SubmitButton>
           </ActionForm>
@@ -744,12 +617,12 @@ export default async function SettingsPage() {
             {skipAllowlist.map((entry) => (
               <Tr key={entry.id}>
                 <Td>{entry.phone}</Td>
-                <Td>{entry.note || '—'}</Td>
+                <Td>{entry.note || 'â€”'}</Td>
                 <Td>{formatDateIST(entry.createdAt)}</Td>
                 <Td>
                   <ActionForm action={removeOtpSkipAllowlistAction} confirmMessage={`Remove ${entry.phone}?`}>
                     <input type="hidden" name="id" value={entry.id} />
-                    <SubmitButton variant="danger" pendingText="Removing…">Remove</SubmitButton>
+                    <SubmitButton variant="danger" pendingText="Removingâ€¦">Remove</SubmitButton>
                   </ActionForm>
                 </Td>
               </Tr>
@@ -777,7 +650,7 @@ export default async function SettingsPage() {
               className="rounded border px-3 py-2 text-sm"
             />
 
-            <SubmitButton pendingText="Adding…" className="w-fit">Add to skip allowlist</SubmitButton>
+            <SubmitButton pendingText="Addingâ€¦" className="w-fit">Add to skip allowlist</SubmitButton>
           </ActionForm>
         </Card>
       </section>
@@ -787,8 +660,8 @@ export default async function SettingsPage() {
           title="Profile-completion bonus"
           subtitle={
             bonusUpdatedAt
-              ? `One-time wallet credit when a customer's profile crosses from incomplete to complete — last updated ${formatDateTimeIST(bonusUpdatedAt)} IST.`
-              : 'One-time wallet credit when a customer\'s profile crosses from incomplete to complete — not customized yet, showing defaults.'
+              ? `One-time wallet credit when a customer's profile crosses from incomplete to complete â€” last updated ${formatDateTimeIST(bonusUpdatedAt)} IST.`
+              : 'One-time wallet credit when a customer\'s profile crosses from incomplete to complete â€” not customized yet, showing defaults.'
           }
         />
         <Card className="max-w-md">
@@ -798,7 +671,7 @@ export default async function SettingsPage() {
             confirmMessage="This changes the wallet reward for every customer completing their profile, immediately (it only applies to profiles completed after the change). Continue?"
           >
             <label className="flex flex-col gap-1 text-sm">
-              Bonus amount (₹)
+              Bonus amount (â‚¹)
               <input
                 type="number"
                 name="amount"
@@ -812,10 +685,10 @@ export default async function SettingsPage() {
             </label>
             <p className="text-sm text-gray-500">
               Credited once per user the moment all profile fields (name, photo, gender, date of birth, fitness
-              goals) are set. Set to 0 to disable the bonus — a profile completed while it is disabled is never
+              goals) are set. Set to 0 to disable the bonus â€” a profile completed while it is disabled is never
               paid retroactively.
             </p>
-            <SubmitButton pendingText="Saving…" className="w-fit">
+            <SubmitButton pendingText="Savingâ€¦" className="w-fit">
               Save bonus amount
             </SubmitButton>
           </ActionForm>
@@ -827,8 +700,8 @@ export default async function SettingsPage() {
           title="Wallet top-up amounts"
           subtitle={
             topupConfig.updatedAt
-              ? `Live for website + app top-up — last updated ${formatDateTimeIST(topupConfig.updatedAt)} IST.`
-              : 'Live for website + app top-up — not customized yet, showing defaults.'
+              ? `Live for website + app top-up â€” last updated ${formatDateTimeIST(topupConfig.updatedAt)} IST.`
+              : 'Live for website + app top-up â€” not customized yet, showing defaults.'
           }
         />
 
@@ -840,24 +713,24 @@ export default async function SettingsPage() {
           <tbody>
             {topupConfig.presets.map((amount) => (
               <Tr key={amount}>
-                <Td>₹{amount}</Td>
+                <Td>â‚¹{amount}</Td>
                 <Td>
-                  <ActionForm action={removeWalletTopupPresetAction} confirmMessage={`Remove ₹${amount} as a preset?`}>
+                  <ActionForm action={removeWalletTopupPresetAction} confirmMessage={`Remove â‚¹${amount} as a preset?`}>
                     <input type="hidden" name="amount" value={amount} />
-                    <SubmitButton variant="danger" pendingText="Removing…">Remove</SubmitButton>
+                    <SubmitButton variant="danger" pendingText="Removingâ€¦">Remove</SubmitButton>
                   </ActionForm>
                 </Td>
               </Tr>
             ))}
             {topupConfig.presets.length === 0 && (
-              <EmptyRow colSpan={2}>No preset amounts — custom amount only.</EmptyRow>
+              <EmptyRow colSpan={2}>No preset amounts â€” custom amount only.</EmptyRow>
             )}
           </tbody>
         </Table>
 
         <Card className="max-w-sm">
           <ActionForm action={addWalletTopupPresetAction} className="flex flex-col gap-3">
-            <label className="text-sm font-medium" htmlFor="topup-preset-amount">New preset amount (₹)</label>
+            <label className="text-sm font-medium" htmlFor="topup-preset-amount">New preset amount (â‚¹)</label>
             <input
               id="topup-preset-amount"
               name="amount"
@@ -867,7 +740,7 @@ export default async function SettingsPage() {
               required
               className="rounded border px-3 py-2 text-sm"
             />
-            <SubmitButton pendingText="Adding…" className="w-fit">Add preset</SubmitButton>
+            <SubmitButton pendingText="Addingâ€¦" className="w-fit">Add preset</SubmitButton>
           </ActionForm>
         </Card>
 
@@ -883,7 +756,7 @@ export default async function SettingsPage() {
             </label>
             <div className="grid grid-cols-2 gap-4">
               <label className="flex flex-col gap-1 text-sm">
-                Min (₹)
+                Min (â‚¹)
                 <input
                   type="number"
                   name="minCustomAmount"
@@ -894,7 +767,7 @@ export default async function SettingsPage() {
                 />
               </label>
               <label className="flex flex-col gap-1 text-sm">
-                Max (₹)
+                Max (â‚¹)
                 <input
                   type="number"
                   name="maxCustomAmount"
@@ -907,10 +780,10 @@ export default async function SettingsPage() {
             </div>
             <p className="text-sm text-gray-500">
               Required whenever the toggle above is on. If there are no preset amounts (see table above), this
-              toggle must stay on — customers need at least one way to top up. Amounts above ₹25,000 are rejected
+              toggle must stay on â€” customers need at least one way to top up. Amounts above â‚¹25,000 are rejected
               regardless of what&rsquo;s set here.
             </p>
-            <SubmitButton pendingText="Saving…" className="w-fit">Save custom-amount settings</SubmitButton>
+            <SubmitButton pendingText="Savingâ€¦" className="w-fit">Save custom-amount settings</SubmitButton>
           </ActionForm>
         </Card>
       </section>
