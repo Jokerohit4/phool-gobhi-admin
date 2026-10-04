@@ -33,10 +33,19 @@ function partnerLabel(p: { userId: number; name: string | null; phone: string | 
 export default async function PayoutsPage() {
   await requireSession();
 
-  const [{ data: balances }, { data: history }] = await Promise.all([
+  const results = await Promise.allSettled([
     gatewayJson<{ data: PartnerBalance[] }>('/api/wallet/partners/summary'),
     gatewayJson<{ data: PayoutRecord[] }>('/api/wallet/payouts'),
   ]);
+
+  const balancesRes = results[0] as PromiseSettledResult<{ data: PartnerBalance[] }>;
+  const historyRes = results[1] as PromiseSettledResult<{ data: PayoutRecord[] }>;
+
+  const balances = balancesRes.status === 'fulfilled' ? balancesRes.value.data : [];
+  const history = historyRes.status === 'fulfilled' ? historyRes.value.data : [];
+
+  if (balancesRes.status === 'rejected') console.error('PayoutsPage: Balances load failed', balancesRes.reason);
+  if (historyRes.status === 'rejected') console.error('PayoutsPage: History load failed', historyRes.reason);
 
   return (
     <div className="flex flex-col gap-8">

@@ -72,21 +72,35 @@ export default async function AttendanceSaasPage({ searchParams }: { searchParam
   const sp = await searchParams ?? {};
   const month = /^\d{4}-\d{2}$/.test(sp.month || '') ? sp.month! : currentMonth();
 
-  const [{ data: gyms }, { data: summaryRows }] = await Promise.all([
+  const results = await Promise.allSettled([
     gatewayJson<{ data: GymLite[] }>('/api/gyms/admin/all?status=approved'),
     gatewayJson<{ data: SubscriptionSummaryRow[] }>('/api/wallet/subscriptions/admin/by-gym'),
   ]);
 
+  const gymsRes = results[0] as PromiseSettledResult<{ data: GymLite[] }>;
+  const summaryRes = results[1] as PromiseSettledResult<{ data: SubscriptionSummaryRow[] }>;
+
+  const gyms = gymsRes.status === 'fulfilled' ? gymsRes.value.data : [];
+  const summaryRows = summaryRes.status === 'fulfilled' ? summaryRes.value.data : [];
+
+  if (gymsRes.status === 'rejected') console.error('AttendanceSaasPage: Gyms load failed', gymsRes.reason);
+  if (summaryRes.status === 'rejected') console.error('AttendanceSaasPage: Summary load failed', summaryRes.reason);
+
   // Read-only per-gym bill for the selected month (users joined x flat fee).
   // The wallet endpoint computes it and reports appliedAt when already
   // charged; the apply button below actually debits the partner wallet.
-  const [{ data: bills }] = await Promise.all([
+  const billsResults = await Promise.allSettled([
     gatewayJson<{ data: AttendanceSaasBill[] }>('/api/wallet/attendance-saas/bills', {
       method: 'POST',
       body: JSON.stringify({ gymIds: gyms.map((g) => g.id), month }),
       headers: { 'Content-Type': 'application/json' },
     }),
   ]);
+
+  const billsRes = billsResults[0] as PromiseSettledResult<{ data: AttendanceSaasBill[] }>;
+  const bills = billsRes.status === 'fulfilled' ? billsRes.value.data : [];
+
+  if (billsRes.status === 'rejected') console.error('AttendanceSaasPage: Bills load failed', billsRes.reason);
   const billByGym = new Map(bills.map((b) => [b.gymId, b]));
 
   const summaryByGym = new Map(summaryRows.map((r) => [r.gymId, r]));

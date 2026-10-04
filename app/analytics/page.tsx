@@ -381,21 +381,43 @@ async function trafficGeoValues(key: string, scopeCountry?: string): Promise<str
 }
 
 async function TrafficView({ days, country, city }: { days: string; country: string; city: string }) {
-  const [{ data }, countryOptions, cityOptionsRaw] = await Promise.all([
+  const results = await Promise.allSettled([
     gatewayJson<{ data: WebsiteTrafficData }>(
       `/api/bookings/admin/analytics/website-traffic?days=${days}&country=${encodeURIComponent(country)}${
         city ? `&city=${encodeURIComponent(city)}` : ''
       }`,
     ),
     trafficGeoValues('geo_country'),
-    // City options scoped to the selected country so India shows Indian cities;
-    // "All countries" shows every city seen anywhere.
     trafficGeoValues('geo_city', country || undefined),
   ]);
+
+  const trafficRes = results[0] as PromiseSettledResult<{ data: WebsiteTrafficData }>;
+  const countryRes = results[1] as PromiseSettledResult<string[]>;
+  const cityRes = results[2] as PromiseSettledResult<string[]>;
+
+  const data = trafficRes.status === 'fulfilled' ? trafficRes.value.data : {
+    totalSessions: 0,
+    uniqueVisitors: 0,
+    totalPageViews: 0,
+    daily: [],
+    topPages: [],
+    channels: [],
+    referrers: [],
+    campaigns: [],
+    landingPages: [],
+    geoCoverage: undefined
+  };
+  const countryOptions = countryRes.status === 'fulfilled' ? countryRes.value : [];
+  const cityOptionsRaw = cityRes.status === 'fulfilled' ? cityRes.value : [];
+
   // The applied filter must stay selectable even if suggestions failed or the
   // value fell outside the top-100 window.
   const cities = city && !cityOptionsRaw.includes(city) ? [...cityOptionsRaw, city] : cityOptionsRaw;
   const countries = country && !countryOptions.includes(country) ? [...countryOptions, country] : countryOptions;
+
+  if (trafficRes.status === 'rejected') {
+    console.error('TrafficView: Failed to load main traffic data', trafficRes.reason);
+  }
 
   const sessionsByDay = new Map(data.daily.filter((d) => d.event === 'session_started').map((d) => [d.day, d.n]));
   const pageviewsByDay = new Map(data.daily.filter((d) => d.event === 'screen_viewed').map((d) => [d.day, d.n]));
@@ -658,18 +680,23 @@ async function ReachView({ days }: { days: string }) {
 }
 
 async function SupplyView({ days }: { days: string }) {
-  let funnel: OnboardingFunnelData = { stepCounts: [], byStep: [], weeklyApprovals: [], runRatePerWeek: 0 };
-  let sla: ApprovalSlaData = { gyms: [], medianHoursToResolve: null };
-  let health: SupplyHealthData = { gyms: [] };
-  try {
-    [{ data: funnel }, { data: sla }, { data: health }] = await Promise.all([
-      gatewayJson<{ data: OnboardingFunnelData }>(`/api/bookings/admin/analytics/onboarding-funnel?days=${days}`),
-      gatewayJson<{ data: ApprovalSlaData }>(`/api/bookings/admin/analytics/approval-sla?days=${days}`),
-      gatewayJson<{ data: SupplyHealthData }>(`/api/bookings/admin/analytics/supply-health`),
-    ]);
-  } catch {
-    // partial data — render what we got
-  }
+  const results = await Promise.allSettled([
+    gatewayJson<{ data: OnboardingFunnelData }>(`/api/bookings/admin/analytics/onboarding-funnel?days=${days}`),
+    gatewayJson<{ data: ApprovalSlaData }>(`/api/bookings/admin/analytics/approval-sla?days=${days}`),
+    gatewayJson<{ data: SupplyHealthData }>(`/api/bookings/admin/analytics/supply-health`),
+  ]);
+
+  const funnelRes = results[0] as PromiseSettledResult<{ data: OnboardingFunnelData }>;
+  const slaRes = results[1] as PromiseSettledResult<{ data: ApprovalSlaData }>;
+  const healthRes = results[2] as PromiseSettledResult<{ data: SupplyHealthData }>;
+
+  const funnel = funnelRes.status === 'fulfilled' ? funnelRes.value.data : { stepCounts: [], byStep: [], weeklyApprovals: [], runRatePerWeek: 0 };
+  const sla = slaRes.status === 'fulfilled' ? slaRes.value.data : { gyms: [], medianHoursToResolve: null };
+  const health = healthRes.status === 'fulfilled' ? healthRes.value.data : { gyms: [] };
+
+  if (funnelRes.status === 'rejected') console.error('SupplyView: Funnel load failed', funnelRes.reason);
+  if (slaRes.status === 'rejected') console.error('SupplyView: SLA load failed', slaRes.reason);
+  if (healthRes.status === 'rejected') console.error('SupplyView: Health load failed', healthRes.reason);
 
   const steps = withDropoff(
     toOrderedSteps(

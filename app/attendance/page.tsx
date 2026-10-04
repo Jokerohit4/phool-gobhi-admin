@@ -59,11 +59,28 @@ export default async function AttendancePage({
   const { period: rawPeriod } = await searchParams;
   const period: Period = isPeriod(rawPeriod) ? rawPeriod : 'monthly';
 
-  const [{ data: summary }, { data: byGym }, { data: gyms }] = await Promise.all([
+  const results = await Promise.allSettled([
     gatewayJson<{ data: AttendanceSummary }>('/api/bookings/admin/attendance-summary'),
     gatewayJson<{ data: ByGymRow[] }>(`/api/bookings/admin/attendance-summary/by-gym?period=${period}`),
     gatewayJson<{ data: GymLite[] }>('/api/gyms/admin/all'),
   ]);
+
+  const summaryRes = results[0] as PromiseSettledResult<{ data: AttendanceSummary }>;
+  const byGymRes = results[1] as PromiseSettledResult<{ data: ByGymRow[] }>;
+  const gymsRes = results[2] as PromiseSettledResult<{ data: GymLite[] }>;
+
+  const summary = summaryRes.status === 'fulfilled' ? summaryRes.value.data : {
+    today: { booked: 0, scanned: 0, manualOverride: 0, noShow: 0, verifiedAttendanceRate: null, completionRate: null },
+    weekly: { booked: 0, scanned: 0, manualOverride: 0, noShow: 0, verifiedAttendanceRate: null, completionRate: null },
+    monthly: { booked: 0, scanned: 0, manualOverride: 0, noShow: 0, verifiedAttendanceRate: null, completionRate: null },
+    yearly: { booked: 0, scanned: 0, manualOverride: 0, noShow: 0, verifiedAttendanceRate: null, completionRate: null },
+  };
+  const byGym = byGymRes.status === 'fulfilled' ? byGymRes.value.data : [];
+  const gyms = gymsRes.status === 'fulfilled' ? gymsRes.value.data : [];
+
+  if (summaryRes.status === 'rejected') console.error('AttendancePage: Summary load failed', summaryRes.reason);
+  if (byGymRes.status === 'rejected') console.error('AttendancePage: ByGym load failed', byGymRes.reason);
+  if (gymsRes.status === 'rejected') console.error('AttendancePage: Gyms load failed', gymsRes.reason);
 
   const gymsById = new Map(gyms.map((g) => [g.id, g.name]));
   const bucket = summary[period];
