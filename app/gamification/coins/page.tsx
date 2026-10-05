@@ -23,15 +23,16 @@ interface EconomyConfig {
   updatedAt: string | null;
 }
 
-interface FeatureFlags {
-  streaksCoins: { enabled: boolean };
-  buddyPairedStreaks: { enabled: boolean };
-}
-
-const DEFAULT_FEATURES: FeatureFlags = {
-  streaksCoins: { enabled: false },
-  buddyPairedStreaks: { enabled: false },
-};
+// Only the two flags this page actually renders. The full list lives in
+// auth-service's registry and is edited on Settings > Feature flags; this page
+// keeps a two-flag shortcut because "turn coins off entirely" belongs next to
+// the numbers that define what a coin is worth.
+//
+// `?? false` is correct here and nowhere else needs it: auth-service spreads the
+// registry defaults under the stored blob before serving, so an absent key means
+// this server predates that flag. For two fail-closed gamification flags,
+// resolving that as off is the safe direction.
+const COIN_FLAGS = ['streaksCoins', 'buddyPairedStreaks'] as const;
 
 const CATALOG_CATEGORIES = ['subscription_discount', 'priority_booking', 'buddy_unlock', 'brand_product'] as const;
 
@@ -55,11 +56,10 @@ export default async function CoinsPage() {
   const { data: economy } = await gatewayJson<{ data: EconomyConfig }>('/api/challenges/admin/coins/economy-config');
   const { data: catalog } = await gatewayJson<{ data: CatalogItem[] }>('/api/challenges/admin/coins/catalog');
   const { data: appConfig } = await gatewayJson<{ data: Record<string, unknown> }>('/api/auth/app-config/admin');
-  const rawFeatures = (appConfig.features as Partial<FeatureFlags>) || {};
-  const features: FeatureFlags = {
-    streaksCoins: { ...DEFAULT_FEATURES.streaksCoins, ...(rawFeatures.streaksCoins || {}) },
-    buddyPairedStreaks: { ...DEFAULT_FEATURES.buddyPairedStreaks, ...(rawFeatures.buddyPairedStreaks || {}) },
-  };
+  const rawFeatures = (appConfig.features as Record<string, { enabled?: boolean }>) || {};
+  const features = Object.fromEntries(
+    COIN_FLAGS.map((name) => [name, { enabled: rawFeatures[name]?.enabled ?? false }])
+  ) as Record<(typeof COIN_FLAGS)[number], { enabled: boolean }>;
 
   const milestoneEntries = Object.entries(economy.milestones || {})
     .map(([week, amount]) => ({ week: Number(week), amount }))
