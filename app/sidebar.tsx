@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { href: '/reviews', label: 'Reviews' },
   { href: '/pitch-access', label: 'Pitch Access' },
   { href: '/health', label: 'Health & Activity' },
+  { href: '/food-requests', label: 'Food Queue' },
   { href: '/gamification/coins', label: 'Coins & Streaks' },
   { href: '/gamification/challenges', label: 'Challenges' },
   { href: '/health', label: 'Health & Training' },
