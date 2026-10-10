@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { href: '/applications', label: 'Applications' },
   { href: '/messages', label: 'Messages' },
   { href: '/reviews', label: 'Reviews' },
+  { href: '/buddy-reports', label: 'Buddy reports' },
   { href: '/pitch-access', label: 'Pitch Access' },
   { href: '/health', label: 'Health & Activity' },
   { href: '/food-requests', label: 'Food Queue' },
