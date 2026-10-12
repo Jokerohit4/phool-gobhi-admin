@@ -53,10 +53,25 @@ const REGISTRY = [
   { name: 'brandedOnboarding', clientKey: 'brandedOnboardingEnabled', group: 'onboarding', deps: [] },
   { name: 'homeTrackHome', clientKey: 'homeTrackHomeEnabled', group: 'onboarding', deps: ['workoutTracking'] },
   { name: 'nonPartnerAttendance', clientKey: 'nonPartnerAttendanceEnabled', group: 'ops', deps: [] },
+  // Coach flags — added 2026-10-03, mirroring auth-service's featureFlagRegistry.js
+  { name: 'coachJourney', clientKey: 'coachJourneyEnabled', group: 'coach', deps: ['workoutTracking', 'nonPartnerAttendance'] },
+  { name: 'selfLinkGym', clientKey: 'selfLinkGymEnabled', group: 'coach', deps: [] },
+  { name: 'referralHomeTrigger', clientKey: 'referralHomeTriggerEnabled', group: 'coach', deps: ['coachJourney'] },
+  { name: 'coachAssistant', clientKey: 'coachAssistantEnabled', group: 'coach', deps: ['coachJourney'] },
 ].map((f) => ({
   ...f,
-  defaultEnabled: f.name === 'buddy' || f.name === 'referral',
-  enabled: f.name === 'buddy' || f.name === 'referral',
+  defaultEnabled: f.name === 'buddy' || f.name === 'referral' || [
+    'coachJourney',
+    'selfLinkGym',
+    'referralHomeTrigger',
+    'coachAssistant',
+  ].includes(f.name),
+  enabled: f.name === 'buddy' || f.name === 'referral' || [
+    'coachJourney',
+    'selfLinkGym',
+    'referralHomeTrigger',
+    'coachAssistant',
+  ].includes(f.name),
   blockedBy: [],
   blastRadius: '',
   rationale: '',

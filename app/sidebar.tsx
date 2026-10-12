@@ -17,6 +17,8 @@ const NAV_ITEMS = [
   { href: '/messages', label: 'Messages' },
   { href: '/reviews', label: 'Reviews' },
   { href: '/buddy-reports', label: 'Buddy reports' },
+  { href: '/content', label: 'Content' },
+  { href: '/unclaimed-gyms', label: 'Unclaimed gyms' },
   { href: '/pitch-access', label: 'Pitch Access' },
   { href: '/health', label: 'Health & Activity' },
   { href: '/food-requests', label: 'Food Queue' },

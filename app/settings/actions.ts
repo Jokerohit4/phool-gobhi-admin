@@ -424,3 +424,30 @@ export async function updateWalletTopupCustomAmountAction(
   revalidatePath('/settings');
   return { ok: true, message: 'Custom-amount settings updated' };
 }
+
+// Social features switch — writes config.social.enabled through the existing
+// app-config admin update, merging into the current blob so no other keys are
+// dropped (features, versions, maintenance all preserved).
+export async function updateSocialFeaturesAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+
+  const enabled = formData.get('social_enabled') === 'on';
+
+  try {
+    const current = await loadCurrentAppConfig();
+
+    // Start from stored features and only touch the social flag.
+    const features: Record<string, { enabled: boolean }> = { ...current.features };
+    features['social'] = { enabled };
+
+    await gatewayJson('/api/auth/app-config/admin', {
+      method: 'PUT',
+      body: JSON.stringify({ config: { ...current.versions, maintenance: current.maintenance, features } }),
+    });
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to save social features' };
+  }
+
+  revalidatePath('/settings');
+  return { ok: true, message: `Social features ${enabled ? 'enabled' : 'disabled'}` };
+}

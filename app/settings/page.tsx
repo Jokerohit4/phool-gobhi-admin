@@ -787,6 +787,33 @@ export default async function SettingsPage() {
           </ActionForm>
         </Card>
       </section>
-    </div>
-  );
+
+        <section className="flex flex-col gap-4">
+          <PageHeader
+            title="Social features"
+            subtitle="Buddy also needs the buddy feature flag."
+          />
+          <Card className="max-w-xl">
+            <ActionForm
+              action={updateSocialFeaturesAction}
+              className="flex flex-col gap-4"
+              confirmMessage="This immediately gates social features (buddy, leaderboards, league) for every customer app install. Continue?"
+            >
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <Toggle name="social_enabled" defaultChecked={false} />
+                Social features enabled
+              </label>
+              <p className="text-sm text-gray-500">
+                Controls the buddy, leaderboards, and league features in the customer app.
+                Turning this on enables the full social experience. Note: Buddy also needs
+                the buddy feature flag to be on for the social features to work properly.
+              </p>
+              <SubmitButton pendingText="Savingâ€¦" className="w-fit">
+                Save social features
+              </SubmitButton>
+            </ActionForm>
+          </Card>
+        </section>
+      </div>
+    );
 }
