@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
-const NAV_ITEMS = [
+export const NAV_ITEMS = [
   { href: '/gyms', label: 'Gyms' },
+  { href: '/unclaimed-gyms', label: 'Unclaimed gyms' },
   { href: '/edit-requests', label: 'Edit Requests' },
   { href: '/analytics', label: 'Analytics' },
   { href: '/attendance', label: 'Attendance' },
@@ -20,6 +21,7 @@ const NAV_ITEMS = [
   { href: '/pitch-access', label: 'Pitch Access' },
   { href: '/health', label: 'Health & Activity' },
   { href: '/food-requests', label: 'Food Queue' },
+  { href: '/content', label: 'Content' },
   { href: '/gamification/coins', label: 'Coins & Streaks' },
   { href: '/gamification/challenges', label: 'Challenges' },
   { href: '/health', label: 'Health & Training' },
@@ -44,7 +46,7 @@ export default function Sidebar() {
           const active = pathname === item.href || pathname.startsWith(item.href + '/');
           return (
             <Link
-              key={item.href}
+              key={`${item.href}-${item.label}`}
               href={item.href}
               className={`rounded px-3 py-2 text-sm ${
                 active
