@@ -27,10 +27,10 @@ vi.mock('@/app/settings/flagRegistry', () => ({
   loadFlagRegistry: (...args: unknown[]) => loadFlagRegistry(...args),
 }));
 
-const { updateFeatureFlagsAction } = await import('../actions');
+const { updateFeatureFlagsAction, updateAppVersionConfigAction } = await import('../actions');
 
-// The real registry, as auth-service serves it: 20 flags, only buddy and
-// referral defaulting on, and fhirExport deliberately clientKey: null (a
+// The real registry, as auth-service serves it: 24 flags (20 + the four coach
+// flags), only referral defaulting on, and fhirExport deliberately clientKey: null (a
 // query-parameter branch on an existing route with no app surface to gate).
 const REGISTRY = [
   { name: 'workoutTracking', clientKey: 'workoutTrackingEnabled', group: 'training', deps: [] },
@@ -52,10 +52,15 @@ const REGISTRY = [
   { name: 'referral', clientKey: 'referralEnabled', group: 'social', deps: [] },
   { name: 'brandedOnboarding', clientKey: 'brandedOnboardingEnabled', group: 'onboarding', deps: [] },
   { name: 'homeTrackHome', clientKey: 'homeTrackHomeEnabled', group: 'onboarding', deps: ['workoutTracking'] },
+  { name: 'coachJourney', clientKey: 'coachJourneyEnabled', group: 'coach', deps: ['workoutTracking', 'nonPartnerAttendance'] },
+  { name: 'selfLinkGym', clientKey: 'selfLinkGymEnabled', group: 'coach', deps: [] },
+  { name: 'referralHomeTrigger', clientKey: 'referralHomeTriggerEnabled', group: 'coach', deps: ['coachJourney'] },
+  { name: 'coachAssistant', clientKey: 'coachAssistantEnabled', group: 'coach', deps: ['coachJourney'] },
   { name: 'nonPartnerAttendance', clientKey: 'nonPartnerAttendanceEnabled', group: 'ops', deps: [] },
 ].map((f) => ({
   ...f,
-  defaultEnabled: f.name === 'buddy' || f.name === 'referral',
+  // buddy has defaulted off since W3; it is only `enabled` because dev stores it on.
+  defaultEnabled: f.name === 'referral',
   enabled: f.name === 'buddy' || f.name === 'referral',
   blockedBy: [],
   blastRadius: '',
@@ -168,7 +173,7 @@ describe('updateFeatureFlagsAction round trip', () => {
     expect(Object.values(features).every((v) => v.enabled === false)).toBe(true);
   });
 
-  it('leaves the other 19 flags at their stored value when one is toggled', async () => {
+  it('leaves the other 23 flags at their stored value when one is toggled', async () => {
     const result = await updateFeatureFlagsAction(
       { ok: false, message: '' },
       formAsPageRenders({ challenges: true })
@@ -293,5 +298,34 @@ describe('updateFeatureFlagsAction round trip', () => {
 
     expect(result.ok).toBe(false);
     expect(result.message).toMatch(/gateway down/);
+  });
+});
+
+describe('fixture parity', () => {
+  it('mirrors the expected registry flag for flag (name, deps, clientKey, group, default)', async () => {
+    const { EXPECTED_FLAGS } = await vi.importActual<typeof import('../flagRegistry')>('../flagRegistry');
+    expect(
+      REGISTRY.map(({ name, deps, clientKey, group, defaultEnabled }) => ({ name, deps, clientKey, group, defaultEnabled })),
+    ).toEqual(
+      EXPECTED_FLAGS.map(({ name, deps, clientKey, group, defaultEnabled }) => ({ name, deps, clientKey, group, defaultEnabled })),
+    );
+  });
+});
+
+describe('updateAppVersionConfigAction keeps the rest of the blob', () => {
+  it('does not drop the social switch or any other top-level key', async () => {
+    stored = { ...stored, social: { enabled: true }, someFutureKey: { a: 1 } };
+    const fd = new FormData();
+    fd.set('customer_android_minVersion', '1.5.0');
+    const result = await updateAppVersionConfigAction({ ok: false, message: '' }, fd);
+
+    expect(result.ok).toBe(true);
+    expect(puts).toHaveLength(1);
+    const config = puts[0].config as Record<string, unknown>;
+    expect(config.social).toEqual({ enabled: true });
+    expect(config.someFutureKey).toEqual({ a: 1 });
+    expect(config.features).toEqual(STORED_FEATURES);
+    expect(config.maintenance).toEqual(STORED_MAINTENANCE);
+    expect((config.customer as Record<string, { minVersion: string }>).android.minVersion).toBe('1.5.0');
   });
 });

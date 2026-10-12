@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
 import { loadFlagRegistry } from './flagRegistry';
+import { setSocialEnabled } from '@/lib/socialApi';
 import type { ActionState } from '@/components/ui/ActionForm';
 
 // Fixed 4-row shape matching booking-service's DEFAULT_CANCELLATION_TIERS —
@@ -167,9 +168,15 @@ export async function updateAppVersionConfigAction(
       };
     }
 
+    // `current.versions` is everything in the blob except features and
+    // maintenance — the app versions AND any other top-level key such as
+    // `social`. Spread it first so this save replaces the app-version entries
+    // without dropping the social switch (or any key added later).
     await gatewayJson('/api/auth/app-config/admin', {
       method: 'PUT',
-      body: JSON.stringify({ config: { ...config, maintenance: current.maintenance, features: current.features } }),
+      body: JSON.stringify({
+        config: { ...current.versions, ...config, maintenance: current.maintenance, features: current.features },
+      }),
     });
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : 'Failed to save app version config' };
@@ -221,6 +228,23 @@ export async function updateFeatureFlagsAction(_prev: ActionState, formData: For
 
   revalidatePath('/settings');
   return { ok: true, message: 'Feature flags updated' };
+}
+
+// The platform-wide social switch (buddy, leaderboards, league). Writes only
+// config.social.enabled; lib/socialApi re-reads the stored blob and sends every
+// other key back unchanged.
+export async function updateSocialSwitchAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+  const enabled = formData.get('socialEnabled') === 'on';
+
+  try {
+    await setSocialEnabled(enabled);
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to save the social switch' };
+  }
+
+  revalidatePath('/settings');
+  return { ok: true, message: enabled ? 'Social features switched on' : 'Social features switched off' };
 }
 
 export async function updateMaintenanceAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

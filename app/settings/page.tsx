@@ -13,8 +13,11 @@ import {
   addWalletTopupPresetAction,
   removeWalletTopupPresetAction,
   updateWalletTopupCustomAmountAction,
+  updateSocialSwitchAction,
 } from './actions';
-import { loadFlagRegistry, type FlagRegistryEntry } from './flagRegistry';
+import { loadFlagRegistry, registryDrift, type FlagRegistryEntry } from './flagRegistry';
+import { SocialSwitch } from './SocialSwitch';
+import { socialEnabledFrom } from '@/lib/socialApi';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
@@ -82,7 +85,7 @@ const EMPTY_APP_VERSION_ENTRY: AppVersionEntry = {
 // config blob's shape.
 type FeatureFlags = Record<string, { enabled: boolean }>;
 
-const FLAG_GROUP_ORDER = ['training', 'health', 'gamification', 'social', 'onboarding', 'ops'] as const;
+const FLAG_GROUP_ORDER = ['training', 'health', 'gamification', 'social', 'onboarding', 'coach', 'ops'] as const;
 
 const FLAG_GROUP_LABELS: Record<string, string> = {
   training: 'Workout tracking',
@@ -90,6 +93,7 @@ const FLAG_GROUP_LABELS: Record<string, string> = {
   gamification: 'Gamification',
   social: 'Social',
   onboarding: 'Onboarding',
+  coach: 'Coach journey',
   ops: 'Operations',
 };
 
@@ -218,6 +222,11 @@ export default async function SettingsPage() {
   // of showing an empty list that reads as "every flag is off", which would be
   // the most dangerous possible failure mode for a kill-switch page.
   const { flags: flagRegistry, failed: flagRegistryFailed } = await loadFlagRegistry();
+  const flagDrift = flagRegistryFailed ? { missing: [], unexpected: [] } : registryDrift(flagRegistry);
+
+  // Raw stored value: anything but a stored `true` is off (auth-service's
+  // socialConfigService reads it the same way).
+  const socialEnabled = socialEnabledFrom(appVersionRaw);
 
   const { data: launchGate } = await gatewayJson<{ data: LaunchGate }>('/api/auth/launch-gate/admin');
 
@@ -496,7 +505,22 @@ export default async function SettingsPage() {
                 the case, so no flag can be silently turned off by an incomplete form.
               </p>
             ) : (
-              groupFlags(flagRegistry).map(([group, groupFlagList]) => (
+              <>
+              {(flagDrift.missing.length > 0 || flagDrift.unexpected.length > 0) && (
+                // Informational only: rendering and saving still use the live
+                // registry above, never this portal's expected list.
+                <p className="text-xs text-amber-700">
+                  {flagDrift.missing.length > 0 && (
+                    <>
+                      auth-service does not serve {flagDrift.missing.join(', ')} yet (it is older than this portal).{' '}
+                    </>
+                  )}
+                  {flagDrift.unexpected.length > 0 && (
+                    <>This portal does not know {flagDrift.unexpected.join(', ')} yet; it is still shown and saved.</>
+                  )}
+                </p>
+              )}
+              {groupFlags(flagRegistry).map(([group, groupFlagList]) => (
                 <div key={group} className="flex flex-col gap-4 border-t pt-4 first:border-t-0 first:pt-0">
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                     {FLAG_GROUP_LABELS[group] || group}
@@ -552,12 +576,23 @@ export default async function SettingsPage() {
                     );
                   })}
                 </div>
-              ))
+              ))}
+              </>
             )}
             <SubmitButton pendingText="Savingâ€¦" className="w-fit">
               Save feature flags
             </SubmitButton>
           </ActionForm>
+        </Card>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <PageHeader
+          title="Social features"
+          subtitle="One switch for Buddy, leaderboards and League in the customer app. Off by default. Saved into the same config blob as the flags above without changing anything else in it; apps pick it up on their next launch."
+        />
+        <Card className="max-w-xl">
+          <SocialSwitch enabled={socialEnabled} action={updateSocialSwitchAction} />
         </Card>
       </section>
 
