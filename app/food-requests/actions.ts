@@ -87,10 +87,13 @@ export async function createFoodItemAction(
 
   let result: CreateFoodResult;
   try {
-    result = await gatewayJson<CreateFoodResult>('/api/health/admin/food-items', {
-      method: 'POST',
-      body: JSON.stringify(body),
-    });
+    ({ data: result } = await gatewayJson<{ data: CreateFoodResult }>(
+      '/api/health/admin/food-items',
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      },
+    ));
   } catch (err) {
     return {
       ok: false,

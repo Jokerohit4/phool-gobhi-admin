@@ -33,7 +33,7 @@ export default async function FoodRequestsPage({
   const tab = status === 'all' ? 'all' : 'pending';
   // The queue endpoint is demand-ordered for pending (count first, then
   // oldest) — that is its purpose, so the table reads the review order as-is.
-  const queue = await gatewayJson<FoodRequest[]>(
+  const { data: queue } = await gatewayJson<{ data: FoodRequest[] }>(
     `/api/health/admin/food-requests?status=${tab}`,
   );
 
