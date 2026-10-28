@@ -85,9 +85,10 @@ const EMPTY_APP_VERSION_ENTRY: AppVersionEntry = {
 // config blob's shape.
 type FeatureFlags = Record<string, { enabled: boolean }>;
 
-const FLAG_GROUP_ORDER = ['training', 'health', 'gamification', 'social', 'onboarding', 'coach', 'ops'] as const;
+const FLAG_GROUP_ORDER = ['exploration', 'training', 'health', 'gamification', 'social', 'onboarding', 'coach', 'ops'] as const;
 
 const FLAG_GROUP_LABELS: Record<string, string> = {
+  exploration: 'Exploration',
   training: 'Workout tracking',
   health: 'Health & metrics',
   gamification: 'Gamification',
@@ -98,6 +99,7 @@ const FLAG_GROUP_LABELS: Record<string, string> = {
 };
 
 function flagLabel(name: string): string {
+  if (name === 'homeIntroduction') return 'Home introduction (FRE)';
   // Split camelCase into words rather than shipping a second nameâ†’display map,
   // which would be one more list to keep in sync.
   return name
@@ -568,6 +570,18 @@ export default async function SettingsPage() {
                           </p>
                         )}
                         <p className="text-sm text-gray-500">{flag.blastRadius}</p>
+                        {flag.name === 'homeIntroduction' && (
+                          <p className="text-sm text-gray-500">
+                            New accounts enter when this and Coach journey are on; eligible accounts can restore the first steps on another device.
+                            Existing accounts keep full Home. Switching this off restores full Home immediately;
+                            water and workout completion and coin eligibility are verified by the server.
+                            Today appears after a saved water log and completed workout; reminder and alarm setup is optional.
+                            Steps/sleep unlock after 7 days, supplements after 10, and health records after 15 days
+                            from journey start, with consent/setup still required. Small activity rewards taper over
+                            14 days to verified-location workouts only. Full Home is available after the first two steps.
+                            This setting does not reset individual accounts.
+                          </p>
+                        )}
                         <details className="text-xs text-gray-500">
                           <summary className="cursor-pointer">Why this flag exists</summary>
                           <p className="mt-1 whitespace-pre-wrap">{flag.rationale}</p>

@@ -97,6 +97,7 @@ export interface ExpectedFlag {
 }
 
 export const EXPECTED_FLAGS: readonly ExpectedFlag[] = [
+  { name: 'exploreFoodFinds', defaultEnabled: false, deps: [], clientKey: 'exploreFoodFindsEnabled', group: 'exploration' },
   { name: 'workoutTracking', defaultEnabled: false, deps: [], clientKey: 'workoutTrackingEnabled', group: 'training' },
   { name: 'healthMetrics', defaultEnabled: false, deps: ['workoutTracking'], clientKey: 'healthMetricsEnabled', group: 'health' },
   { name: 'healthVault', defaultEnabled: false, deps: [], clientKey: 'healthVaultEnabled', group: 'health' },
@@ -116,8 +117,10 @@ export const EXPECTED_FLAGS: readonly ExpectedFlag[] = [
   { name: 'referral', defaultEnabled: true, deps: [], clientKey: 'referralEnabled', group: 'social' },
   { name: 'brandedOnboarding', defaultEnabled: false, deps: [], clientKey: 'brandedOnboardingEnabled', group: 'onboarding' },
   { name: 'homeTrackHome', defaultEnabled: false, deps: ['workoutTracking'], clientKey: 'homeTrackHomeEnabled', group: 'onboarding' },
+  { name: 'homeIntroduction', defaultEnabled: false, deps: ['coachJourney'], clientKey: 'homeIntroductionEnabled', group: 'coach' },
   { name: 'coachJourney', defaultEnabled: false, deps: ['workoutTracking', 'nonPartnerAttendance'], clientKey: 'coachJourneyEnabled', group: 'coach' },
   { name: 'selfLinkGym', defaultEnabled: false, deps: [], clientKey: 'selfLinkGymEnabled', group: 'coach' },
+  { name: 'personaSwitch', defaultEnabled: false, deps: [], clientKey: 'personaSwitchEnabled', group: 'coach' },
   { name: 'referralHomeTrigger', defaultEnabled: false, deps: ['coachJourney'], clientKey: 'referralHomeTriggerEnabled', group: 'coach' },
   { name: 'coachAssistant', defaultEnabled: false, deps: ['coachJourney'], clientKey: 'coachAssistantEnabled', group: 'coach' },
   { name: 'nonPartnerAttendance', defaultEnabled: false, deps: [], clientKey: 'nonPartnerAttendanceEnabled', group: 'ops' },

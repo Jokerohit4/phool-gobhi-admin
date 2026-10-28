@@ -29,10 +29,11 @@ vi.mock('@/app/settings/flagRegistry', () => ({
 
 const { updateFeatureFlagsAction, updateAppVersionConfigAction } = await import('../actions');
 
-// The real registry, as auth-service serves it: 24 flags (20 + the four coach
-// flags), only referral defaulting on, and fhirExport deliberately clientKey: null (a
+// The real registry, as auth-service serves it: 26 flags,
+// only referral defaulting on, and fhirExport deliberately clientKey: null (a
 // query-parameter branch on an existing route with no app surface to gate).
 const REGISTRY = [
+  { name: 'exploreFoodFinds', clientKey: 'exploreFoodFindsEnabled', group: 'exploration', deps: [] },
   { name: 'workoutTracking', clientKey: 'workoutTrackingEnabled', group: 'training', deps: [] },
   { name: 'healthMetrics', clientKey: 'healthMetricsEnabled', group: 'health', deps: ['workoutTracking'] },
   { name: 'healthVault', clientKey: 'healthVaultEnabled', group: 'health', deps: [] },
@@ -52,8 +53,10 @@ const REGISTRY = [
   { name: 'referral', clientKey: 'referralEnabled', group: 'social', deps: [] },
   { name: 'brandedOnboarding', clientKey: 'brandedOnboardingEnabled', group: 'onboarding', deps: [] },
   { name: 'homeTrackHome', clientKey: 'homeTrackHomeEnabled', group: 'onboarding', deps: ['workoutTracking'] },
+  { name: 'homeIntroduction', clientKey: 'homeIntroductionEnabled', group: 'coach', deps: ['coachJourney'] },
   { name: 'coachJourney', clientKey: 'coachJourneyEnabled', group: 'coach', deps: ['workoutTracking', 'nonPartnerAttendance'] },
   { name: 'selfLinkGym', clientKey: 'selfLinkGymEnabled', group: 'coach', deps: [] },
+  { name: 'personaSwitch', clientKey: 'personaSwitchEnabled', group: 'coach', deps: [] },
   { name: 'referralHomeTrigger', clientKey: 'referralHomeTriggerEnabled', group: 'coach', deps: ['coachJourney'] },
   { name: 'coachAssistant', clientKey: 'coachAssistantEnabled', group: 'coach', deps: ['coachJourney'] },
   { name: 'nonPartnerAttendance', clientKey: 'nonPartnerAttendanceEnabled', group: 'ops', deps: [] },
@@ -173,7 +176,7 @@ describe('updateFeatureFlagsAction round trip', () => {
     expect(Object.values(features).every((v) => v.enabled === false)).toBe(true);
   });
 
-  it('leaves the other 23 flags at their stored value when one is toggled', async () => {
+  it('leaves the other flags at their stored value when one is toggled', async () => {
     const result = await updateFeatureFlagsAction(
       { ok: false, message: '' },
       formAsPageRenders({ challenges: true })
@@ -205,6 +208,33 @@ describe('updateFeatureFlagsAction round trip', () => {
         .filter((name) => features[name].enabled !== STORED_FEATURES[name].enabled);
       expect(changed, `toggling ${flag} should change only ${flag}`).toEqual([flag]);
     }
+  });
+
+  it.each([true, false])('sets FRE to %s without changing Coach, other flags or app versions', async (enabled) => {
+    const currentFeatures = {
+      ...structuredClone(STORED_FEATURES),
+      coachJourney: { enabled: true },
+      homeIntroduction: { enabled: !enabled },
+    };
+    stored.features = currentFeatures;
+    const result = await updateFeatureFlagsAction(
+      { ok: false, message: '' },
+      formAsPageRenders({ coachJourney: true, homeIntroduction: enabled }),
+    );
+    expect(result.ok).toBe(true);
+    expect(writtenFeatures()).toEqual({ ...currentFeatures, homeIntroduction: { enabled } });
+    const config = puts[0].config as Record<string, unknown>;
+    expect(config.customer).toEqual(STORED_VERSIONS.customer);
+    expect(config.partner).toEqual(STORED_VERSIONS.partner);
+    expect(config.maintenance).toEqual(STORED_MAINTENANCE);
+  });
+
+  it('preserves FRE when an older server registry omits its toggle', async () => {
+    stored.features = { ...structuredClone(STORED_FEATURES), homeIntroduction: { enabled: true } };
+    loadFlagRegistry.mockResolvedValue({ flags: REGISTRY.filter((flag) => flag.name !== 'homeIntroduction'), failed: false });
+    const result = await updateFeatureFlagsAction({ ok: false, message: '' }, formAsPageRenders());
+    expect(result.ok).toBe(true);
+    expect(writtenFeatures().homeIntroduction).toEqual({ enabled: true });
   });
 
   it('treats the rendered form as authoritative, so unticking really does switch off', async () => {

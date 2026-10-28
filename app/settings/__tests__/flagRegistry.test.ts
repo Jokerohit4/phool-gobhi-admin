@@ -20,19 +20,21 @@ const project = (flags: ReadonlyArray<{ name: string; defaultEnabled: boolean; d
   flags.map(({ name, defaultEnabled, deps, clientKey, group }) => ({ name, defaultEnabled, deps, clientKey, group }));
 
 describe('expected flag registry', () => {
-  it('registers the four coach flags exactly as auth-service declares them', () => {
+  it('registers the five coach flags exactly as auth-service declares them', () => {
     const coach = EXPECTED_FLAGS.filter((f) => f.group === 'coach');
     expect(project(coach)).toEqual([
+      { name: 'homeIntroduction', defaultEnabled: false, deps: ['coachJourney'], clientKey: 'homeIntroductionEnabled', group: 'coach' },
       { name: 'coachJourney', defaultEnabled: false, deps: ['workoutTracking', 'nonPartnerAttendance'], clientKey: 'coachJourneyEnabled', group: 'coach' },
       { name: 'selfLinkGym', defaultEnabled: false, deps: [], clientKey: 'selfLinkGymEnabled', group: 'coach' },
+      { name: 'personaSwitch', defaultEnabled: false, deps: [], clientKey: 'personaSwitchEnabled', group: 'coach' },
       { name: 'referralHomeTrigger', defaultEnabled: false, deps: ['coachJourney'], clientKey: 'referralHomeTriggerEnabled', group: 'coach' },
       { name: 'coachAssistant', defaultEnabled: false, deps: ['coachJourney'], clientKey: 'coachAssistantEnabled', group: 'coach' },
     ]);
   });
 
-  it('has 24 flags, unique names, and every dep names a known flag', () => {
+  it('has 27 flags, unique names, and every dep names a known flag', () => {
     const names = EXPECTED_FLAGS.map((f) => f.name);
-    expect(names).toHaveLength(24);
+    expect(names).toHaveLength(27);
     expect(new Set(names).size).toBe(names.length);
     for (const flag of EXPECTED_FLAGS) {
       for (const dep of flag.deps) expect(names, `${flag.name} depends on unknown ${dep}`).toContain(dep);
@@ -56,7 +58,7 @@ describe('registryDrift', () => {
 
   it('reports flags an older auth-service does not serve yet', () => {
     const live = EXPECTED_FLAGS.filter((f) => f.group !== 'coach');
-    expect(registryDrift(live).missing).toEqual(['coachJourney', 'selfLinkGym', 'referralHomeTrigger', 'coachAssistant']);
+    expect(registryDrift(live).missing).toEqual(['homeIntroduction', 'coachJourney', 'selfLinkGym', 'personaSwitch', 'referralHomeTrigger', 'coachAssistant']);
   });
 
   it('reports flags a newer auth-service serves that this portal does not know', () => {
