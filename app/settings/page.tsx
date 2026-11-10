@@ -646,7 +646,8 @@ export default async function SettingsPage() {
             {otpConfig.provider === 'skip' && (
               <p className="rounded border border-amber-400 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300">
                 Skip mode is live â€” allowlisted numbers below bypass real OTP with code 123456. Every other
-                number still receives a real Fast2SMS OTP.
+                number still verifies through real Firebase phone auth — Fast2SMS never fires unless it is
+                explicitly selected above.
               </p>
             )}
             <SubmitButton pendingText="Savingâ€¦" className="w-fit">
