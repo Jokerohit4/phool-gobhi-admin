@@ -45,21 +45,15 @@ export async function updateEconomyConfigAction(_prev: ActionState, formData: Fo
 // versions/maintenance) must be read and resubmitted together, same
 // read-modify-write requirement as Settings' updateFeatureFlagsAction, since
 // PUT /app-config/admin replaces the config wholesale.
-interface FeatureFlags {
-  buddy: { enabled: boolean };
-  badges: { enabled: boolean };
-  streaksCoins: { enabled: boolean };
-  challenges: { enabled: boolean };
-  buddyPairedStreaks: { enabled: boolean };
-}
-
-const DEFAULT_FEATURES: FeatureFlags = {
-  buddy: { enabled: true },
-  badges: { enabled: false },
-  streaksCoins: { enabled: false },
-  challenges: { enabled: false },
-  buddyPairedStreaks: { enabled: false },
-};
+//
+// This file used to carry its own `FeatureFlags` interface and
+// `DEFAULT_FEATURES` literal listing five flag names — a THIRD hand-maintained
+// copy of the same list (Settings' page.tsx and actions.ts had two more). The
+// open map below plus auth-service spreading the registry's defaults before
+// serving means the effective value of every known flag is already resolved by
+// the time it reaches here, so there is nothing to default locally and nothing
+// to keep in sync.
+type FeatureFlags = Record<string, { enabled: boolean }>;
 
 async function loadCurrentAppConfig(): Promise<{
   versions: Record<string, Record<string, unknown>>;
@@ -70,7 +64,7 @@ async function loadCurrentAppConfig(): Promise<{
   const { features, maintenance, ...versions } = data;
   return {
     versions: versions as Record<string, Record<string, unknown>>,
-    features: { ...DEFAULT_FEATURES, ...((features as Partial<FeatureFlags>) || {}) },
+    features: (features as FeatureFlags) || {},
     maintenance: (maintenance as Record<string, unknown>) || {},
   };
 }

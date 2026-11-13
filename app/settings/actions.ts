@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
+import { loadFlagRegistry } from './flagRegistry';
+import { setSocialEnabled } from '@/lib/socialApi';
 import type { ActionState } from '@/components/ui/ActionForm';
 
 // Fixed 4-row shape matching booking-service's DEFAULT_CANCELLATION_TIERS —
@@ -83,28 +85,27 @@ const APP_VERSION_KEYS: Array<{ app: 'customer' | 'partner'; platform: 'android'
   { app: 'partner', platform: 'ios' },
 ];
 
-interface FeatureFlags {
-  buddy: { enabled: boolean };
-  badges: { enabled: boolean };
-  streaksCoins: { enabled: boolean };
-  challenges: { enabled: boolean };
-  buddyPairedStreaks: { enabled: boolean };
-  healthMetrics: { enabled: boolean };
-  healthPersonalisation: { enabled: boolean };
-  recapSharing: { enabled: boolean };
-}
-
-// Must match auth-service's own DEFAULT_FEATURES and page.tsx's copy exactly.
-const DEFAULT_FEATURES: FeatureFlags = {
-  buddy: { enabled: true },
-  badges: { enabled: false },
-  streaksCoins: { enabled: false },
-  challenges: { enabled: false },
-  buddyPairedStreaks: { enabled: false },
-  healthMetrics: { enabled: false },
-  healthPersonalisation: { enabled: false },
-  recapSharing: { enabled: false },
-};
+// The feature-flag shape is deliberately NOT declared here any more.
+//
+// This interface used to list fifteen flag names by hand, and auth-service's
+// DEFAULT_FEATURES listed its own set, and the customer app's AppConfigModel
+// listed a third. They drifted, silently, and the drift was invisible: nothing
+// compared them.
+//
+//   - `runTracker` shipped and was the only flag off in dev, and was not in this
+//     list — so it could not be switched on from this portal at all. Only a
+//     direct config-blob edit or a code deploy reached it.
+//   - `referral` was read by the customer app but declared nowhere, so it used
+//     the client's own fail-open default forever with no backend gate.
+//   - `fhirExport` had been checked by health-service since ABHA Stage 0 and
+//     appeared in no list at all.
+//
+// The flag list now comes from GET /api/auth/app-config/registry via
+// loadFlagRegistry in ./flagRegistry. This interface survives only as the shape
+// of the `features` key in the config blob, which is an open map: an admin
+// saving the settings form can set any flag the registry knows about, and one it
+// does not know about is preserved untouched rather than dropped.
+type FeatureFlags = Record<string, { enabled: boolean }>;
 
 interface MaintenanceConfig {
   enabled: boolean;
@@ -133,7 +134,12 @@ async function loadCurrentAppConfig(): Promise<{
   const { features, maintenance, ...versions } = data;
   return {
     versions: versions as Record<string, Record<string, unknown>>,
-    features: { ...DEFAULT_FEATURES, ...((features as Partial<FeatureFlags>) || {}) },
+    // No defaults merged in here any more. auth-service already spreads the flag
+    // registry's defaults under the stored blob before serving it, so whatever
+    // this endpoint returns IS the effective value of every known flag. Merging a
+    // second copy of the defaults locally is what let the portal and the server
+    // disagree about what "unset" meant.
+    features: (features as FeatureFlags) || {},
     maintenance: {
       wallet: { ...DEFAULT_MAINTENANCE.wallet, ...((maintenance as Partial<MaintenanceConfigMap>)?.wallet || {}) },
       gyms: { ...DEFAULT_MAINTENANCE.gyms, ...((maintenance as Partial<MaintenanceConfigMap>)?.gyms || {}) },
@@ -162,9 +168,15 @@ export async function updateAppVersionConfigAction(
       };
     }
 
+    // `current.versions` is everything in the blob except features and
+    // maintenance — the app versions AND any other top-level key such as
+    // `social`. Spread it first so this save replaces the app-version entries
+    // without dropping the social switch (or any key added later).
     await gatewayJson('/api/auth/app-config/admin', {
       method: 'PUT',
-      body: JSON.stringify({ config: { ...config, maintenance: current.maintenance, features: current.features } }),
+      body: JSON.stringify({
+        config: { ...current.versions, ...config, maintenance: current.maintenance, features: current.features },
+      }),
     });
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : 'Failed to save app version config' };
@@ -178,28 +190,33 @@ export async function updateFeatureFlagsAction(_prev: ActionState, formData: For
   await requireSession();
 
   try {
+    // The list of flags to write comes from the server's registry, not from this
+    // file. If the registry endpoint is unreachable the save is refused rather
+    // than falling back to a local list: a fallback here would silently write
+    // back a subset and turn every flag it omits off, which is the exact failure
+    // this was restructured to prevent.
+    const { flags, failed } = await loadFlagRegistry();
+    if (failed || !flags.length) {
+      return { ok: false, message: 'Could not load the feature-flag registry — refusing to save so no flag is dropped' };
+    }
+
     const current = await loadCurrentAppConfig();
-    const features: FeatureFlags = {
-      // Spread first so any flag this form does not render is PRESERVED
-      // rather than dropped. Rebuilding the object from scratch used to wipe
-      // healthPersonalisation and recapSharing — the two legal gates, edited
-      // on the Health page — every time anyone saved this form. They fall
-      // back to false in auth-service, so the failure was silent and
-      // fail-safe rather than dangerous, but it still reset them without
-      // telling anyone. Any flag added elsewhere in future survives too.
-      ...current.features,
-      buddy: { enabled: formData.get('buddyEnabled') === 'on' },
-      badges: { enabled: formData.get('badgesEnabled') === 'on' },
-      streaksCoins: { enabled: formData.get('streaksCoinsEnabled') === 'on' },
-      challenges: { enabled: formData.get('challengesEnabled') === 'on' },
-      buddyPairedStreaks: { enabled: formData.get('buddyPairedStreaksEnabled') === 'on' },
-      healthMetrics: { enabled: formData.get('healthMetricsEnabled') === 'on' },
-      // Added 2026-09-10. Until then these two were the only flags the
-      // portal could not reach, so their state was whatever authController's
-      // DEFAULT_FEATURES said and turning either off needed a deploy.
-      healthPersonalisation: { enabled: formData.get('healthPersonalisationEnabled') === 'on' },
-      recapSharing: { enabled: formData.get('recapSharingEnabled') === 'on' },
-    };
+
+    // Start from what is stored so a flag the form does not render is preserved.
+    // Rebuilding the object from the form alone used to wipe healthPersonalisation
+    // and recapSharing every time anyone saved this page; they fell back to
+    // false in auth-service, so the failure was silent and fail-safe rather than
+    // dangerous, but it still reset them without telling anyone.
+    const features: FeatureFlags = { ...current.features };
+    for (const flag of flags) {
+      // The checkbox is named after the flag's clientKey, which is what the
+      // customer app reads — so the form and the app cannot disagree about which
+      // flag a toggle controls. fhirExport has clientKey null (it is a
+      // query-parameter branch on an existing route, with no app surface), so it
+      // is rendered but its toggle is posted under the flag name.
+      const field = flag.clientKey || flag.name;
+      features[flag.name] = { enabled: formData.get(field) === 'on' };
+    }
 
     await gatewayJson('/api/auth/app-config/admin', {
       method: 'PUT',
@@ -211,6 +228,23 @@ export async function updateFeatureFlagsAction(_prev: ActionState, formData: For
 
   revalidatePath('/settings');
   return { ok: true, message: 'Feature flags updated' };
+}
+
+// The platform-wide social switch (buddy, leaderboards, league). Writes only
+// config.social.enabled; lib/socialApi re-reads the stored blob and sends every
+// other key back unchanged.
+export async function updateSocialSwitchAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+  const enabled = formData.get('socialEnabled') === 'on';
+
+  try {
+    await setSocialEnabled(enabled);
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to save the social switch' };
+  }
+
+  revalidatePath('/settings');
+  return { ok: true, message: enabled ? 'Social features switched on' : 'Social features switched off' };
 }
 
 export async function updateMaintenanceAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
