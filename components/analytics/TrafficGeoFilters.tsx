@@ -26,6 +26,7 @@ export function TrafficGeoFilters({
   return (
     <form ref={formRef} action="/analytics" method="get" className="flex flex-wrap items-end gap-3">
       <input type="hidden" name="view" value="traffic" />
+      <input type="hidden" name="product" value="website" />
       <input type="hidden" name="days" value={days} />
       <div className="flex flex-col gap-1">
         <label htmlFor="traffic-country" className="text-xs text-gray-500">
