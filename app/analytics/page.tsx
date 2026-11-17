@@ -18,6 +18,9 @@ import { StatTile } from '@/components/charts/StatTile';
 import { SectionHeading } from '@/components/charts/SectionHeading';
 import { toOrderedSteps, withDropoff, labelFor } from '@/lib/analyticsLabels';
 import { formatDateIST, formatDateTimeIST } from '@/lib/dateFormat';
+import { analyticsDays, averagePer } from '@/lib/analyticsMetrics';
+import { TrafficFilters, TrafficOverview } from '@/components/analytics/TrafficOverview';
+import { trafficSelection } from '@/lib/traffic';
 
 interface EventCountRow {
   event: string;
@@ -197,7 +200,7 @@ function isView(value: string | undefined): value is View {
 }
 
 const VIEW_LABELS: Record<View, string> = {
-  traffic: 'Website Traffic',
+  traffic: 'Traffic',
   reach: 'Location Reach',
   supply: 'Supply',
   customerOnboarding: 'Customer Onboarding',
@@ -275,28 +278,28 @@ export default async function AnalyticsPage({
     funnelId?: string;
     country?: string;
     city?: string;
+    product?: string;
+    platform?: string;
   }>;
 }) {
   await requireSession();
-  const { view: rawView, days: rawDays, distinctId, event, f1k, f1v, f2k, f2v, f3k, f3v, funnelId, country: rawCountry, city: rawCity } = await searchParams;
+  const { view: rawView, days: rawDays, distinctId, event, f1k, f1v, f2k, f2v, f3k, f3v, funnelId, country: rawCountry, city: rawCity, product: rawProduct, platform: rawPlatform } = await searchParams;
   const view: View = isView(rawView) ? rawView : 'traffic';
-  const days = rawDays && Number(rawDays) > 0 ? rawDays : '30';
+  const days = analyticsDays(rawDays);
+  const { product, platform } = trafficSelection(rawProduct, rawPlatform);
   // India is the default lens (launch market is Bengaluru + Delhi NCR); an
   // explicitly empty ?country= means "All countries", so only an ABSENT param
   // falls back to the default — hence the undefined check, not truthiness.
   const country = rawCountry === undefined ? 'India' : rawCountry;
   const city = rawCity ?? '';
-  // Days toggles must keep the traffic filters; other views don't use them.
-  const trafficFilterQs =
-    view === 'traffic'
-      ? `&country=${encodeURIComponent(country)}${city ? `&city=${encodeURIComponent(city)}` : ''}`
-      : '';
+  // Carry the traffic lens through navigation, including an explicit "All countries".
+  const trafficFilterQs = `&product=${product}&platform=${platform}&country=${encodeURIComponent(country)}${city ? `&city=${encodeURIComponent(city)}` : ''}`;
 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Analytics"
-        subtitle="Funnels computed live from analytics_events — see phool-gobhi-backend/docs/ANALYTICS.md for the event dictionary."
+        subtitle="Explore traffic, customer journeys, and business performance. Each view explains how its metrics are counted."
       />
 
       <div className="flex flex-wrap items-start justify-between gap-y-2 border-b border-gray-200 pb-3 dark:border-gray-800">
@@ -308,7 +311,8 @@ export default async function AnalyticsPage({
                 {group.views.map((v) => (
                   <Link
                     key={v}
-                    href={`/analytics?view=${v}&days=${days}`}
+                    href={`/analytics?view=${v}&days=${days}${trafficFilterQs}`}
+                    aria-current={v === view ? 'page' : undefined}
                     className={`rounded px-2.5 py-1 text-sm transition-colors ${
                       v === view
                         ? 'bg-emerald-600 font-medium text-white'
@@ -328,20 +332,29 @@ export default async function AnalyticsPage({
               <Link
                 key={d}
                 href={`/analytics?view=${view}&days=${d}${trafficFilterQs}`}
+                aria-current={d === days ? 'true' : undefined}
                 className={`rounded px-2.5 py-1 text-sm transition-colors ${
                   d === days
                     ? 'bg-gray-800 font-medium text-white dark:bg-gray-200 dark:text-gray-900'
                     : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
                 }`}
               >
-                {d}d
+                {d} days
               </Link>
             ))}
           </div>
         )}
       </div>
 
-      {view === 'traffic' && <TrafficView days={days} country={country} city={city} />}
+      {view === 'traffic' && <>
+        <TrafficFilters days={days} product={product} platform={platform} />
+        <TrafficOverview days={days} product={product} platform={platform} />
+        {product === 'website' && <details className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+          <summary className="cursor-pointer text-sm font-medium">Website acquisition and geography</summary>
+          <p className="my-3 text-sm text-gray-500">Explore sources, campaigns and landing pages below. Country and city filters apply only to this section; the activity and engagement report above covers all locations.</p>
+          <div className="flex flex-col gap-4"><TrafficView days={days} country={country} city={city} /></div>
+        </details>}
+      </>}
       {view === 'reach' && <ReachView days={days} />}
       {view === 'supply' && <SupplyView days={days} />}
       {view === 'customerOnboarding' && <CustomerOnboardingView days={days} />}
@@ -397,18 +410,6 @@ async function TrafficView({ days, country, city }: { days: string; country: str
   const countryRes = results[1] as PromiseSettledResult<string[]>;
   const cityRes = results[2] as PromiseSettledResult<string[]>;
 
-  const data = trafficRes.status === 'fulfilled' ? trafficRes.value.data : {
-    totalSessions: 0,
-    uniqueVisitors: 0,
-    totalPageViews: 0,
-    daily: [],
-    topPages: [],
-    channels: [],
-    referrers: [],
-    campaigns: [],
-    landingPages: [],
-    geoCoverage: undefined
-  };
   const countryOptions = countryRes.status === 'fulfilled' ? countryRes.value : [];
   const cityOptionsRaw = cityRes.status === 'fulfilled' ? cityRes.value : [];
 
@@ -419,7 +420,29 @@ async function TrafficView({ days, country, city }: { days: string; country: str
 
   if (trafficRes.status === 'rejected') {
     console.error('TrafficView: Failed to load main traffic data', trafficRes.reason);
+    return (
+      <>
+        <Card>
+          <TrafficGeoFilters days={days} country={country} city={city} countries={countries} cities={cities} />
+        </Card>
+        <Card>
+          <div role="alert" className="text-sm">
+            <p className="font-medium text-amber-700 dark:text-amber-400">Traffic data is unavailable</p>
+            <p className="mt-1 text-gray-500">The request failed. Try again to load metrics for this window.</p>
+            <form action="/analytics" method="get" className="mt-3">
+              <input type="hidden" name="view" value="traffic" />
+              <input type="hidden" name="product" value="website" />
+              <input type="hidden" name="days" value={days} />
+              <input type="hidden" name="country" value={country} />
+              <input type="hidden" name="city" value={city} />
+              <button type="submit" className="text-emerald-700 underline dark:text-emerald-400">Try again</button>
+            </form>
+          </div>
+        </Card>
+      </>
+    );
   }
+  const data = trafficRes.value.data;
 
   const sessionsByDay = new Map(data.daily.filter((d) => d.event === 'session_started').map((d) => [d.day, d.n]));
   const pageviewsByDay = new Map(data.daily.filter((d) => d.event === 'screen_viewed').map((d) => [d.day, d.n]));
@@ -440,10 +463,13 @@ async function TrafficView({ days, country, city }: { days: string; country: str
           </p>
         )}
       </Card>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      <p className="text-sm text-gray-500">Last {days} days · {country || 'All countries'}{city ? ` · ${city}` : ''}</p>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <StatTile label="Sessions" value={data.totalSessions.toLocaleString()} hint="session_started, one per tab/visit" />
         <StatTile label="Unique visitors" value={data.uniqueVisitors.toLocaleString()} hint="distinct browser/user id" />
         <StatTile label="Page views" value={data.totalPageViews.toLocaleString()} hint="screen_viewed, every route change" />
+        <StatTile label="Pages per session" value={averagePer(data.totalPageViews, data.totalSessions)} hint="Page views divided by sessions" />
+        <StatTile label="Sessions per visitor" value={averagePer(data.totalSessions, data.uniqueVisitors)} hint="Sessions divided by unique visitors" />
       </div>
       <Card>
         <SectionHeading title="Sessions per day" />
