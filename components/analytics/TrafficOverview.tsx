@@ -7,6 +7,7 @@ import { TrendLineChart } from '@/components/charts/TrendLineChart';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { formatDateTimeIST } from '@/lib/dateFormat';
 import { labelFor } from '@/lib/analyticsLabels';
+import { cohortQs } from '@/lib/cohortFilter';
 import { dailyTrafficPoints, engagementDuration, TRAFFIC_PRODUCTS, type TrafficProduct, type TrafficPlatform, type TrafficReport } from '@/lib/traffic';
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -15,21 +16,21 @@ const percent = (value: number, total: number) => total ? `${Math.round(value / 
 const productName = (app: string) => TRAFFIC_PRODUCTS[app as TrafficProduct] || app;
 const platformName = (platform: string) => platform === 'ios' ? 'iOS' : platform === 'android' ? 'Android' : platform === 'web' ? 'Web' : 'Unknown platform';
 
-export function TrafficFilters({ days, product, platform }: { days: string; product: TrafficProduct; platform: TrafficPlatform }) {
+export function TrafficFilters({ days, product, platform, cohort = 'all' }: { days: string; product: TrafficProduct; platform: TrafficPlatform; cohort?: string }) {
   const mobile = product === 'customer' || product === 'partner';
   const linkStyle = (active: boolean) => `rounded-md px-3 py-2 text-sm ${active ? 'bg-emerald-600 font-medium text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'}`;
   return (
     <Card>
       <nav aria-label="Traffic product" className="flex flex-wrap gap-2">
         {(Object.entries(TRAFFIC_PRODUCTS) as [TrafficProduct, string][]).map(([key, label]) => (
-          <Link key={key} href={`/analytics?view=traffic&days=${days}&product=${key}&platform=both`} aria-current={key === product ? 'page' : undefined} className={linkStyle(key === product)}>{label}</Link>
+          <Link key={key} href={`/analytics?view=traffic&days=${days}&product=${key}&platform=both${cohortQs(cohort)}`} aria-current={key === product ? 'page' : undefined} className={linkStyle(key === product)}>{label}</Link>
         ))}
       </nav>
       {mobile && (
         <nav aria-label="App platform" className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
           <span className="mr-2 text-sm text-gray-500">Platform</span>
           {(['both', 'android', 'ios'] as const).map(key => (
-            <Link key={key} href={`/analytics?view=traffic&days=${days}&product=${product}&platform=${key}`} aria-current={key === platform ? 'page' : undefined} className={linkStyle(key === platform)}>{key === 'both' ? 'Both' : platformName(key)}</Link>
+            <Link key={key} href={`/analytics?view=traffic&days=${days}&product=${product}&platform=${key}${cohortQs(cohort)}`} aria-current={key === platform ? 'page' : undefined} className={linkStyle(key === platform)}>{key === 'both' ? 'Both' : platformName(key)}</Link>
           ))}
         </nav>
       )}
@@ -37,10 +38,10 @@ export function TrafficFilters({ days, product, platform }: { days: string; prod
   );
 }
 
-export async function TrafficOverview({ days, product, platform }: { days: string; product: TrafficProduct; platform: TrafficPlatform }) {
+export async function TrafficOverview({ days, product, platform, cohort = 'all' }: { days: string; product: TrafficProduct; platform: TrafficPlatform; cohort?: string }) {
   let report: TrafficReport;
   try {
-    const response = await gatewayJson<{ data: TrafficReport }>(`/api/bookings/admin/analytics/traffic?days=${days}&product=${product}&platform=${platform}`);
+    const response = await gatewayJson<{ data: TrafficReport }>(`/api/bookings/admin/analytics/traffic?days=${days}&product=${product}&platform=${platform}${cohortQs(cohort)}`);
     report = response.data;
   } catch (error) {
     console.error('Traffic report unavailable', error);
@@ -50,6 +51,7 @@ export async function TrafficOverview({ days, product, platform }: { days: strin
       <form action="/analytics" method="get" className="mt-3">
         <input type="hidden" name="view" value="traffic" /><input type="hidden" name="days" value={days} />
         <input type="hidden" name="product" value={product} /><input type="hidden" name="platform" value={platform} />
+        {cohort !== 'all' && <input type="hidden" name="cohort" value={cohort} />}
         <button className="text-emerald-700 underline dark:text-emerald-400">Try again</button>
       </form>
     </div></Card>;

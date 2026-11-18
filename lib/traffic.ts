@@ -22,7 +22,7 @@ export interface TrafficRow {
 
 export interface TrafficReport {
   asOf: string;
-  filters: { product: TrafficProduct; platform: TrafficPlatform; days: number };
+  filters: { product: TrafficProduct; platform: TrafficPlatform; days: number; cohort?: string };
   timezone: string;
   activeUsers: { dau: number; wau: number; mau: number };
   summary: TrafficRow & { sessionEvents: number; averageSecondsPerSession: number | null; averageSecondsPerUser: number | null };
