@@ -8,6 +8,7 @@ import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { formatDateTimeIST } from '@/lib/dateFormat';
 import { labelFor } from '@/lib/analyticsLabels';
 import { cohortQs } from '@/lib/cohortFilter';
+import { rangeSentence, rangeWindowName } from '@/lib/analyticsMetrics';
 import { dailyTrafficPoints, engagementDuration, TRAFFIC_PRODUCTS, type TrafficProduct, type TrafficPlatform, type TrafficReport } from '@/lib/traffic';
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -64,7 +65,7 @@ export async function TrafficOverview({ days, product, platform, cohort = 'all' 
 
   return <>
     <div className="flex flex-wrap justify-between gap-2 text-xs text-gray-500">
-      <span>{TRAFFIC_PRODUCTS[product]}{product === 'customer' || product === 'partner' ? ` · ${platform === 'both' ? 'Android + iOS' : platformName(platform)}` : ''} · Charts: last {days} days</span>
+      <span>{TRAFFIC_PRODUCTS[product]}{product === 'customer' || product === 'partner' ? ` · ${platform === 'both' ? 'Android + iOS' : platformName(platform)}` : ''} · Charts: {rangeSentence(days).toLowerCase()}</span>
       <span>As of {formatDateTimeIST(report.asOf)} IST</span>
     </div>
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -74,7 +75,7 @@ export async function TrafficOverview({ days, product, platform, cohort = 'all' 
       <StatTile label="DAU / MAU" value={percent(activeUsers.dau, activeUsers.mau)} hint="Share of monthly identities active in the last day" />
     </div>
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
-      <StatTile label="Active identities in window" value={number(summary.users)} hint={`Last ${days} days`} />
+      <StatTile label="Active identities in window" value={number(summary.users)} hint={rangeSentence(days)} />
       <StatTile label="Screen / page views" value={number(summary.views)} hint="Including repeat views" />
       <StatTile label="Sessions" value={number(summary.sessions)} hint="Tracked sessions, split after 30 min inactivity" />
       <StatTile label="Est. total engagement" value={engagementDuration(summary.sessions ? summary.seconds : null)} hint="Sum of eligible observed event gaps" />
@@ -82,7 +83,7 @@ export async function TrafficOverview({ days, product, platform, cohort = 'all' 
       <StatTile label="Est. time per active identity" value={engagementDuration(summary.averageSecondsPerUser)} hint="Observed engagement / all active identities" />
     </div>
     <Card>
-      <SectionHeading title="Engagement at a glance" subtitle={`Patterns within the selected ${days}-day window`} />
+      <SectionHeading title="Engagement at a glance" subtitle={`Patterns within the selected ${rangeWindowName(days)} window`} />
       {summary.users === 0 ? <p className="text-sm text-gray-500">No tracked activity for this selection yet.</p> : <div className="grid gap-4 text-sm sm:grid-cols-3">
         <div><p className="text-gray-500">Most observed screen time</p><p className="mt-1 break-words font-medium">{topScreen?.label || 'No observed screen time'}</p>{topScreen && <p className="text-xs text-gray-500">{productName(topScreen.app)} · {platformName(topScreen.platform)} · {engagementDuration(topScreen.seconds)} estimated</p>}</div>
         <div><p className="text-gray-500">Action with widest reach</p><p className="mt-1 break-words font-medium">{topAction ? labelFor(topAction.label) : 'No action observations'}</p>{topAction && <p className="text-xs text-gray-500">{productName(topAction.app)} · {platformName(topAction.platform)} · {number(topAction.users)} identities</p>}</div>
@@ -134,7 +135,7 @@ export async function TrafficOverview({ days, product, platform, cohort = 'all' 
       <SectionHeading title="How to read these metrics" />
       <div className="space-y-2 text-sm text-gray-500">
         <p>Active means at least one client screen, session or action event. Identity and diagnostic events do not count. Anonymous activity is linked to the account it identifies into when a login link is available within the report’s scanned history (at least 30 days). Unlinked anonymous visitors remain separate identities. All combines product-scoped identities, so the same person using two products can count twice. Platform rows can overlap for people using multiple devices. These are first-party activity counts, not Firebase active-user metrics.</p>
-        <p>DAU, WAU and MAU always use rolling 24-hour, 7-day and 30-day windows ending at the report timestamp. Other metrics use the selected {days}-day window. App “Both” includes Android and iOS; missing platform tags appear only under All.</p>
+        <p>DAU, WAU and MAU always use rolling 24-hour, 7-day and 30-day windows ending at the report timestamp. Other metrics use the selected {rangeWindowName(days)} window. App “Both” includes Android and iOS; missing platform tags appear only under All.</p>
         <p>Engagement time is an estimate from consecutive events in a tracked session: only gaps of up to 5 minutes count. Gaps over 30 minutes start another session. There is no inferred time after the final event, and this does not measure exact foreground time. Single-event sessions have no observed time.</p>
         <p>Session ID coverage: {percent(summary.sessionEvents, summary.n)} of {number(summary.n)} activity events. {number(summary.measured)} of {number(summary.sessions)} tracked sessions have a positive observed interval. Events without session IDs still contribute to active identities, views and action counts. Time per identity uses all active identities and may understate engagement when session coverage is incomplete.</p>
       </div>

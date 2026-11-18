@@ -18,7 +18,7 @@ import { StatTile } from '@/components/charts/StatTile';
 import { SectionHeading } from '@/components/charts/SectionHeading';
 import { toOrderedSteps, withDropoff, labelFor } from '@/lib/analyticsLabels';
 import { formatDateIST, formatDateTimeIST } from '@/lib/dateFormat';
-import { analyticsDays, averagePer } from '@/lib/analyticsMetrics';
+import { analyticsDays, averagePer, rangeButtonLabel, rangeSentence } from '@/lib/analyticsMetrics';
 import { TrafficFilters, TrafficOverview } from '@/components/analytics/TrafficOverview';
 import { CohortFilter } from '@/components/analytics/CohortFilter';
 import { COHORT_VIEWS, cohortQs, cohortSelection } from '@/lib/cohortFilter';
@@ -335,7 +335,7 @@ export default async function AnalyticsPage({
         </div>
         {view !== 'user' && view !== 'retention' && view !== 'eventSearch' && view !== 'funnels' && (
           <div className="flex gap-1">
-            {['7', '30', '90'].map((d) => (
+            {['today', '7', '30', '90'].map((d) => (
               <Link
                 key={d}
                 href={`/analytics?view=${view}&days=${d}${trafficFilterQs}`}
@@ -346,7 +346,7 @@ export default async function AnalyticsPage({
                     : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
                 }`}
               >
-                {d} days
+                {rangeButtonLabel(d)}
               </Link>
             ))}
           </div>
@@ -478,7 +478,7 @@ async function TrafficView({ days, country, city }: { days: string; country: str
           </p>
         )}
       </Card>
-      <p className="text-sm text-gray-500">Last {days} days · {country || 'All countries'}{city ? ` · ${city}` : ''}</p>
+      <p className="text-sm text-gray-500">{rangeSentence(days)} · {country || 'All countries'}{city ? ` · ${city}` : ''}</p>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <StatTile label="Sessions" value={data.totalSessions.toLocaleString()} hint="session_started, one per tab/visit" />
         <StatTile label="Unique visitors" value={data.uniqueVisitors.toLocaleString()} hint="distinct browser/user id" />
@@ -1665,7 +1665,7 @@ async function EventSearchResults({
     <Card>
       <SectionHeading
         title={`Users who did "${event}"${filterSummary ? ` where ${filterSummary}` : ''}`}
-        subtitle={`Last ${days} days, most recently active first. Times shown in IST. Click a row to open its journey.`}
+        subtitle={`${rangeSentence(days)}, most recently active first. Times shown in IST. Click a row to open its journey.`}
       />
       {users.length === 0 ? (
         <div className="py-4 text-sm text-gray-500">No matching events in this window.</div>
@@ -1832,7 +1832,7 @@ async function CustomFunnelResults({ funnelId, days, cohort }: { funnelId: strin
       <div className="mb-2 flex items-center justify-between">
         <SectionHeading title="Result" />
         <div className="flex gap-1">
-          {['7', '30', '90', '365'].map((d) => (
+          {['today', '7', '30', '90', '365'].map((d) => (
             <Link
               key={d}
               href={`/analytics?view=funnels&funnelId=${funnelId}&days=${d}${cohortQs(cohort)}`}
@@ -1842,7 +1842,7 @@ async function CustomFunnelResults({ funnelId, days, cohort }: { funnelId: strin
                   : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
               }`}
             >
-              {d}d
+              {rangeButtonLabel(d, true)}
             </Link>
           ))}
         </div>
