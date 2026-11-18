@@ -11,6 +11,7 @@ export const NAV_ITEMS = [
   { href: '/attendance', label: 'Attendance' },
   { href: '/live', label: 'Live Tracking' },
   { href: '/attendance-saas', label: 'Attendance SaaS' },
+  { href: '/fulfillment', label: 'Coaching fulfillment' },
   { href: '/payouts', label: 'Payouts' },
   { href: '/staff', label: 'Staff' },
   { href: '/jobs', label: 'Jobs' },
