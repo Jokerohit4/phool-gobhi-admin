@@ -20,6 +20,8 @@ import { toOrderedSteps, withDropoff, labelFor } from '@/lib/analyticsLabels';
 import { formatDateIST, formatDateTimeIST } from '@/lib/dateFormat';
 import { analyticsDays, averagePer } from '@/lib/analyticsMetrics';
 import { TrafficFilters, TrafficOverview } from '@/components/analytics/TrafficOverview';
+import { CohortFilter } from '@/components/analytics/CohortFilter';
+import { COHORT_VIEWS, cohortQs, cohortSelection } from '@/lib/cohortFilter';
 import { trafficSelection } from '@/lib/traffic';
 
 interface EventCountRow {
@@ -280,20 +282,25 @@ export default async function AnalyticsPage({
     city?: string;
     product?: string;
     platform?: string;
+    cohort?: string;
   }>;
 }) {
   await requireSession();
-  const { view: rawView, days: rawDays, distinctId, event, f1k, f1v, f2k, f2v, f3k, f3v, funnelId, country: rawCountry, city: rawCity, product: rawProduct, platform: rawPlatform } = await searchParams;
+  const { view: rawView, days: rawDays, distinctId, event, f1k, f1v, f2k, f2v, f3k, f3v, funnelId, country: rawCountry, city: rawCity, product: rawProduct, platform: rawPlatform, cohort: rawCohort } = await searchParams;
   const view: View = isView(rawView) ? rawView : 'traffic';
   const days = analyticsDays(rawDays);
   const { product, platform } = trafficSelection(rawProduct, rawPlatform);
+  const cohort = cohortSelection(rawCohort);
+  const cohortApplies = COHORT_VIEWS.has(view);
   // India is the default lens (launch market is Bengaluru + Delhi NCR); an
   // explicitly empty ?country= means "All countries", so only an ABSENT param
   // falls back to the default — hence the undefined check, not truthiness.
   const country = rawCountry === undefined ? 'India' : rawCountry;
   const city = rawCity ?? '';
   // Carry the traffic lens through navigation, including an explicit "All countries".
-  const trafficFilterQs = `&product=${product}&platform=${platform}&country=${encodeURIComponent(country)}${city ? `&city=${encodeURIComponent(city)}` : ''}`;
+  const trafficFilterQs = `&product=${product}&platform=${platform}&country=${encodeURIComponent(country)}${city ? `&city=${encodeURIComponent(city)}` : ''}${cohortQs(cohort)}`;
+  // Same URL without the cohort, which CohortFilter rewrites.
+  const cohortBaseHref = `/analytics?view=${view}&days=${days}&product=${product}&platform=${platform}&country=${encodeURIComponent(country)}${city ? `&city=${encodeURIComponent(city)}` : ''}${view === 'eventSearch' && event ? `&event=${encodeURIComponent(event)}` : ''}${view === 'funnels' && funnelId ? `&funnelId=${encodeURIComponent(funnelId)}` : ''}`;
 
   return (
     <div className="flex flex-col gap-4">
@@ -346,33 +353,41 @@ export default async function AnalyticsPage({
         )}
       </div>
 
+      {cohortApplies && (
+        <CohortFilter
+          baseHref={cohortBaseHref}
+          cohort={cohort}
+          note={view === 'city' ? 'Gym supply columns (gyms created/approved) are not cohort-filtered.' : undefined}
+        />
+      )}
+
       {view === 'traffic' && <>
-        <TrafficFilters days={days} product={product} platform={platform} />
-        <TrafficOverview days={days} product={product} platform={platform} />
+        <TrafficFilters days={days} product={product} platform={platform} cohort={cohort} />
+        <TrafficOverview days={days} product={product} platform={platform} cohort={cohort} />
         {product === 'website' && <details className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
           <summary className="cursor-pointer text-sm font-medium">Website acquisition and geography</summary>
           <p className="my-3 text-sm text-gray-500">Explore sources, campaigns and landing pages below. Country and city filters apply only to this section; the activity and engagement report above covers all locations.</p>
           <div className="flex flex-col gap-4"><TrafficView days={days} country={country} city={city} /></div>
         </details>}
       </>}
-      {view === 'reach' && <ReachView days={days} />}
+      {view === 'reach' && <ReachView days={days} cohort={cohort} />}
       {view === 'supply' && <SupplyView days={days} />}
-      {view === 'customerOnboarding' && <CustomerOnboardingView days={days} />}
-      {view === 'conversion' && <ConversionView days={days} />}
-      {view === 'fulfillment' && <FulfillmentView days={days} />}
-      {view === 'activation' && <ActivationView days={days} />}
-      {view === 'wallet' && <WalletView days={days} />}
-      {view === 'buddy' && <BuddyView days={days} />}
-      {view === 'city' && <CityView days={days} />}
-      {view === 'revenue' && <RevenueView days={days} />}
-      {view === 'retention' && <RetentionView />}
+      {view === 'customerOnboarding' && <CustomerOnboardingView days={days} cohort={cohort} />}
+      {view === 'conversion' && <ConversionView days={days} cohort={cohort} />}
+      {view === 'fulfillment' && <FulfillmentView days={days} cohort={cohort} />}
+      {view === 'activation' && <ActivationView days={days} cohort={cohort} />}
+      {view === 'wallet' && <WalletView days={days} cohort={cohort} />}
+      {view === 'buddy' && <BuddyView days={days} cohort={cohort} />}
+      {view === 'city' && <CityView days={days} cohort={cohort} />}
+      {view === 'revenue' && <RevenueView days={days} cohort={cohort} />}
+      {view === 'retention' && <RetentionView cohort={cohort} />}
       {view === 'giftBonus' && <GiftBonusView days={days} />}
-      {view === 'badges' && <BadgesView days={days} />}
+      {view === 'badges' && <BadgesView days={days} cohort={cohort} />}
       {view === 'user' && <UserJourneyView distinctId={distinctId} />}
       {view === 'eventSearch' && (
-        <EventSearchView event={event} days={days} f1k={f1k} f1v={f1v} f2k={f2k} f2v={f2v} f3k={f3k} f3v={f3v} />
+        <EventSearchView event={event} days={days} cohort={cohort} f1k={f1k} f1v={f1v} f2k={f2k} f2v={f2v} f3k={f3k} f3v={f3v} />
       )}
-      {view === 'funnels' && <FunnelsView funnelId={funnelId} days={days} />}
+      {view === 'funnels' && <FunnelsView funnelId={funnelId} days={days} cohort={cohort} />}
     </div>
   );
 }
@@ -592,9 +607,9 @@ function channelLabel(channel: string | null): string {
   return channel;
 }
 
-async function ReachView({ days }: { days: string }) {
+async function ReachView({ days, cohort }: { days: string; cohort: string }) {
   const { data } = await gatewayJson<{ data: LocationReachData }>(
-    `/api/bookings/admin/analytics/location-reach?days=${days}&limit=200`,
+    `/api/bookings/admin/analytics/location-reach?days=${days}&limit=200${cohortQs(cohort)}`,
   );
 
   const totalVisitors = data.permission.reduce((sum, p) => sum + p.distinct_visitors, 0);
@@ -893,14 +908,14 @@ function pct(n: number, d: number): string {
   return d > 0 ? `${Math.round((n / d) * 100)}%` : '—';
 }
 
-async function CustomerOnboardingView({ days }: { days: string }) {
+async function CustomerOnboardingView({ days, cohort }: { days: string; cohort: string }) {
   // Own try/catch, never a bare Promise.all: a failing endpoint renders an
   // empty view with a note, never takes the whole page down.
   let data: CustomerOnboardingFunnelData = { steps: [], permissions: [], completedByTrainingLocation: [] };
   let failed = false;
   try {
     ({ data } = await gatewayJson<{ data: CustomerOnboardingFunnelData }>(
-      `/api/bookings/admin/analytics/customer-onboarding-funnel?days=${days}`,
+      `/api/bookings/admin/analytics/customer-onboarding-funnel?days=${days}${cohortQs(cohort)}`,
     ));
   } catch {
     failed = true;
@@ -1020,9 +1035,9 @@ async function CustomerOnboardingView({ days }: { days: string }) {
   );
 }
 
-async function ConversionView({ days }: { days: string }) {
+async function ConversionView({ days, cohort }: { days: string; cohort: string }) {
   const { data } = await gatewayJson<{ data: ConversionFunnelData }>(
-    `/api/bookings/admin/analytics/conversion-funnel?days=${days}`,
+    `/api/bookings/admin/analytics/conversion-funnel?days=${days}${cohortQs(cohort)}`,
   );
   const steps = withDropoff(
     toOrderedSteps(data.steps, ['gym_viewed', 'slot_selected', 'book_tapped', 'booking_confirmed'], 'users'),
@@ -1059,9 +1074,9 @@ async function ConversionView({ days }: { days: string }) {
   );
 }
 
-async function FulfillmentView({ days }: { days: string }) {
+async function FulfillmentView({ days, cohort }: { days: string; cohort: string }) {
   const { data } = await gatewayJson<{ data: FulfillmentFunnelData }>(
-    `/api/bookings/admin/analytics/fulfillment-funnel?days=${days}`,
+    `/api/bookings/admin/analytics/fulfillment-funnel?days=${days}${cohortQs(cohort)}`,
   );
   const steps = withDropoff(
     toOrderedSteps(
@@ -1102,8 +1117,8 @@ async function FulfillmentView({ days }: { days: string }) {
   );
 }
 
-async function ActivationView({ days }: { days: string }) {
-  const { data } = await gatewayJson<{ data: SimpleFunnelData }>(`/api/bookings/admin/analytics/activation?days=${days}`);
+async function ActivationView({ days, cohort }: { days: string; cohort: string }) {
+  const { data } = await gatewayJson<{ data: SimpleFunnelData }>(`/api/bookings/admin/analytics/activation?days=${days}${cohortQs(cohort)}`);
   const steps = toOrderedSteps(
     data.steps,
     ['otp_requested', 'otp_submitted', 'signup_completed', 'login_completed'],
@@ -1118,8 +1133,8 @@ async function ActivationView({ days }: { days: string }) {
   );
 }
 
-async function WalletView({ days }: { days: string }) {
-  const { data } = await gatewayJson<{ data: SimpleFunnelData }>(`/api/bookings/admin/analytics/wallet-funnel?days=${days}`);
+async function WalletView({ days, cohort }: { days: string; cohort: string }) {
+  const { data } = await gatewayJson<{ data: SimpleFunnelData }>(`/api/bookings/admin/analytics/wallet-funnel?days=${days}${cohortQs(cohort)}`);
   const steps = withDropoff(
     toOrderedSteps(data.steps, ['topup_tapped', 'wallet_topup_order_created', 'wallet_topup_succeeded'], 'users'),
   );
@@ -1143,8 +1158,8 @@ async function WalletView({ days }: { days: string }) {
   );
 }
 
-async function BuddyView({ days }: { days: string }) {
-  const { data } = await gatewayJson<{ data: SimpleFunnelData }>(`/api/bookings/admin/analytics/buddy-funnel?days=${days}`);
+async function BuddyView({ days, cohort }: { days: string; cohort: string }) {
+  const { data } = await gatewayJson<{ data: SimpleFunnelData }>(`/api/bookings/admin/analytics/buddy-funnel?days=${days}${cohortQs(cohort)}`);
   const steps = withDropoff(
     toOrderedSteps(data.steps, ['buddy_profile_created', 'buddy_swiped', 'buddy_matched', 'buddy_message_sent'], 'users'),
   );
@@ -1168,8 +1183,8 @@ async function BuddyView({ days }: { days: string }) {
   );
 }
 
-async function CityView({ days }: { days: string }) {
-  const { data } = await gatewayJson<{ data: CityBreakdownData }>(`/api/bookings/admin/analytics/city-breakdown?days=${days}`);
+async function CityView({ days, cohort }: { days: string; cohort: string }) {
+  const { data } = await gatewayJson<{ data: CityBreakdownData }>(`/api/bookings/admin/analytics/city-breakdown?days=${days}${cohortQs(cohort)}`);
 
   return (
     <Card>
@@ -1199,8 +1214,8 @@ async function CityView({ days }: { days: string }) {
   );
 }
 
-async function BadgesView({ days }: { days: string }) {
-  const { data } = await gatewayJson<{ data: BadgeSummaryData }>(`/api/bookings/admin/analytics/badges-summary?days=${days}`);
+async function BadgesView({ days, cohort }: { days: string; cohort: string }) {
+  const { data } = await gatewayJson<{ data: BadgeSummaryData }>(`/api/bookings/admin/analytics/badges-summary?days=${days}${cohortQs(cohort)}`);
 
   return (
     <>
@@ -1235,8 +1250,8 @@ async function BadgesView({ days }: { days: string }) {
   );
 }
 
-async function RevenueView({ days }: { days: string }) {
-  const { data } = await gatewayJson<{ data: RevenueTrendData }>(`/api/bookings/admin/analytics/revenue-trend?days=${days}`);
+async function RevenueView({ days, cohort }: { days: string; cohort: string }) {
+  const { data } = await gatewayJson<{ data: RevenueTrendData }>(`/api/bookings/admin/analytics/revenue-trend?days=${days}${cohortQs(cohort)}`);
   const totalGmv = data.days.reduce((sum, d) => sum + d.gmv, 0);
   const totalBookings = data.days.reduce((sum, d) => sum + d.bookings, 0);
 
@@ -1308,8 +1323,8 @@ function retentionCellClass(rate: number | null): string {
   return 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400';
 }
 
-async function RetentionView() {
-  const { data } = await gatewayJson<{ data: RetentionCohortsData }>('/api/bookings/admin/analytics/retention?weeks=12');
+async function RetentionView({ cohort }: { cohort: string }) {
+  const { data } = await gatewayJson<{ data: RetentionCohortsData }>(`/api/bookings/admin/analytics/retention?weeks=12${cohortQs(cohort)}`);
   // Newest cohort first — the most recent weeks are what a founder watching a
   // just-launched cohort actually cares about checking day to day.
   const cohorts = [...data.cohorts].sort((a, b) => (a.cohortWeek < b.cohortWeek ? 1 : -1));
@@ -1583,10 +1598,12 @@ async function UserJourneyResults({ distinctId }: { distinctId: string }) {
 async function EventSearchView({
   event,
   days,
+  cohort,
   f1k, f1v, f2k, f2v, f3k, f3v,
 }: {
   event?: string;
   days: string;
+  cohort: string;
   f1k?: string; f1v?: string; f2k?: string; f2v?: string; f3k?: string; f3v?: string;
 }) {
   const filters: Record<string, string> = {};
@@ -1600,6 +1617,7 @@ async function EventSearchView({
       <Card>
         <form action="/analytics" method="get" className="flex flex-col gap-3">
           <input type="hidden" name="view" value="eventSearch" />
+          {cohort !== 'all' && <input type="hidden" name="cohort" value={cohort} />}
           <EventSearchFields
             knownEvents={knownEvents}
             defaultEvent={event}
@@ -1608,7 +1626,7 @@ async function EventSearchView({
           />
         </form>
       </Card>
-      {event && <EventSearchResults event={event} filters={filters} days={days} />}
+      {event && <EventSearchResults event={event} filters={filters} days={days} cohort={cohort} />}
     </>
   );
 }
@@ -1617,10 +1635,12 @@ async function EventSearchResults({
   event,
   filters,
   days,
+  cohort,
 }: {
   event: string;
   filters: Record<string, string>;
   days: string;
+  cohort: string;
 }) {
   let users: EventSearchUser[];
   try {
@@ -1629,7 +1649,7 @@ async function EventSearchResults({
     } = await gatewayJson<{ data: { users: EventSearchUser[] } }>(
       `/api/bookings/admin/analytics/event-search?event=${encodeURIComponent(event)}&filters=${encodeURIComponent(
         JSON.stringify(filters),
-      )}&days=${days}&limit=50`,
+      )}&days=${days}&limit=50${cohortQs(cohort)}`,
     ));
   } catch (err) {
     return (
@@ -1693,7 +1713,7 @@ function funnelStepsSummary(steps: FunnelStepDef[]): string {
     .join(' → ');
 }
 
-async function FunnelsView({ funnelId, days }: { funnelId?: string; days: string }) {
+async function FunnelsView({ funnelId, days, cohort }: { funnelId?: string; days: string; cohort: string }) {
   const knownEvents = await getKnownEventsAction();
   let funnels: SavedFunnelRow[];
   try {
@@ -1733,7 +1753,7 @@ async function FunnelsView({ funnelId, days }: { funnelId?: string; days: string
                   <Td>{formatDateIST(f.updatedAt)}</Td>
                   <Td>
                     <div className="flex items-center gap-3">
-                      <Link href={`/analytics?view=funnels&funnelId=${f.id}&days=${days}`} className="text-sm underline">
+                      <Link href={`/analytics?view=funnels&funnelId=${f.id}&days=${days}${cohortQs(cohort)}`} className="text-sm underline">
                         View
                       </Link>
                       <ActionForm action={deleteFunnelAction} confirmMessage={`Delete "${f.name}"?`}>
@@ -1781,16 +1801,16 @@ async function FunnelsView({ funnelId, days }: { funnelId?: string; days: string
         </ActionForm>
       </Card>
 
-      {funnelId && <CustomFunnelResults funnelId={funnelId} days={days} />}
+      {funnelId && <CustomFunnelResults funnelId={funnelId} days={days} cohort={cohort} />}
     </>
   );
 }
 
-async function CustomFunnelResults({ funnelId, days }: { funnelId: string; days: string }) {
+async function CustomFunnelResults({ funnelId, days, cohort }: { funnelId: string; days: string; cohort: string }) {
   let result: CustomFunnelResult;
   try {
     ({ data: result } = await gatewayJson<{ data: CustomFunnelResult }>(
-      `/api/bookings/admin/analytics/custom-funnel?funnelId=${encodeURIComponent(funnelId)}&days=${days}`,
+      `/api/bookings/admin/analytics/custom-funnel?funnelId=${encodeURIComponent(funnelId)}&days=${days}${cohortQs(cohort)}`,
     ));
   } catch (err) {
     return (
@@ -1815,7 +1835,7 @@ async function CustomFunnelResults({ funnelId, days }: { funnelId: string; days:
           {['7', '30', '90', '365'].map((d) => (
             <Link
               key={d}
-              href={`/analytics?view=funnels&funnelId=${funnelId}&days=${d}`}
+              href={`/analytics?view=funnels&funnelId=${funnelId}&days=${d}${cohortQs(cohort)}`}
               className={`rounded px-2.5 py-1 text-sm transition-colors ${
                 d === days
                   ? 'bg-gray-800 font-medium text-white dark:bg-gray-200 dark:text-gray-900'
