@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { rangeButtonLabel } from '@/lib/analyticsMetrics';
 import { EventNameInput, PropertyFilterRow } from './EventFilterBuilder';
 
 interface KnownEvent {
@@ -44,8 +45,8 @@ export function EventSearchFields({
         <div className="flex flex-col gap-1">
           <label className="text-xs text-gray-500">Days</label>
           <select name="days" defaultValue={days} className="rounded border px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900">
-            {['7', '30', '90', '365'].map((d) => (
-              <option key={d} value={d}>{d}d</option>
+            {['today', '7', '30', '90', '365'].map((d) => (
+              <option key={d} value={d}>{rangeButtonLabel(d, true)}</option>
             ))}
           </select>
         </div>
