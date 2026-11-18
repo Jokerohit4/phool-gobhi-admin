@@ -13,6 +13,7 @@ export const NAV_ITEMS = [
   { href: '/attendance-saas', label: 'Attendance SaaS' },
   { href: '/payouts', label: 'Payouts' },
   { href: '/staff', label: 'Staff' },
+  { href: '/users', label: 'Users & cohorts' },
   { href: '/jobs', label: 'Jobs' },
   { href: '/applications', label: 'Applications' },
   { href: '/messages', label: 'Messages' },
