@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 export type NavItem = { href: string; label: string; icon?: string; badgeKey?: string };
 export type NavGroup = { id: string; label: string; icon?: string; items: NavItem[] };
@@ -85,7 +85,10 @@ export default function Sidebar({ badges }: { badges?: Record<string, number> } 
   useEffect(() => {
     try {
       const raw = localStorage.getItem('admin_nav_open');
-      if (raw) setOpen(JSON.parse(raw));
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, boolean>;
+        queueMicrotask(() => setOpen(parsed));
+      }
     } catch {}
   }, []);
 
