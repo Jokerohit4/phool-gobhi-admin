@@ -15,7 +15,7 @@ export default function LoginPage() {
     // Hard navigation, not router.push/refresh: the session cookie was just
     // set by the API route, and a full page load guarantees the next request
     // picks it up rather than racing the client router's cache/transition.
-    window.location.href = '/gyms';
+    window.location.href = '/dashboard';
   }
 
   async function login(e: FormEvent) {
