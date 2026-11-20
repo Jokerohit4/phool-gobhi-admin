@@ -7,6 +7,8 @@ import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { formatDateIST } from '@/lib/dateFormat';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
+import { Section } from '@/components/ui/Section';
+import { FilterBar } from '@/components/ui/FilterBar';
 
 interface Member {
   id: number;
@@ -133,117 +135,121 @@ export default async function AttendanceSaasMembersPage({
   return (
     <div className="flex flex-col gap-4">
       <Breadcrumbs items={[{ label: 'Attendance SaaS', href: '/attendance-saas' }, { label: gym.name }]} />
-      <PageHeader
-        title={`${gym.name} - members`}
-        subtitle={
-          <>
-            Individual attendance-SaaS registrations at this gym.{' '}
-            <Link href="/attendance-saas" className="underline">
-              Back to Attendance SaaS
-            </Link>
-            {' · '}
-            <Link href="/fulfillment" className="underline">
-              Coaching fulfillment
-            </Link>
-          </>
-        }
-      />
+      <Section>
+        <PageHeader
+          title={`${gym.name} - members`}
+          subtitle={
+            <>
+              Individual attendance-SaaS registrations at this gym.{' '}
+              <Link href="/attendance-saas" className="underline">
+                Back to Attendance SaaS
+              </Link>
+              {' · '}
+              <Link href="/fulfillment" className="underline">
+                Coaching fulfillment
+              </Link>
+            </>
+          }
+        />
 
-      <Table>
-        <Thead>
-          <Th>Name</Th>
-          <Th>Phone</Th>
-          <Th>Registered</Th>
-          <Th>Subscriptions</Th>
-          <Th>Total paid</Th>
-          <Th>Status</Th>
-        </Thead>
-        <tbody>
-          {rows.map(({ member, subscriptionCount, totalPaid, activeNow }) => (
-            <Tr key={member.id}>
-              <Td>{member.name ?? '—'}</Td>
-              <Td>{member.phone ?? '—'}</Td>
-              <Td>{formatDateIST(member.createdAt)}</Td>
-              <Td>{subscriptionCount}</Td>
-              <Td>₹{totalPaid.toFixed(2)}</Td>
-              <Td>
-                {activeNow ? (
-                  <StatusBadge tone="approved">Active</StatusBadge>
-                ) : subscriptionCount > 0 ? (
-                  <StatusBadge tone="pending">Lapsed</StatusBadge>
-                ) : (
-                  <StatusBadge tone="rejected">No subscription yet</StatusBadge>
-                )}
-              </Td>
-            </Tr>
-          ))}
-          {rows.length === 0 && <EmptyRow colSpan={6}>No one has registered at this gym yet.</EmptyRow>}
-        </tbody>
-      </Table>
+        <Table>
+          <Thead>
+            <Th>Name</Th>
+            <Th>Phone</Th>
+            <Th>Registered</Th>
+            <Th>Subscriptions</Th>
+            <Th>Total paid</Th>
+            <Th>Status</Th>
+          </Thead>
+          <tbody>
+            {rows.map(({ member, subscriptionCount, totalPaid, activeNow }) => (
+              <Tr key={member.id}>
+                <Td>{member.name ?? '—'}</Td>
+                <Td>{member.phone ?? '—'}</Td>
+                <Td>{formatDateIST(member.createdAt)}</Td>
+                <Td>{subscriptionCount}</Td>
+                <Td>₹{totalPaid.toFixed(2)}</Td>
+                <Td>
+                  {activeNow ? (
+                    <StatusBadge tone="approved">Active</StatusBadge>
+                  ) : subscriptionCount > 0 ? (
+                    <StatusBadge tone="pending">Lapsed</StatusBadge>
+                  ) : (
+                    <StatusBadge tone="rejected">No subscription yet</StatusBadge>
+                  )}
+                </Td>
+              </Tr>
+            ))}
+            {rows.length === 0 && <EmptyRow colSpan={6}>No one has registered at this gym yet.</EmptyRow>}
+          </tbody>
+        </Table>
+      </Section>
 
-      <PageHeader
-        title="Attendance activity"
-        subtitle={`Based on verified attendance in the last ${activity.windowDays} day${activity.windowDays === 1 ? '' : 's'}. Time spent is booked session length, not a measured presence duration.`}
-      />
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-2">
-          {SORT_OPTIONS.map((o) => (
-            <Link
-              key={o.key}
-              href={`/attendance-saas/${gymId}?days=${activityDays}&sort=${o.key}`}
-              className={`rounded-full px-3 py-1 text-xs font-medium ${
-                o.key === activitySort ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800'
-              }`}
-            >
-              {o.label}
-            </Link>
-          ))}
-        </div>
-        <div className="flex gap-1 text-sm">
-          {ACTIVITY_DAY_OPTIONS.map((d) => (
-            <Link
-              key={d}
-              href={`/attendance-saas/${gymId}?days=${d}&sort=${activitySort}`}
-              className={`rounded px-3 py-1 ${d === activityDays ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800'}`}
-            >
-              {d}d
-            </Link>
-          ))}
-        </div>
-      </div>
-      <Table>
-        <Thead>
-          <Th>Member</Th>
-          <Th>Visits</Th>
-          <Th>Time spent</Th>
-          <Th>Usual time</Th>
-          <Th>Timing</Th>
-        </Thead>
-        <tbody>
-          {sortedActivity.map((row) => (
-            <Tr key={row.customerId}>
-              <Td>{row.customerName || `Customer #${row.customerId}`}</Td>
-              <Td>{row.visitCount}</Td>
-              <Td>{(row.totalMinutes / 60).toFixed(1)}h</Td>
-              <Td>{formatHour(row.mostCommonHour)}</Td>
-              <Td>
-                {row.visitCount < 2 ? (
-                  <span className="text-gray-400">Not enough visits yet</span>
-                ) : row.consistencyRatio >= 0.6 ? (
-                  <StatusBadge tone="approved">
-                    Routine ({Math.round(row.consistencyRatio * 100)}% at {formatHour(row.mostCommonHour)})
-                  </StatusBadge>
-                ) : (
-                  <StatusBadge tone="read">Varies</StatusBadge>
-                )}
-              </Td>
-            </Tr>
-          ))}
-          {sortedActivity.length === 0 && (
-            <EmptyRow colSpan={5}>No verified attendance in this window yet.</EmptyRow>
-          )}
-        </tbody>
-      </Table>
+      <Section>
+        <PageHeader
+          title="Attendance activity"
+          subtitle={`Based on verified attendance in the last ${activity.windowDays} day${activity.windowDays === 1 ? '' : 's'}. Time spent is booked session length, not a measured presence duration.`}
+        />
+        <FilterBar className="justify-between">
+          <div className="flex flex-wrap gap-2">
+            {SORT_OPTIONS.map((o) => (
+              <Link
+                key={o.key}
+                href={`/attendance-saas/${gymId}?days=${activityDays}&sort=${o.key}`}
+                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  o.key === activitySort ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800'
+                }`}
+              >
+                {o.label}
+              </Link>
+            ))}
+          </div>
+          <div className="flex gap-1 text-sm">
+            {ACTIVITY_DAY_OPTIONS.map((d) => (
+              <Link
+                key={d}
+                href={`/attendance-saas/${gymId}?days=${d}&sort=${activitySort}`}
+                className={`rounded px-3 py-1 ${d === activityDays ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800'}`}
+              >
+                {d}d
+              </Link>
+            ))}
+          </div>
+        </FilterBar>
+        <Table>
+          <Thead>
+            <Th>Member</Th>
+            <Th>Visits</Th>
+            <Th>Time spent</Th>
+            <Th>Usual time</Th>
+            <Th>Timing</Th>
+          </Thead>
+          <tbody>
+            {sortedActivity.map((row) => (
+              <Tr key={row.customerId}>
+                <Td>{row.customerName || `Customer #${row.customerId}`}</Td>
+                <Td>{row.visitCount}</Td>
+                <Td>{(row.totalMinutes / 60).toFixed(1)}h</Td>
+                <Td>{formatHour(row.mostCommonHour)}</Td>
+                <Td>
+                  {row.visitCount < 2 ? (
+                    <span className="text-gray-400">Not enough visits yet</span>
+                  ) : row.consistencyRatio >= 0.6 ? (
+                    <StatusBadge tone="approved">
+                      Routine ({Math.round(row.consistencyRatio * 100)}% at {formatHour(row.mostCommonHour)})
+                    </StatusBadge>
+                  ) : (
+                    <StatusBadge tone="read">Varies</StatusBadge>
+                  )}
+                </Td>
+              </Tr>
+            ))}
+            {sortedActivity.length === 0 && (
+              <EmptyRow colSpan={5}>No verified attendance in this window yet.</EmptyRow>
+            )}
+          </tbody>
+        </Table>
+      </Section>
     </div>
   );
 }

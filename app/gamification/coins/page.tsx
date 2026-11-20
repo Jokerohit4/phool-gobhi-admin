@@ -13,6 +13,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
+import { Section } from '@/components/ui/Section';
 import { formatDateTimeIST } from '@/lib/dateFormat';
 
 interface EconomyConfig {
@@ -69,7 +70,7 @@ export default async function CoinsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="flex flex-col gap-4">
+      <Section>
         <Breadcrumbs items={[{ label: 'Coins & streaks' }]} />
         <PageHeader
           title="Coin system switches"
@@ -111,9 +112,9 @@ export default async function CoinsPage() {
             </SubmitButton>
           </ActionForm>
         </Card>
-      </section>
+      </Section>
 
-      <section className="flex flex-col gap-4">
+      <Section>
         <PageHeader
           title="Coin economy"
           subtitle={
@@ -206,9 +207,9 @@ export default async function CoinsPage() {
             </SubmitButton>
           </ActionForm>
         </Card>
-      </section>
+      </Section>
 
-      <section className="flex flex-col gap-4">
+      <Section>
         <PageHeader
           title="Coin catalog"
           subtitle="What coins can be redeemed for. Only subscription_discount has real fulfillment wired up today — priority_booking/buddy_unlock are reserved categories with no product spec yet, and brand_product is reserved until a brand deal is signed."
@@ -257,9 +258,9 @@ export default async function CoinsPage() {
             {catalog.length === 0 && <EmptyRow colSpan={7}>No catalog items yet.</EmptyRow>}
           </tbody>
         </Table>
-      </section>
+      </Section>
 
-      <section className="flex flex-col gap-4">
+      <Section>
         <PageHeader title="Add catalog item" />
         <Card className="max-w-md">
           <ActionForm action={createCatalogItemAction} className="flex flex-col gap-3">
@@ -290,7 +291,7 @@ export default async function CoinsPage() {
             <SubmitButton pendingText="Creating…" className="w-fit">Add item</SubmitButton>
           </ActionForm>
         </Card>
-      </section>
+      </Section>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
+import { Section } from '@/components/ui/Section';
 
 interface ChallengeDefinition {
   id: number;
@@ -53,7 +54,7 @@ export default async function ChallengesPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="flex flex-col gap-4">
+      <Section>
         <Breadcrumbs items={[{ label: 'Challenges' }]} />
         <PageHeader
           title="Challenges"
@@ -105,9 +106,9 @@ export default async function ChallengesPage() {
             {challenges.length === 0 && <EmptyRow colSpan={9}>No challenges yet.</EmptyRow>}
           </tbody>
         </Table>
-      </section>
+      </Section>
 
-      <section className="flex flex-col gap-4">
+      <Section>
         <PageHeader title="Add a challenge (instance of a definition)" />
         <Card className="max-w-md">
           <ActionForm action={createChallengeAction} className="flex flex-col gap-3">
@@ -142,9 +143,9 @@ export default async function ChallengesPage() {
             <SubmitButton pendingText="Creating…" className="w-fit">Add challenge</SubmitButton>
           </ActionForm>
         </Card>
-      </section>
+      </Section>
 
-      <section className="flex flex-col gap-4">
+      <Section>
         <PageHeader title="Challenge definitions" subtitle="Reusable templates a challenge instance is created from." />
         <Table>
           <Thead>
@@ -201,9 +202,9 @@ export default async function ChallengesPage() {
             <SubmitButton pendingText="Creating…" className="w-fit">Add definition</SubmitButton>
           </ActionForm>
         </Card>
-      </section>
+      </Section>
 
-      <section className="flex flex-col gap-4">
+      <Section>
         <PageHeader
           title="Sponsors"
           subtitle="Not used by either pilot challenge yet — reserved for a subscriber-tier or sponsored challenge once one exists."
@@ -244,7 +245,7 @@ export default async function ChallengesPage() {
             <SubmitButton pendingText="Adding…" className="w-fit">Add sponsor</SubmitButton>
           </ActionForm>
         </Card>
-      </section>
+      </Section>
     </div>
   );
 }

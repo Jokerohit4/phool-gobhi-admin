@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
+import { InlineError } from '@/components/ui/InlineError';
 import { savePlansAction } from './actions';
 import type { ConfigResponse, PlanConfig } from './config';
 
@@ -43,7 +44,15 @@ export default async function CoachingPlansPage({ searchParams }: { searchParams
   const region = (await searchParams).region === 'REST_INDIA' ? 'REST_INDIA' : 'GURUGRAM';
   let data: ConfigResponse;
   try { data = (await gatewayJson<{ data: ConfigResponse }>('/api/wallet/coaching/admin/config')).data; }
-  catch (e) { return <div className="space-y-4"><Breadcrumbs items={[{ label: 'Guided plans & offerings' }]} /><PageHeader title="Guided plans & offerings" /><p role="alert">{e instanceof Error ? e.message : 'Could not load plan settings'}</p></div>; }
+  catch (e) {
+    return (
+      <div className="space-y-4">
+        <Breadcrumbs items={[{ label: 'Guided plans & offerings' }]} />
+        <PageHeader title="Guided plans & offerings" />
+        <InlineError title="Could not load plan settings" message={e instanceof Error ? e.message : 'Could not load plan settings'} retryHref="/coaching-plans" />
+      </div>
+    );
+  }
   const local = region === 'GURUGRAM', r = data.config.regions[region];
   return <div className="space-y-5">
     <Breadcrumbs items={[{ label: 'Guided plans & offerings' }]} />

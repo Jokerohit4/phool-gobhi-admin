@@ -8,6 +8,7 @@ import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
+import { Section } from '@/components/ui/Section';
 
 interface CheckpointSpot {
   id: number;
@@ -27,7 +28,7 @@ export default async function ChallengeSpotsPage({ params }: { params: Promise<{
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="flex flex-col gap-4">
+      <Section>
         <Breadcrumbs items={[{ label: 'Challenges', href: '/gamification/challenges' }, { label: `Challenge #${id} spots` }]} />
         <Link href="/gamification/challenges" className="text-sm text-emerald-600 underline">
           &larr; Back to challenges
@@ -59,9 +60,9 @@ export default async function ChallengeSpotsPage({ params }: { params: Promise<{
             {spots.length === 0 && <EmptyRow colSpan={6}>No spots yet.</EmptyRow>}
           </tbody>
         </Table>
-      </section>
+      </Section>
 
-      <section className="flex flex-col gap-4">
+      <Section>
         <PageHeader title="Add a spot" />
         <Card className="max-w-md">
           <ActionForm action={createSpotAction} className="flex flex-col gap-3">
@@ -80,15 +81,12 @@ export default async function ChallengeSpotsPage({ params }: { params: Promise<{
             <input id="lng" name="lng" type="number" step="any" required className="rounded border px-3 py-2 text-sm" />
 
             <label className="text-sm font-medium" htmlFor="radiusMeters">Radius (meters)</label>
-            <input id="radiusMeters" name="radiusMeters" type="number" min={10} defaultValue={75} className="rounded border px-3 py-2 text-sm" />
-
-            <label className="text-sm font-medium" htmlFor="code">Code (encoded in the sticker&rsquo;s QR)</label>
-            <input id="code" name="code" required placeholder="CKPT-XYZ" className="rounded border px-3 py-2 text-sm" />
+            <input id="radiusMeters" name="radiusMeters" type="number" min={1} defaultValue={50} className="rounded border px-3 py-2 text-sm" />
 
             <SubmitButton pendingText="Adding…" className="w-fit">Add spot</SubmitButton>
           </ActionForm>
         </Card>
-      </section>
+      </Section>
     </div>
   );
 }

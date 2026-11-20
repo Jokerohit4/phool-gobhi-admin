@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
+import { InlineError } from '@/components/ui/InlineError';
 import { gatewayJson } from '@/lib/api';
 import { requireSession } from '@/lib/auth';
 import { campaignApi, displayTime, type Campaign } from './campaigns';
@@ -19,7 +20,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
       <div className="flex flex-col gap-4">
         <Breadcrumbs items={[{ label: 'Notifications' }]} />
         <PageHeader title="Push campaigns" subtitle="Create and manage customer push notification campaigns." />
-        <p role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">{result.error}</p>
+        <InlineError title="Could not load campaigns" message={result.error} retryHref="/notifications" />
       </div>
     );
   }
