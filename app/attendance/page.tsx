@@ -5,6 +5,8 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { InlineError } from '@/components/ui/InlineError';
 
 interface AttendanceBucket {
   booked: number;
@@ -82,6 +84,7 @@ export default async function AttendancePage({
   if (summaryRes.status === 'rejected') console.error('AttendancePage: Summary load failed', summaryRes.reason);
   if (byGymRes.status === 'rejected') console.error('AttendancePage: ByGym load failed', byGymRes.reason);
   if (gymsRes.status === 'rejected') console.error('AttendancePage: Gyms load failed', gymsRes.reason);
+  const loadFailed = results.every((r) => r.status === 'rejected');
 
   const gymsById = new Map(gyms.map((g) => [g.id, g.name]));
   const bucket = summary[period];
@@ -91,7 +94,7 @@ export default async function AttendancePage({
       <Breadcrumbs items={[{ label: 'Attendance' }]} />
       <PageHeader title="Attendance" subtitle="Platform-wide check-in verification, by period." />
 
-      <div className="flex gap-2">
+      <FilterBar>
         {PERIODS.map((p) => (
           <Link
             key={p}
@@ -103,7 +106,9 @@ export default async function AttendancePage({
             {p}
           </Link>
         ))}
-      </div>
+      </FilterBar>
+
+      {loadFailed && <InlineError title="Could not load attendance data" message="Some attendance data could not be loaded. Try again." retryHref={`/attendance?period=${period}`} />}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <Card>

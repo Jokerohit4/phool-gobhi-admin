@@ -8,6 +8,8 @@ import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { formatDateTimeIST } from '@/lib/dateFormat';
+import { InlineError } from '@/components/ui/InlineError';
+import { Section } from '@/components/ui/Section';
 
 interface JobApplication {
   id: number;
@@ -26,13 +28,20 @@ interface JobApplication {
 
 export default async function ApplicationsPage() {
   await requireSession();
-  const { data: applications } = await gatewayJson<{ data: JobApplication[] }>('/api/auth/admin/job-applications');
+  let applications: JobApplication[] = [];
+  let error = '';
+  try {
+    ({ data: applications } = await gatewayJson<{ data: JobApplication[] }>('/api/auth/admin/job-applications'));
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Could not load job applications';
+  }
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="flex flex-col gap-4">
+      <Section>
         <Breadcrumbs items={[{ label: 'Applications' }]} />
         <PageHeader title="Job applications" subtitle="Submissions from the website's /careers page." />
+        {error && <InlineError title="Could not load applications" message={error} retryHref="/applications" />}
         <Table>
           <Thead>
             <Th>Status</Th>
@@ -93,10 +102,11 @@ export default async function ApplicationsPage() {
                 </Td>
               </Tr>
             ))}
-            {applications.length === 0 && <EmptyRow colSpan={8}>No applications yet.</EmptyRow>}
+            {!error && applications.length === 0 && <EmptyRow colSpan={8}>No applications yet.</EmptyRow>}
+            {error && applications.length === 0 && <EmptyRow colSpan={8}>Could not load applications.</EmptyRow>}
           </tbody>
         </Table>
-      </section>
+      </Section>
     </div>
   );
 }

@@ -10,6 +10,9 @@ import { SubmitButton } from '@/components/ui/SubmitButton';
 import { formatDateIST } from '@/lib/dateFormat';
 import { COHORTS, cohortLabel, isCohort } from './cohorts';
 import { setUserCohortAction, bulkSetCohortAction } from './actions';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { InlineError } from '@/components/ui/InlineError';
+import { Section } from '@/components/ui/Section';
 
 interface UserRow {
   id: number;
@@ -43,7 +46,13 @@ export default async function UsersPage({
   const qs = new URLSearchParams({ limit: '50' });
   if (cohort) qs.set('cohort', cohort);
   if (cursor && /^\d+$/.test(cursor)) qs.set('cursor', cursor);
-  const { data } = await gatewayJson<UsersResponse>(`/api/auth/admin/users?${qs.toString()}`);
+  let data: UsersResponse['data'] = { users: [], counts: {}, nextCursor: null };
+  let error = '';
+  try {
+    ({ data } = await gatewayJson<UsersResponse>(`/api/auth/admin/users?${qs.toString()}`));
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Could not load users';
+  }
 
   const total = Object.values(data.counts).reduce((a, b) => a + b, 0);
   const nextParams = new URLSearchParams();
@@ -53,13 +62,14 @@ export default async function UsersPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="flex flex-col gap-4">
+      <Section>
         <Breadcrumbs items={[{ label: 'Users & cohorts' }]} />
         <PageHeader
           title="Users & cohorts"
           subtitle="Who each account is: friends & family, generated, testing or unknown. Use it to build beta cohorts."
         />
-        <div className="flex flex-wrap gap-2 text-sm">
+        {error && <InlineError title="Could not load users" message={error} retryHref={`/users${cohort ? `?cohort=${cohort}` : ''}`} />}
+        <FilterBar className="text-sm">
           <Link
             href="/users"
             className={`rounded-full border px-3 py-1 ${!cohort ? 'bg-emerald-600 text-white' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}
@@ -75,7 +85,7 @@ export default async function UsersPage({
               {cohortLabel(c)} ({data.counts[c] ?? 0})
             </Link>
           ))}
-        </div>
+        </FilterBar>
 
         <Table>
           <Thead>
@@ -109,7 +119,8 @@ export default async function UsersPage({
                 </Td>
               </Tr>
             ))}
-            {data.users.length === 0 && <EmptyRow colSpan={7}>No users in this cohort.</EmptyRow>}
+            {!error && data.users.length === 0 && <EmptyRow colSpan={7}>No users in this cohort.</EmptyRow>}
+            {error && data.users.length === 0 && <EmptyRow colSpan={7}>Could not load users.</EmptyRow>}
           </tbody>
         </Table>
         {nextHref && (
@@ -117,9 +128,9 @@ export default async function UsersPage({
             Next page →
           </Link>
         )}
-      </section>
+      </Section>
 
-      <section className="flex flex-col gap-4">
+      <Section>
         <PageHeader title="Bulk assign" subtitle="Paste user ids (comma, space or new-line separated), up to 500." />
         <Card className="max-w-md">
           <ActionForm
@@ -139,7 +150,7 @@ export default async function UsersPage({
             <SubmitButton pendingText="Applying…" className="w-fit">Apply</SubmitButton>
           </ActionForm>
         </Card>
-      </section>
+      </Section>
     </div>
   );
 }

@@ -8,6 +8,8 @@ import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { formatDateTimeIST } from '@/lib/dateFormat';
+import { InlineError } from '@/components/ui/InlineError';
+import { Section } from '@/components/ui/Section';
 
 interface ContactMessage {
   id: number;
@@ -20,13 +22,20 @@ interface ContactMessage {
 
 export default async function MessagesPage() {
   await requireSession();
-  const { data: messages } = await gatewayJson<{ data: ContactMessage[] }>('/api/auth/admin/contact-messages');
+  let messages: ContactMessage[] = [];
+  let error = '';
+  try {
+    ({ data: messages } = await gatewayJson<{ data: ContactMessage[] }>('/api/auth/admin/contact-messages'));
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Could not load contact messages';
+  }
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="flex flex-col gap-4">
+      <Section>
         <Breadcrumbs items={[{ label: 'Messages' }]} />
         <PageHeader title="Contact messages" subtitle="Submissions from the website's /contact form." />
+        {error && <InlineError title="Could not load messages" message={error} retryHref="/messages" />}
         <Table>
           <Thead>
             <Th>Status</Th>
@@ -58,10 +67,11 @@ export default async function MessagesPage() {
                 </Td>
               </Tr>
             ))}
-            {messages.length === 0 && <EmptyRow colSpan={5}>No messages yet.</EmptyRow>}
+            {!error && messages.length === 0 && <EmptyRow colSpan={5}>No messages yet.</EmptyRow>}
+            {error && messages.length === 0 && <EmptyRow colSpan={5}>Could not load messages.</EmptyRow>}
           </tbody>
         </Table>
-      </section>
+      </Section>
     </div>
   );
 }

@@ -8,6 +8,8 @@ import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { formatDateIST } from '@/lib/dateFormat';
+import { InlineError } from '@/components/ui/InlineError';
+import { Section } from '@/components/ui/Section';
 
 interface JobOpening {
   id: number;
@@ -29,16 +31,23 @@ const EMPLOYMENT_TYPE_LABELS: Record<JobOpening['employmentType'], string> = {
 
 export default async function JobsPage() {
   await requireSession();
-  const { data: jobs } = await gatewayJson<{ data: JobOpening[] }>('/api/auth/admin/jobs');
+  let jobs: JobOpening[] = [];
+  let error = '';
+  try {
+    ({ data: jobs } = await gatewayJson<{ data: JobOpening[] }>('/api/auth/admin/jobs'));
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Could not load job openings';
+  }
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="flex flex-col gap-4">
+      <Section>
         <Breadcrumbs items={[{ label: 'Jobs' }]} />
         <PageHeader
           title="Job openings"
           subtitle="Shown on the website's /careers page while open. Closing hides a listing without deleting its history."
         />
+        {error && <InlineError title="Could not load job openings" message={error} retryHref="/jobs" />}
         <Table>
           <Thead>
             <Th>Title</Th>
@@ -83,13 +92,13 @@ export default async function JobsPage() {
                 </Td>
               </Tr>
             ))}
-            {jobs.length === 0 && <EmptyRow colSpan={7}>No job openings posted yet.</EmptyRow>}
+            {!error && jobs.length === 0 && <EmptyRow colSpan={7}>No job openings posted yet.</EmptyRow>}
+            {error && jobs.length === 0 && <EmptyRow colSpan={7}>Could not load job openings.</EmptyRow>}
           </tbody>
         </Table>
-      </section>
+      </Section>
 
-      <section className="flex flex-col gap-4">
-        <PageHeader title="Post a new opening" />
+      <Section title="Post a new opening">
         <Card className="max-w-lg">
           <ActionForm action={createJobOpeningAction} className="flex flex-col gap-3">
             <label className="text-sm font-medium" htmlFor="title">Title</label>
@@ -115,7 +124,7 @@ export default async function JobsPage() {
             <SubmitButton pendingText="Posting…" className="w-fit">Post opening</SubmitButton>
           </ActionForm>
         </Card>
-      </section>
+      </Section>
     </div>
   );
 }

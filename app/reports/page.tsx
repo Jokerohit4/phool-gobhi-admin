@@ -5,6 +5,8 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
+import { InlineError } from '@/components/ui/InlineError';
+import { FilterBar } from '@/components/ui/FilterBar';
 
 type SavedReport = {
   id: number; userId: number; source: string; userName: string | null; phone: string | null;
@@ -38,34 +40,36 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       <Breadcrumbs items={[{ label: 'Saved reports' }]} />
       <PageHeader title="Saved blood reports" subtitle="Every saved lab snapshot and uploaded lab report, including free users and files awaiting reading or confirmation." />
 
-      <div className="flex flex-wrap items-center gap-3 text-sm">
+      <FilterBar className="items-center text-sm">
         <Link href="/reports?source=snapshot" className={source === 'snapshot' ? 'rounded bg-emerald-600 px-3 py-1 text-white' : 'rounded bg-gray-100 px-3 py-1 dark:bg-gray-800'}>Lab snapshots</Link>
         <Link href="/reports?source=document" className={source === 'document' ? 'rounded bg-emerald-600 px-3 py-1 text-white' : 'rounded bg-gray-100 px-3 py-1 dark:bg-gray-800'}>Saved lab documents</Link>
         <Link href="/fulfillment" className="ml-auto underline">Clinical review &amp; fulfillment</Link>
-      </div>
+      </FilterBar>
 
       <Card>
-        <form className="flex flex-wrap items-end gap-3">
-          <input type="hidden" name="source" value={source} />
-          <label className="flex flex-col gap-1 text-sm">
-            Customer ID
-            <input name="userId" type="number" min="1" defaultValue={query.get('userId') || ''} className={input} />
-          </label>
-          {source === 'snapshot' && (
+        <FilterBar className="items-end">
+          <form className="flex flex-wrap items-end gap-3">
+            <input type="hidden" name="source" value={source} />
             <label className="flex flex-col gap-1 text-sm">
-              Reading status
-              <select name="status" defaultValue={query.get('status') || ''} className={input}>
-                <option value="">All statuses</option>
-                {['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED'].map((status) => <option key={status} value={status}>{status}</option>)}
-              </select>
+              Customer ID
+              <input name="userId" type="number" min="1" defaultValue={query.get('userId') || ''} className={input} />
             </label>
-          )}
-          <button className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white">Filter reports</button>
-          <Link href={`/reports?source=${source}`} className="px-2 py-2 text-sm underline">Reset</Link>
-        </form>
+            {source === 'snapshot' && (
+              <label className="flex flex-col gap-1 text-sm">
+                Reading status
+                <select name="status" defaultValue={query.get('status') || ''} className={input}>
+                  <option value="">All statuses</option>
+                  {['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED'].map((status) => <option key={status} value={status}>{status}</option>)}
+                </select>
+              </label>
+            )}
+            <button className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white">Filter reports</button>
+            <Link href={`/reports?source=${source}`} className="px-2 py-2 text-sm underline">Reset</Link>
+          </form>
+        </FilterBar>
       </Card>
 
-      {error && <p role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">{error}</p>}
+      {error && <InlineError title="Could not load saved reports" message={error} retryHref={`/reports?${query}`} />}
       {result.accountLookupUnavailable && <p className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-400">Account names and phone numbers are temporarily unavailable. Reports remain listed by customer ID.</p>}
       <p className="text-sm text-gray-500">{result.total} saved reports in this view. Reading a file does not confirm its values or provide clinical clearance.</p>
 

@@ -9,20 +9,42 @@ import { requireSession } from '@/lib/auth';
 import { controlCampaign, updateCampaign } from '../actions';
 import { CampaignForm, NotificationPreview } from '../CampaignForm';
 import { campaignApi, displayTime, type Campaign, type CampaignOptions, type Run } from '../campaigns';
+import { InlineError } from '@/components/ui/InlineError';
 
 export default async function CampaignPage({ params }: { params: Promise<{ id: string }> }) {
   await requireSession();
   const { id } = await params;
   const path = campaignApi + '/campaigns/' + encodeURIComponent(id);
-  const [{ data: campaign }, { data: runs }, options] = await Promise.all([
-    gatewayJson<{ data: Campaign }>(path),
-    gatewayJson<{ data: Run[] }>(path + '/runs'),
-    gatewayJson<CampaignOptions>(campaignApi + '/options'),
-  ]);
+
+  let loaded: { campaign: Campaign; runs: Run[]; options: CampaignOptions } | null = null;
+  let error = '';
+  try {
+    const [{ data: campaign }, { data: runs }, options] = await Promise.all([
+      gatewayJson<{ data: Campaign }>(path),
+      gatewayJson<{ data: Run[] }>(path + '/runs'),
+      gatewayJson<CampaignOptions>(campaignApi + '/options'),
+    ]);
+    loaded = { campaign, runs, options };
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Could not load campaign';
+  }
+
+  if (!loaded) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Breadcrumbs items={[{ label: 'Notifications', href: '/notifications' }, { label: 'Campaign' }]} />
+        <PageHeader title="Campaign" />
+        <InlineError title="Could not load campaign" message={error} retryHref={`/notifications/${id}`} />
+      </div>
+    );
+  }
+
+  const { campaign, runs, options } = loaded;
   const { config, status } = campaign;
   const resumable = status === 'draft' || status === 'paused';
   const editable = resumable && (config.mode !== 'once' || campaign.run_count === 0);
   const counts = ['queued', 'sending', 'accepted', 'failed', 'skipped', 'unknown'];
+
   return (
     <div className="flex flex-col gap-4">
       <Breadcrumbs items={[{ label: 'Notifications', href: '/notifications' }, { label: config.name }]} />

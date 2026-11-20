@@ -7,6 +7,8 @@ import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { formatDateTimeIST } from '@/lib/dateFormat';
+import { InlineError } from '@/components/ui/InlineError';
+import { Section } from '@/components/ui/Section';
 
 interface PartnerBalance {
   userId: number;
@@ -47,12 +49,17 @@ export default async function PayoutsPage() {
 
   if (balancesRes.status === 'rejected') console.error('PayoutsPage: Balances load failed', balancesRes.reason);
   if (historyRes.status === 'rejected') console.error('PayoutsPage: History load failed', historyRes.reason);
+  const loadFailed = balancesRes.status === 'rejected' && historyRes.status === 'rejected';
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <Breadcrumbs items={[{ label: 'Payouts' }]} />
-        <PageHeader title="Partner balances owed" />
+        <PageHeader title="Payouts" subtitle="Partner balances owed and payout history." />
+        {loadFailed && <InlineError title="Could not load payouts" message="Payout data could not be loaded. Try again." retryHref="/payouts" />}
+      </div>
+
+      <Section title="Partner balances owed">
         <Table>
           <Thead>
             <Th>Partner</Th>
@@ -94,10 +101,9 @@ export default async function PayoutsPage() {
             {balances.length === 0 && <EmptyRow colSpan={3}>No partner balances owed right now.</EmptyRow>}
           </tbody>
         </Table>
-      </section>
+      </Section>
 
-      <section className="flex flex-col gap-4">
-        <PageHeader title="Payout history" />
+      <Section title="Payout history">
         <Table>
           <Thead>
             <Th>Partner</Th>
@@ -117,7 +123,7 @@ export default async function PayoutsPage() {
             {history.length === 0 && <EmptyRow colSpan={4}>No payouts recorded yet.</EmptyRow>}
           </tbody>
         </Table>
-      </section>
+      </Section>
     </div>
   );
 }

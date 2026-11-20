@@ -9,6 +9,8 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { formatDateIST } from '@/lib/dateFormat';
+import { InlineError } from '@/components/ui/InlineError';
+import { Section } from '@/components/ui/Section';
 
 interface StaffMember {
   id: number;
@@ -23,13 +25,20 @@ const GOBHI_TYPES = ['trainer', 'cleaner', 'manager'] as const;
 
 export default async function StaffPage() {
   const session = await requireSession();
-  const { data: staff } = await gatewayJson<{ data: StaffMember[] }>('/api/auth/admin/staff');
+  let staff: StaffMember[] = [];
+  let error = '';
+  try {
+    ({ data: staff } = await gatewayJson<{ data: StaffMember[] }>('/api/auth/admin/staff'));
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Could not load staff';
+  }
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="flex flex-col gap-4">
+      <Section>
         <Breadcrumbs items={[{ label: 'Staff' }]} />
         <PageHeader title="Staff" subtitle="Accounts with access to this admin portal." />
+        {error && <InlineError title="Could not load staff" message={error} retryHref="/staff" />}
         <Table>
           <Thead>
             <Th>Name</Th>
@@ -76,13 +85,13 @@ export default async function StaffPage() {
                 </Tr>
               );
             })}
-            {staff.length === 0 && <EmptyRow colSpan={6}>No staff accounts found.</EmptyRow>}
+            {!error && staff.length === 0 && <EmptyRow colSpan={6}>No staff accounts found.</EmptyRow>}
+            {error && staff.length === 0 && <EmptyRow colSpan={6}>Could not load staff.</EmptyRow>}
           </tbody>
         </Table>
-      </section>
+      </Section>
 
-      <section className="flex flex-col gap-4">
-        <PageHeader title="Invite staff" />
+      <Section title="Invite staff">
         <Card className="max-w-md">
           <ActionForm
             action={inviteStaffAction}
@@ -109,7 +118,7 @@ export default async function StaffPage() {
             <SubmitButton pendingText="Inviting…" className="w-fit">Invite</SubmitButton>
           </ActionForm>
         </Card>
-      </section>
+      </Section>
     </div>
   );
 }

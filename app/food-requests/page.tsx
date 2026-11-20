@@ -8,6 +8,9 @@ import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { formatDateIST } from '@/lib/dateFormat';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { InlineError } from '@/components/ui/InlineError';
+import { Section } from '@/components/ui/Section';
 
 interface FoodRequest {
   id: number;
@@ -34,19 +37,25 @@ export default async function FoodRequestsPage({
   const tab = status === 'all' ? 'all' : 'pending';
   // The queue endpoint is demand-ordered for pending (count first, then
   // oldest) — that is its purpose, so the table reads the review order as-is.
-  const { data: queue } = await gatewayJson<{ data: FoodRequest[] }>(
-    `/api/health/admin/food-requests?status=${tab}`,
-  );
+  let queue: FoodRequest[] = [];
+  let error = '';
+  try {
+    ({ data: queue } = await gatewayJson<{ data: FoodRequest[] }>(
+      `/api/health/admin/food-requests?status=${tab}`,
+    ));
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Could not load food requests';
+  }
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="flex flex-col gap-4">
+      <Section>
         <Breadcrumbs items={[{ label: 'Food requests' }]} />
         <PageHeader
           title="Food requests"
           subtitle="Dishes customers said the catalogue is missing — most asked first. Resolve or decline a request, or promote the dish straight into the catalogue below."
         />
-        <div className="flex gap-2">
+        <FilterBar>
           <a
             href="/food-requests"
             className={`rounded px-3 py-1 text-sm font-medium ${
@@ -67,7 +76,8 @@ export default async function FoodRequestsPage({
           >
             All
           </a>
-        </div>
+        </FilterBar>
+        {error && <InlineError title="Could not load food requests" message={error} retryHref={`/food-requests?status=${tab}`} />}
         <Table>
           <Thead>
             <Th>Name</Th>
@@ -129,18 +139,19 @@ export default async function FoodRequestsPage({
                 </Td>
               </Tr>
             ))}
-            {queue.length === 0 && (
+            {!error && queue.length === 0 && (
               <EmptyRow colSpan={7}>
                 {tab === 'pending'
                   ? 'No pending requests — the queue is clear.'
                   : 'No requests yet.'}
               </EmptyRow>
             )}
+            {error && queue.length === 0 && <EmptyRow colSpan={7}>Could not load food requests.</EmptyRow>}
           </tbody>
         </Table>
-      </section>
+      </Section>
 
-      <section className="flex flex-col gap-4">
+      <Section>
         <PageHeader
           title="Add a food"
           subtitle="Sourced numbers only — per 100 g. Claiming a source you do not have in hand (IFCT 2017, USDA) without the value is a provenance lie; 'estimate' is honest until then. Adding a food closes the pending requests for its name."
@@ -290,7 +301,7 @@ export default async function FoodRequestsPage({
             </SubmitButton>
           </ActionForm>
         </Card>
-      </section>
+      </Section>
     </div>
   );
 }

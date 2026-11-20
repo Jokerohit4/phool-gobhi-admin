@@ -8,6 +8,8 @@ import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { formatDateIST } from '@/lib/dateFormat';
+import { InlineError } from '@/components/ui/InlineError';
+import { Section } from '@/components/ui/Section';
 
 interface PitchAccessContact {
   id: number;
@@ -19,16 +21,23 @@ interface PitchAccessContact {
 
 export default async function PitchAccessPage() {
   await requireSession();
-  const { data: contacts } = await gatewayJson<{ data: PitchAccessContact[] }>('/api/auth/admin/pitch-access');
+  let contacts: PitchAccessContact[] = [];
+  let error = '';
+  try {
+    ({ data: contacts } = await gatewayJson<{ data: PitchAccessContact[] }>('/api/auth/admin/pitch-access'));
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Could not load pitch access contacts';
+  }
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="flex flex-col gap-4">
+      <Section>
         <Breadcrumbs items={[{ label: 'Pitch access' }]} />
         <PageHeader
           title="Pitch deck access"
           subtitle="Emails and phone numbers allowed to view /pitch-deck on the website."
         />
+        {error && <InlineError title="Could not load pitch access" message={error} retryHref="/pitch-access" />}
         <Table>
           <Thead>
             <Th>Type</Th>
@@ -52,13 +61,13 @@ export default async function PitchAccessPage() {
                 </Td>
               </Tr>
             ))}
-            {contacts.length === 0 && <EmptyRow colSpan={5}>No contacts on the list yet.</EmptyRow>}
+            {!error && contacts.length === 0 && <EmptyRow colSpan={5}>No contacts on the list yet.</EmptyRow>}
+            {error && contacts.length === 0 && <EmptyRow colSpan={5}>Could not load contacts.</EmptyRow>}
           </tbody>
         </Table>
-      </section>
+      </Section>
 
-      <section className="flex flex-col gap-4">
-        <PageHeader title="Add contact" />
+      <Section title="Add contact">
         <Card className="max-w-md">
           <ActionForm action={addPitchAccessAction} className="flex flex-col gap-3">
             <label className="text-sm font-medium" htmlFor="type">Type</label>
@@ -76,7 +85,7 @@ export default async function PitchAccessPage() {
             <SubmitButton pendingText="Adding…" className="w-fit">Add</SubmitButton>
           </ActionForm>
         </Card>
-      </section>
+      </Section>
     </div>
   );
 }
