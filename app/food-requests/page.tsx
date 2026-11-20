@@ -2,6 +2,7 @@ import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
 import { createFoodItemAction, setFoodRequestStatusAction } from './actions';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
@@ -40,6 +41,7 @@ export default async function FoodRequestsPage({
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-4">
+        <Breadcrumbs items={[{ label: 'Food requests' }]} />
         <PageHeader
           title="Food requests"
           subtitle="Dishes customers said the catalogue is missing — most asked first. Resolve or decline a request, or promote the dish straight into the catalogue below."

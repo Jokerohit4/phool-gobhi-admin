@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { formatDateIST } from '@/lib/dateFormat';
 
@@ -41,6 +42,7 @@ export default async function GymsPage({
   return (
     <div className="flex flex-col gap-4">
       {partnerId ? (
+        <Breadcrumbs items={[{ label: 'Gyms' }]} />
         <PageHeader
           title={`Gyms for Partner #${partnerId}`}
           subtitle={

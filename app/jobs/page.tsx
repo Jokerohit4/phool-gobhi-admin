@@ -2,6 +2,7 @@ import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
 import { createJobOpeningAction, setJobOpeningActiveAction, deleteJobOpeningAction } from './actions';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
@@ -33,6 +34,7 @@ export default async function JobsPage() {
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-4">
+        <Breadcrumbs items={[{ label: 'Jobs' }]} />
         <PageHeader
           title="Job openings"
           subtitle="Shown on the website's /careers page while open. Closing hides a listing without deleting its history."

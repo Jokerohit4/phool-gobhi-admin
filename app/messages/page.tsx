@@ -2,6 +2,7 @@ import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
 import { setMessageReadAction } from './actions';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
@@ -24,6 +25,7 @@ export default async function MessagesPage() {
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-4">
+        <Breadcrumbs items={[{ label: 'Messages' }]} />
         <PageHeader title="Contact messages" subtitle="Submissions from the website's /contact form." />
         <Table>
           <Thead>

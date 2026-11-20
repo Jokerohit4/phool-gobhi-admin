@@ -4,6 +4,7 @@ import { gatewayJson } from '@/lib/api';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 
 type SavedReport = {
   id: number; userId: number; source: string; userName: string | null; phone: string | null;
@@ -34,6 +35,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="flex flex-col gap-4">
+      <Breadcrumbs items={[{ label: 'Saved reports' }]} />
       <PageHeader title="Saved blood reports" subtitle="Every saved lab snapshot and uploaded lab report, including free users and files awaiting reading or confirmation." />
 
       <div className="flex flex-wrap items-center gap-3 text-sm">

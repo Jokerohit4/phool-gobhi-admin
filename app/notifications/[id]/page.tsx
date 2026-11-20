@@ -1,9 +1,9 @@
-import Link from 'next/link';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { gatewayJson } from '@/lib/api';
 import { requireSession } from '@/lib/auth';
 import { controlCampaign, updateCampaign } from '../actions';
@@ -25,7 +25,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
   const counts = ['queued', 'sending', 'accepted', 'failed', 'skipped', 'unknown'];
   return (
     <div className="flex flex-col gap-4">
-      <Link className="text-sm underline" href="/notifications"> Push campaigns</Link>
+      <Breadcrumbs items={[{ label: 'Notifications', href: '/notifications' }, { label: config.name }]} />
       <PageHeader title={config.name} subtitle={<span className="capitalize">{status}{campaign.next_at && '  ' + displayTime(campaign.next_at)}</span>} />
 
       <Card>

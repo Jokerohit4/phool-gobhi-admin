@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
@@ -53,6 +54,7 @@ export default async function UsersPage({
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-4">
+        <Breadcrumbs items={[{ label: 'Users & cohorts' }]} />
         <PageHeader
           title="Users & cohorts"
           subtitle="Who each account is: friends & family, generated, testing or unknown. Use it to build beta cohorts."

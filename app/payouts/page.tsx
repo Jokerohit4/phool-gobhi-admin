@@ -2,6 +2,7 @@ import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
 import { recordPayoutAction } from './actions';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
@@ -50,6 +51,7 @@ export default async function PayoutsPage() {
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-4">
+        <Breadcrumbs items={[{ label: 'Payouts' }]} />
         <PageHeader title="Partner balances owed" />
         <Table>
           <Thead>

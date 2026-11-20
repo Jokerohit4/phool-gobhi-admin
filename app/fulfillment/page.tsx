@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
+import Link from 'next/link';
 import { gatewayJson } from '@/lib/api';
 import { requireSession } from '@/lib/auth';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ActionForm } from '@/components/ui/ActionForm';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { fulfillmentAction } from './actions';
 
 type Fulfillment = { id: number; kind: string; status: string; details: { address?: string; panel?: string } };
@@ -22,7 +24,13 @@ export default async function FulfillmentPage() {
   if (results[0].status === 'fulfilled') customers = results[0].value.data; else error += `Memberships: ${String(results[0].reason)} `;
   if (results[1].status === 'fulfilled') ({ profiles, requests } = results[1].value.data); else error += `Care records: ${String(results[1].reason)}`;
   return <div className="space-y-6">
+    <Breadcrumbs items={[{ label: 'Coaching fulfillment' }]} />
     <PageHeader title="Health guidance & fulfillment" subtitle="Paid memberships, session completion, clinical review and collection requests" />
+    <div className="flex flex-wrap gap-3 text-sm">
+      <Link href="/coaching-plans" className="underline">Guided plans & offerings</Link>
+      <Link href="/reports" className="underline">Saved blood reports</Link>
+      <Link href="/users" className="underline">Users & cohorts</Link>
+    </div>
     {error && <p role="alert" className="rounded bg-red-50 p-3 text-sm text-red-700">{error}</p>}
     <div className="overflow-x-auto rounded border"><table className="w-full text-left text-sm"><thead><tr className="border-b bg-gray-50 dark:bg-gray-800">{['Customer', 'Phone', 'Plan', 'Risk / review', '72h cleared', 'Gym pass', 'Lab credits', 'Completed sessions'].map(x => <th key={x} className="p-3">{x}</th>)}</tr></thead><tbody>{customers.map(c => <tr key={c.id} className="border-b">
       <td className="p-3">{c.name}<small className="block">#{c.id}</small></td><td className="p-3">{c.phone || '—'}</td><td className="p-3">{c.plan_type}<small className="block">{c.plan_status}</small></td><td className="p-3">{c.risk_bucket} / {c.clinical_status}</td><td className="p-3">{c.trial_cleared ? 'Yes' : 'No'}</td>

@@ -2,6 +2,7 @@ import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
 import { inviteStaffAction, setStaffStatusAction } from './actions';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -27,6 +28,7 @@ export default async function StaffPage() {
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-4">
+        <Breadcrumbs items={[{ label: 'Staff' }]} />
         <PageHeader title="Staff" subtitle="Accounts with access to this admin portal." />
         <Table>
           <Thead>

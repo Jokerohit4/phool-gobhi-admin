@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 
@@ -87,6 +88,7 @@ export default async function AttendancePage({
 
   return (
     <div className="flex flex-col gap-4">
+      <Breadcrumbs items={[{ label: 'Attendance' }]} />
       <PageHeader title="Attendance" subtitle="Platform-wide check-in verification, by period." />
 
       <div className="flex gap-2">

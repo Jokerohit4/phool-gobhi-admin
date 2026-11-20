@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -5,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { settleBankSettlementsAction } from './actions';
 
 interface PendingSettlement {
@@ -41,10 +43,12 @@ export default async function BankSettlementsPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <Breadcrumbs items={[{ label: 'Attendance SaaS', href: '/attendance-saas' }, { label: 'Bank settlements' }]} />
       <PageHeader
         title="Attendance-SaaS bank settlements"
         subtitle="Registration revenue owed directly to partners' bank accounts — never credited to their in-app wallet. No automated transfer: mark settled only after you've actually made the payment."
       />
+      <p className="text-sm text-gray-500"><Link href="/fulfillment" className="underline">Coaching fulfillment</Link> is separate from Attendance SaaS subscription revenue.</p>
 
       <Card>
         <div className="text-sm text-gray-500">Total pending across all partners</div>

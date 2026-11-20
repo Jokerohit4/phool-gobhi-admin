@@ -18,6 +18,7 @@ import { StatTile } from '@/components/charts/StatTile';
 import { SectionHeading } from '@/components/charts/SectionHeading';
 import { toOrderedSteps, withDropoff, labelFor } from '@/lib/analyticsLabels';
 import { formatDateIST, formatDateTimeIST } from '@/lib/dateFormat';
+import { InlineError } from '@/components/ui/InlineError';
 import { analyticsDays, averagePer, rangeButtonLabel, rangeSentence } from '@/lib/analyticsMetrics';
 import { TrafficFilters, TrafficOverview } from '@/components/analytics/TrafficOverview';
 import { CohortFilter } from '@/components/analytics/CohortFilter';
@@ -608,9 +609,21 @@ function channelLabel(channel: string | null): string {
 }
 
 async function ReachView({ days, cohort }: { days: string; cohort: string }) {
-  const { data } = await gatewayJson<{ data: LocationReachData }>(
-    `/api/bookings/admin/analytics/location-reach?days=${days}&limit=200${cohortQs(cohort)}`,
-  );
+  let data: LocationReachData;
+  try {
+    ({ data } = await gatewayJson<{ data: LocationReachData }>(
+      `/api/bookings/admin/analytics/location-reach?days=${days}&limit=200${cohortQs(cohort)}`,
+    ));
+  } catch (err) {
+    return (
+      <Card>
+        <InlineError
+          message={err instanceof Error ? err.message : 'Could not load location reach.'}
+          retryHref={`/analytics?view=reach&days=${days}${cohortQs(cohort)}`}
+        />
+      </Card>
+    );
+  }
 
   const totalVisitors = data.permission.reduce((sum, p) => sum + p.distinct_visitors, 0);
   const granted = data.permission.find((p) => p.permission === 'granted')?.distinct_visitors ?? 0;
@@ -1036,9 +1049,21 @@ async function CustomerOnboardingView({ days, cohort }: { days: string; cohort: 
 }
 
 async function ConversionView({ days, cohort }: { days: string; cohort: string }) {
-  const { data } = await gatewayJson<{ data: ConversionFunnelData }>(
-    `/api/bookings/admin/analytics/conversion-funnel?days=${days}${cohortQs(cohort)}`,
-  );
+  let data: ConversionFunnelData;
+  try {
+    ({ data } = await gatewayJson<{ data: ConversionFunnelData }>(
+      `/api/bookings/admin/analytics/conversion-funnel?days=${days}${cohortQs(cohort)}`,
+    ));
+  } catch (err) {
+    return (
+      <Card>
+        <InlineError
+          message={err instanceof Error ? err.message : 'Could not load booking conversion.'}
+          retryHref={`/analytics?view=conversion&days=${days}${cohortQs(cohort)}`}
+        />
+      </Card>
+    );
+  }
   const steps = withDropoff(
     toOrderedSteps(data.steps, ['gym_viewed', 'slot_selected', 'book_tapped', 'booking_confirmed'], 'users'),
   );
@@ -1075,9 +1100,21 @@ async function ConversionView({ days, cohort }: { days: string; cohort: string }
 }
 
 async function FulfillmentView({ days, cohort }: { days: string; cohort: string }) {
-  const { data } = await gatewayJson<{ data: FulfillmentFunnelData }>(
-    `/api/bookings/admin/analytics/fulfillment-funnel?days=${days}${cohortQs(cohort)}`,
-  );
+  let data: FulfillmentFunnelData;
+  try {
+    ({ data } = await gatewayJson<{ data: FulfillmentFunnelData }>(
+      `/api/bookings/admin/analytics/fulfillment-funnel?days=${days}${cohortQs(cohort)}`,
+    ));
+  } catch (err) {
+    return (
+      <Card>
+        <InlineError
+          message={err instanceof Error ? err.message : 'Could not load fulfillment funnel.'}
+          retryHref={`/analytics?view=fulfillment&days=${days}${cohortQs(cohort)}`}
+        />
+      </Card>
+    );
+  }
   const steps = withDropoff(
     toOrderedSteps(
       data.steps,
@@ -1118,7 +1155,19 @@ async function FulfillmentView({ days, cohort }: { days: string; cohort: string 
 }
 
 async function ActivationView({ days, cohort }: { days: string; cohort: string }) {
-  const { data } = await gatewayJson<{ data: SimpleFunnelData }>(`/api/bookings/admin/analytics/activation?days=${days}${cohortQs(cohort)}`);
+  let data: SimpleFunnelData;
+  try {
+    ({ data } = await gatewayJson<{ data: SimpleFunnelData }>(`/api/bookings/admin/analytics/activation?days=${days}${cohortQs(cohort)}`));
+  } catch (err) {
+    return (
+      <Card>
+        <InlineError
+          message={err instanceof Error ? err.message : 'Could not load activation funnel.'}
+          retryHref={`/analytics?view=activation&days=${days}${cohortQs(cohort)}`}
+        />
+      </Card>
+    );
+  }
   const steps = toOrderedSteps(
     data.steps,
     ['otp_requested', 'otp_submitted', 'signup_completed', 'login_completed'],
@@ -1134,7 +1183,19 @@ async function ActivationView({ days, cohort }: { days: string; cohort: string }
 }
 
 async function WalletView({ days, cohort }: { days: string; cohort: string }) {
-  const { data } = await gatewayJson<{ data: SimpleFunnelData }>(`/api/bookings/admin/analytics/wallet-funnel?days=${days}${cohortQs(cohort)}`);
+  let data: SimpleFunnelData;
+  try {
+    ({ data } = await gatewayJson<{ data: SimpleFunnelData }>(`/api/bookings/admin/analytics/wallet-funnel?days=${days}${cohortQs(cohort)}`));
+  } catch (err) {
+    return (
+      <Card>
+        <InlineError
+          message={err instanceof Error ? err.message : 'Could not load wallet funnel.'}
+          retryHref={`/analytics?view=wallet&days=${days}${cohortQs(cohort)}`}
+        />
+      </Card>
+    );
+  }
   const steps = withDropoff(
     toOrderedSteps(data.steps, ['topup_tapped', 'wallet_topup_order_created', 'wallet_topup_succeeded'], 'users'),
   );
@@ -1159,7 +1220,19 @@ async function WalletView({ days, cohort }: { days: string; cohort: string }) {
 }
 
 async function BuddyView({ days, cohort }: { days: string; cohort: string }) {
-  const { data } = await gatewayJson<{ data: SimpleFunnelData }>(`/api/bookings/admin/analytics/buddy-funnel?days=${days}${cohortQs(cohort)}`);
+  let data: SimpleFunnelData;
+  try {
+    ({ data } = await gatewayJson<{ data: SimpleFunnelData }>(`/api/bookings/admin/analytics/buddy-funnel?days=${days}${cohortQs(cohort)}`));
+  } catch (err) {
+    return (
+      <Card>
+        <InlineError
+          message={err instanceof Error ? err.message : 'Could not load buddy funnel.'}
+          retryHref={`/analytics?view=buddy&days=${days}${cohortQs(cohort)}`}
+        />
+      </Card>
+    );
+  }
   const steps = withDropoff(
     toOrderedSteps(data.steps, ['buddy_profile_created', 'buddy_swiped', 'buddy_matched', 'buddy_message_sent'], 'users'),
   );
@@ -1184,7 +1257,19 @@ async function BuddyView({ days, cohort }: { days: string; cohort: string }) {
 }
 
 async function CityView({ days, cohort }: { days: string; cohort: string }) {
-  const { data } = await gatewayJson<{ data: CityBreakdownData }>(`/api/bookings/admin/analytics/city-breakdown?days=${days}${cohortQs(cohort)}`);
+  let data: CityBreakdownData;
+  try {
+    ({ data } = await gatewayJson<{ data: CityBreakdownData }>(`/api/bookings/admin/analytics/city-breakdown?days=${days}${cohortQs(cohort)}`));
+  } catch (err) {
+    return (
+      <Card>
+        <InlineError
+          message={err instanceof Error ? err.message : 'Could not load city breakdown.'}
+          retryHref={`/analytics?view=city&days=${days}${cohortQs(cohort)}`}
+        />
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -1215,7 +1300,19 @@ async function CityView({ days, cohort }: { days: string; cohort: string }) {
 }
 
 async function BadgesView({ days, cohort }: { days: string; cohort: string }) {
-  const { data } = await gatewayJson<{ data: BadgeSummaryData }>(`/api/bookings/admin/analytics/badges-summary?days=${days}${cohortQs(cohort)}`);
+  let data: BadgeSummaryData;
+  try {
+    ({ data } = await gatewayJson<{ data: BadgeSummaryData }>(`/api/bookings/admin/analytics/badges-summary?days=${days}${cohortQs(cohort)}`));
+  } catch (err) {
+    return (
+      <Card>
+        <InlineError
+          message={err instanceof Error ? err.message : 'Could not load badges summary.'}
+          retryHref={`/analytics?view=badges&days=${days}${cohortQs(cohort)}`}
+        />
+      </Card>
+    );
+  }
 
   return (
     <>
@@ -1251,7 +1348,19 @@ async function BadgesView({ days, cohort }: { days: string; cohort: string }) {
 }
 
 async function RevenueView({ days, cohort }: { days: string; cohort: string }) {
-  const { data } = await gatewayJson<{ data: RevenueTrendData }>(`/api/bookings/admin/analytics/revenue-trend?days=${days}${cohortQs(cohort)}`);
+  let data: RevenueTrendData;
+  try {
+    ({ data } = await gatewayJson<{ data: RevenueTrendData }>(`/api/bookings/admin/analytics/revenue-trend?days=${days}${cohortQs(cohort)}`));
+  } catch (err) {
+    return (
+      <Card>
+        <InlineError
+          message={err instanceof Error ? err.message : 'Could not load revenue trend.'}
+          retryHref={`/analytics?view=revenue&days=${days}${cohortQs(cohort)}`}
+        />
+      </Card>
+    );
+  }
   const totalGmv = data.days.reduce((sum, d) => sum + d.gmv, 0);
   const totalBookings = data.days.reduce((sum, d) => sum + d.bookings, 0);
 
@@ -1283,7 +1392,19 @@ async function RevenueView({ days, cohort }: { days: string; cohort: string }) {
 async function GiftBonusView({ days }: { days: string }) {
   // wallet-service, not booking-service — it owns GymSubscription/the wallet
   // credits, unlike every other view above (all booking-service).
-  const { data } = await gatewayJson<{ data: GiftBonusPayoutsData }>(`/api/wallet/admin/analytics/gift-bonus-payouts?days=${days}`);
+  let data: GiftBonusPayoutsData;
+  try {
+    ({ data } = await gatewayJson<{ data: GiftBonusPayoutsData }>(`/api/wallet/admin/analytics/gift-bonus-payouts?days=${days}`));
+  } catch (err) {
+    return (
+      <Card>
+        <InlineError
+          message={err instanceof Error ? err.message : 'Could not load gift bonus payouts.'}
+          retryHref={`/analytics?view=gift-bonus&days=${days}`}
+        />
+      </Card>
+    );
+  }
 
   return (
     <>
@@ -1324,7 +1445,19 @@ function retentionCellClass(rate: number | null): string {
 }
 
 async function RetentionView({ cohort }: { cohort: string }) {
-  const { data } = await gatewayJson<{ data: RetentionCohortsData }>(`/api/bookings/admin/analytics/retention?weeks=12${cohortQs(cohort)}`);
+  let data: RetentionCohortsData;
+  try {
+    ({ data } = await gatewayJson<{ data: RetentionCohortsData }>(`/api/bookings/admin/analytics/retention?weeks=12${cohortQs(cohort)}`));
+  } catch (err) {
+    return (
+      <Card>
+        <InlineError
+          message={err instanceof Error ? err.message : 'Could not load retention cohorts.'}
+          retryHref={`/analytics?view=retention${cohortQs(cohort)}`}
+        />
+      </Card>
+    );
+  }
   // Newest cohort first — the most recent weeks are what a founder watching a
   // just-launched cohort actually cares about checking day to day.
   const cohorts = [...data.cohorts].sort((a, b) => (a.cohortWeek < b.cohortWeek ? 1 : -1));

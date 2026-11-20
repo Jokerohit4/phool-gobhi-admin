@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { gatewayJson } from '@/lib/api';
 import { requireSession } from '@/lib/auth';
 import { campaignApi, displayTime, type Campaign } from './campaigns';
@@ -16,6 +17,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
   if ('error' in result) {
     return (
       <div className="flex flex-col gap-4">
+        <Breadcrumbs items={[{ label: 'Notifications' }]} />
         <PageHeader title="Push campaigns" subtitle="Create and manage customer push notification campaigns." />
         <p role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">{result.error}</p>
       </div>
@@ -25,6 +27,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
   const { data, next } = result.data;
   return (
     <div className="flex flex-col gap-4">
+      <Breadcrumbs items={[{ label: 'Notifications' }]} />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageHeader title="Push campaigns" subtitle="Create and manage customer push notification campaigns." />
         <Link href="/notifications/new" className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white">New campaign</Link>

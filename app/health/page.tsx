@@ -2,6 +2,7 @@ import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { gatewayJson } from '@/lib/api';
 import { requireSession } from '@/lib/auth';
 
@@ -88,6 +89,7 @@ export default async function HealthPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <Breadcrumbs items={[{ label: 'Health & Training' }]} />
       <PageHeader
         title="Health & Activity"
         subtitle="Adoption, suggestion quality, and how long purpose-limited telemetry is kept. Aggregate only — no individual's workout data is visible here."

@@ -4,6 +4,7 @@ import { gatewayJson } from '@/lib/api';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { savePlansAction } from './actions';
 import type { ConfigResponse, PlanConfig } from './config';
 
@@ -42,10 +43,12 @@ export default async function CoachingPlansPage({ searchParams }: { searchParams
   const region = (await searchParams).region === 'REST_INDIA' ? 'REST_INDIA' : 'GURUGRAM';
   let data: ConfigResponse;
   try { data = (await gatewayJson<{ data: ConfigResponse }>('/api/wallet/coaching/admin/config')).data; }
-  catch (e) { return <div className="space-y-4"><PageHeader title="Guided plans & offerings" /><p role="alert">{e instanceof Error ? e.message : 'Could not load plan settings'}</p></div>; }
+  catch (e) { return <div className="space-y-4"><Breadcrumbs items={[{ label: 'Guided plans & offerings' }]} /><PageHeader title="Guided plans & offerings" /><p role="alert">{e instanceof Error ? e.message : 'Could not load plan settings'}</p></div>; }
   const local = region === 'GURUGRAM', r = data.config.regions[region];
-  return <div className="space-y-5"><PageHeader title="Guided plans & offerings" subtitle="Publish regional prices and included support without releasing a new app" />
-    <div className="flex flex-wrap gap-4 text-sm"><Link href="/coaching-plans?region=GURUGRAM" className={local ? 'font-semibold underline' : 'underline'}>Gurugram</Link><Link href="/coaching-plans?region=REST_INDIA" className={!local ? 'font-semibold underline' : 'underline'}>Outside Gurugram</Link><Link href="/fulfillment" className="underline">Fulfillment</Link></div>
+  return <div className="space-y-5">
+    <Breadcrumbs items={[{ label: 'Guided plans & offerings' }]} />
+    <PageHeader title="Guided plans & offerings" subtitle="Publish regional prices and included support without releasing a new app" />
+    <div className="flex flex-wrap gap-4 text-sm"><Link href="/coaching-plans?region=GURUGRAM" className={local ? 'font-semibold underline' : 'underline'}>Gurugram</Link><Link href="/coaching-plans?region=REST_INDIA" className={!local ? 'font-semibold underline' : 'underline'}>Outside Gurugram</Link><Link href="/fulfillment" className="underline">Fulfillment</Link><Link href="/reports" className="underline">Saved reports</Link></div>
     <p className="rounded border p-4 text-sm">Core logging and report uploads remain free forever. The 72-hour full-refund guarantee stays fixed. Changes apply to new orders; existing orders and memberships retain their purchased terms.</p>
     <p className="text-sm text-gray-500">Version {data.version}{data.updatedAt ? `  Last saved ${new Date(data.updatedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST by staff #${data.updatedBy}` : '  Using initial defaults; publish to save them'}</p>
     <ActionForm action={savePlansAction} className="space-y-6"><input type="hidden" name="region" value={region} /><input type="hidden" name="version" value={data.version} />
@@ -54,9 +57,9 @@ export default async function CoachingPlansPage({ searchParams }: { searchParams
       <fieldset className="space-y-4 rounded border p-5"><legend className="px-2 font-semibold">Trainer add-on</legend>
         {local ? <Check name="addon.enabled" label="Allow trainer add-on purchases" value={r.addon.enabled} /> : <p className="text-sm">Gym-floor add-ons stay unavailable outside Gurugram.</p>}
         <TextField name="addon.title" label="Add-on name" value={r.addon.title} max={120} /><TextField name="addon.description" label="Add-on explanation" value={r.addon.description} multiline />
-        <div className="grid gap-4 md:grid-cols-3"><label className="grid gap-1 text-sm">Price in ?<input required name="addon.price" type="number" min="0.01" max="1000000" step="0.01" defaultValue={(r.addon.amountPaise / 100).toFixed(2)} className={field} /></label><NumberField name="addon.sessions" label="Sessions per purchase" value={r.addon.sessions} min={1} max={20} /><NumberField name="addon.validityDays" label="Validity in days" value={r.addon.validityDays} min={1} max={365} /></div>
+        <div className="grid gap-4 md:grid-cols-3"><label className="grid gap-1 text-sm">Price in ₹<input required name="addon.price" type="number" min="0.01" max="1000000" step="0.01" defaultValue={(r.addon.amountPaise / 100).toFixed(2)} className={field} /></label><NumberField name="addon.sessions" label="Sessions per purchase" value={r.addon.sessions} min={1} max={20} /><NumberField name="addon.validityDays" label="Validity in days" value={r.addon.validityDays} min={1} max={365} /></div>
       </fieldset>
-      <SubmitButton className="rounded bg-emerald-700 px-5 py-3 text-white" pendingText="Publishing?">Publish {local ? 'Gurugram' : 'outside-Gurugram'} offering</SubmitButton>
+      <SubmitButton className="rounded bg-emerald-700 px-5 py-3 text-white" pendingText="Publishing…">Publish {local ? 'Gurugram' : 'outside-Gurugram'} offering</SubmitButton>
     </ActionForm>
     <details className="rounded border p-4 text-sm"><summary className="cursor-pointer font-semibold">Change history</summary><ul className="mt-3 space-y-2">{data.history?.map(change => <li key={change.version}>Version {change.version}  Staff #{change.updatedBy}  {new Date(change.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</li>)}{!data.history?.length && <li>No published changes yet.</li>}</ul></details>
   </div>;

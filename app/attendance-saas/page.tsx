@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ActionForm } from '@/components/ui/ActionForm';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { applyAttendanceSaasBillAction } from './actions';
 import { formatDateIST } from '@/lib/dateFormat';
 
@@ -115,9 +116,10 @@ export default async function AttendanceSaasPage({ searchParams }: { searchParam
 
   return (
     <div className="flex flex-col gap-4">
+      <Breadcrumbs items={[{ label: 'Attendance SaaS' }]} />
       <PageHeader
         title="Attendance SaaS"
-subtitle={
+        subtitle={
           <>
             Per-gym subscription (registration) revenue — the gym-supply acquisition wedge, separate from
             marketplace booking commission. Every registration carries a platform commission from day one, no free
@@ -128,6 +130,7 @@ subtitle={
           </>
         }
       />
+      <p className="text-sm text-gray-500">For coaching memberships, clinical review and care fulfillment, see <Link href="/fulfillment" className="underline">Coaching fulfillment</Link>.</p>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Card>
