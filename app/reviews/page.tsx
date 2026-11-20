@@ -7,6 +7,7 @@ import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { formatDateTimeIST } from '@/lib/dateFormat';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 
 interface PlatformReview {
   id: number;
@@ -26,6 +27,7 @@ export default async function ReviewsPage() {
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-4">
+        <Breadcrumbs items={[{ label: 'Reviews' }]} />
         <PageHeader
           title="Reviews"
           subtitle="Platform-wide reviews submitted from the website's /testimonials page. Approve to show under &ldquo;What users say about us&rdquo;."

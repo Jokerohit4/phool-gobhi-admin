@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { formatDateIST } from '@/lib/dateFormat';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 
 interface Member {
   id: number;
@@ -131,13 +132,18 @@ export default async function AttendanceSaasMembersPage({
 
   return (
     <div className="flex flex-col gap-4">
+      <Breadcrumbs items={[{ label: 'Attendance SaaS', href: '/attendance-saas' }, { label: gym.name }]} />
       <PageHeader
-        title={`${gym.name} — members`}
+        title={`${gym.name} - members`}
         subtitle={
           <>
             Individual attendance-SaaS registrations at this gym.{' '}
             <Link href="/attendance-saas" className="underline">
               Back to Attendance SaaS
+            </Link>
+            {' · '}
+            <Link href="/fulfillment" className="underline">
+              Coaching fulfillment
             </Link>
           </>
         }

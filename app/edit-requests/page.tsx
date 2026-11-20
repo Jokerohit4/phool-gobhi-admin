@@ -6,6 +6,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { CHANGE_TYPE_LABELS } from '@/lib/editRequests';
 import { formatDateTimeIST } from '@/lib/dateFormat';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 
 interface EditRequestRow {
   id: number;
@@ -39,6 +40,7 @@ export default async function EditRequestsPage({
 
   return (
     <div className="flex flex-col gap-4">
+      <Breadcrumbs items={[{ label: 'Edit requests' }]} />
       <PageHeader title="Partner Edit Requests" subtitle="Changes to already-approved gyms, held until you review them" />
 
       <div className="flex gap-2">

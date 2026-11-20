@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { formatDateTimeIST, formatDateIST } from '@/lib/dateFormat';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 
 interface GymLite {
   id: number;
@@ -103,6 +104,7 @@ export default async function LiveTrackingPage({
 
   return (
     <div className="flex flex-col gap-4">
+      <Breadcrumbs items={[{ label: 'Live ops' }]} />
       <PageHeader
         title="Live Tracking"
         subtitle="Who's here right now, when gyms are busiest, and which gyms are performing best."

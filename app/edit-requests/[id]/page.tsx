@@ -9,6 +9,7 @@ import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { CHANGE_TYPE_LABELS, DAY_NAMES } from '@/lib/editRequests';
 import { approveEditRequestAction, rejectEditRequestAction } from './actions';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 
 interface GymSnapshot {
   id: number;
@@ -126,6 +127,7 @@ export default async function EditRequestDetailPage({
 
   return (
     <div className="flex flex-col gap-4">
+      <Breadcrumbs items={[{ label: 'Edit requests', href: '/edit-requests' }, { label: `${CHANGE_TYPE_LABELS[changeType] ?? changeType} #${request.id}` }]} />
       <PageHeader
         title={CHANGE_TYPE_LABELS[changeType] ?? changeType}
         subtitle={

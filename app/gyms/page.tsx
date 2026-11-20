@@ -41,8 +41,8 @@ export default async function GymsPage({
 
   return (
     <div className="flex flex-col gap-4">
+      <Breadcrumbs items={[{ label: 'Gyms' }]} />
       {partnerId ? (
-        <Breadcrumbs items={[{ label: 'Gyms' }]} />
         <PageHeader
           title={`Gyms for Partner #${partnerId}`}
           subtitle={

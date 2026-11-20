@@ -3,6 +3,8 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { formatDateIST } from '@/lib/dateFormat';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
+import { InlineError } from '@/components/ui/InlineError';
 import {
   CLAIM_STATUSES,
   CLAIM_STATUS_LABELS,
@@ -46,6 +48,7 @@ export default async function UnclaimedGymsPage({
 
   return (
     <div className="flex flex-col gap-6">
+      <Breadcrumbs items={[{ label: 'Unclaimed gyms' }]} />
       <PageHeader
         title="Unclaimed gyms"
         subtitle="Gyms our customers train at that are not partners yet, newest first. The people count only appears once at least 5 different people have checked in there."
@@ -60,14 +63,11 @@ export default async function UnclaimedGymsPage({
       </div>
 
       {loadError && (
-        <Card className="flex flex-wrap items-center justify-between gap-3 border-red-300 text-sm text-red-700 dark:border-red-800 dark:text-red-400">
-          <span>Could not load unclaimed gyms: {loadError}</span>
-          <a
-            href={statusHref(claimStatus)}
-            className="rounded border border-red-300 px-3 py-1 font-medium hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/40"
-          >
-            Retry
-          </a>
+        <Card>
+          <InlineError
+            message={`Could not load unclaimed gyms: ${loadError}`}
+            retryHref={statusHref(claimStatus)}
+          />
         </Card>
       )}
 

@@ -18,6 +18,7 @@ import { StatTile } from '@/components/charts/StatTile';
 import { SectionHeading } from '@/components/charts/SectionHeading';
 import { toOrderedSteps, withDropoff, labelFor } from '@/lib/analyticsLabels';
 import { formatDateIST, formatDateTimeIST } from '@/lib/dateFormat';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { InlineError } from '@/components/ui/InlineError';
 import { analyticsDays, averagePer, rangeButtonLabel, rangeSentence } from '@/lib/analyticsMetrics';
 import { TrafficFilters, TrafficOverview } from '@/components/analytics/TrafficOverview';
@@ -305,6 +306,7 @@ export default async function AnalyticsPage({
 
   return (
     <div className="flex flex-col gap-4">
+      <Breadcrumbs items={[{ label: 'Analytics' }]} />
       <PageHeader
         title="Analytics"
         subtitle="Explore traffic, customer journeys, and business performance. Each view explains how its metrics are counted."
@@ -943,22 +945,26 @@ async function CustomerOnboardingView({ days, cohort }: { days: string; cohort: 
       const row = bySignupStep.get(step);
       const label = CUSTOMER_STEP_LABELS[step] ?? step;
       return [
-        { label: `${label} — viewed`, value: row?.viewed ?? 0 },
-        { label: `${label} — completed`, value: row?.completed ?? 0 },
+        { label: `${label} - viewed`, value: row?.viewed ?? 0 },
+        { label: `${label} - completed`, value: row?.completed ?? 0 },
       ];
     }),
   );
   const completedTotal = data.completedByTrainingLocation.reduce((n, r) => n + r.users, 0);
 
+  if (failed) {
+    return (
+      <Card>
+        <InlineError
+          message="Could not load the customer onboarding funnel. Showing nothing rather than a partial picture."
+          retryHref={`/analytics?view=customerOnboarding&days=${days}${cohortQs(cohort)}`}
+        />
+      </Card>
+    );
+  }
+
   return (
     <>
-      {failed && (
-        <Card>
-          <p className="text-sm text-amber-700 dark:text-amber-400">
-            Couldn&apos;t load the customer onboarding funnel. Showing nothing rather than a partial picture.
-          </p>
-        </Card>
-      )}
       <Card>
         <SectionHeading
           title="Signup onboarding funnel"

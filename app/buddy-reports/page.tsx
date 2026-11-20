@@ -7,6 +7,8 @@ import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { formatDateTimeIST } from '@/lib/dateFormat';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
+import { InlineError } from '@/components/ui/InlineError';
 import { ReportRow } from './ReportRow';
 import { clearGenderChangeAction } from './actions';
 import { REPORT_STATUSES, REPORT_STATUS_LABELS } from './reportDisplay';
@@ -71,6 +73,7 @@ export default async function BuddyReportsPage({
 
   return (
     <div className="flex flex-col gap-6">
+      <Breadcrumbs items={[{ label: 'Buddy reports' }]} />
       <PageHeader
         title="Buddy reports"
         subtitle="Safety reports from gym buddy, ordered by severity then newest. Moderation works even while gym buddy is switched off."
@@ -86,8 +89,11 @@ export default async function BuddyReportsPage({
       </div>
 
       {loadError && (
-        <Card className="border-red-300 text-sm text-red-700 dark:border-red-800 dark:text-red-400">
-          {loadError}
+        <Card>
+          <InlineError
+            message={loadError}
+            retryHref={tab === 'gender' ? '/buddy-reports?tab=gender' : `/buddy-reports?status=${status}`}
+          />
         </Card>
       )}
 

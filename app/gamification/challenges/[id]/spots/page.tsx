@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 
 interface CheckpointSpot {
   id: number;
@@ -27,12 +28,13 @@ export default async function ChallengeSpotsPage({ params }: { params: Promise<{
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-4">
+        <Breadcrumbs items={[{ label: 'Challenges', href: '/gamification/challenges' }, { label: `Challenge #${id} spots` }]} />
         <Link href="/gamification/challenges" className="text-sm text-emerald-600 underline">
           &larr; Back to challenges
         </Link>
         <PageHeader
-          title={`Checkpoint spots — challenge #${id}`}
-          subtitle="Each row is one printed sticker. The sticker's QR should encode this code (plain identifier, not a signed token — the GPS-radius check is the anti-replay defense, not the code)."
+          title={`Checkpoint spots - challenge #${id}`}
+          subtitle="Each row is one printed sticker. The sticker's QR should encode this code (plain identifier, not a signed token - the GPS-radius check is the anti-replay defense, not the code)."
         />
         <Table>
           <Thead>

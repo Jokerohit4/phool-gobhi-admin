@@ -12,6 +12,7 @@ import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { formatDateTimeIST } from '@/lib/dateFormat';
 
 interface EconomyConfig {
@@ -69,9 +70,10 @@ export default async function CoinsPage() {
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-4">
+        <Breadcrumbs items={[{ label: 'Coins & streaks' }]} />
         <PageHeader
           title="Coin system switches"
-          subtitle="Kill-switches for the whole coin/streak system, right next to the numbers they gate. Same underlying flags as Settings > Feature flags — changing one here changes it everywhere, within ~30s server-side."
+          subtitle="Kill-switches for the whole coin/streak system, right next to the numbers they gate. Same underlying flags as Settings > Feature flags - changing one here changes it everywhere, within ~30s server-side."
         />
         <Card className="max-w-xl">
           <ActionForm

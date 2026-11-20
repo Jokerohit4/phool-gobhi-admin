@@ -19,6 +19,7 @@ import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { formatDateIST } from '@/lib/dateFormat';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 
 interface GymReview {
   id: number;
@@ -107,6 +108,7 @@ export default async function GymDetailPage({
 
   return (
     <div className="flex flex-col gap-4">
+      <Breadcrumbs items={[{ label: 'Gyms', href: '/gyms' }, { label: gym.name }]} />
       <PageHeader
         title={gym.name}
         subtitle={

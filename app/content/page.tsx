@@ -2,6 +2,8 @@ import { requireSession } from '@/lib/auth';
 import { fetchContentQueue, fetchPendingCount, type ContentQueue } from '@/lib/contentApi';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
+import { InlineError } from '@/components/ui/InlineError';
 import { ContentItem } from './ContentItem';
 import {
   CONTENT_LANGS,
@@ -76,9 +78,10 @@ export default async function ContentPage({
 
   return (
     <div className="flex flex-col gap-6">
+      <Breadcrumbs items={[{ label: 'Content' }]} />
       <PageHeader
         title="Content"
-        subtitle="Coach exercise copy and articles waiting for a human check. Nothing reaches users until it is approved, and any edit sends it back to pending. Highlighted lines carry safety words or numbers — compare them with the English line by line."
+        subtitle="Coach exercise copy and articles waiting for a human check. Nothing reaches users until it is approved, and any edit sends it back to pending. Highlighted lines carry safety words or numbers - compare them with the English line by line."
       />
 
       <div className="flex flex-wrap gap-3">
@@ -127,14 +130,11 @@ export default async function ContentPage({
       </div>
 
       {loadError && (
-        <Card className="flex flex-wrap items-center justify-between gap-3 border-red-300 text-sm text-red-700 dark:border-red-800 dark:text-red-400">
-          <span>Could not load the content queue: {loadError}</span>
-          <a
-            href={selfHref}
-            className="rounded border border-red-300 px-3 py-1 font-medium hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950/40"
-          >
-            Retry
-          </a>
+        <Card>
+          <InlineError
+            message={`Could not load the content queue: ${loadError}`}
+            retryHref={selfHref}
+          />
         </Card>
       )}
 

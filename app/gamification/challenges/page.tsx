@@ -8,6 +8,7 @@ import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
+import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 
 interface ChallengeDefinition {
   id: number;
@@ -53,6 +54,7 @@ export default async function ChallengesPage() {
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-4">
+        <Breadcrumbs items={[{ label: 'Challenges' }]} />
         <PageHeader
           title="Challenges"
           subtitle="Pilot launches with 2 free challenges (Off-Peak Hunter, gym_native; a city explorer quest, outside_gym_city). Gated behind the challenges flag in Settings."
