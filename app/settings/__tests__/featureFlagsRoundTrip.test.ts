@@ -29,7 +29,7 @@ vi.mock('@/app/settings/flagRegistry', () => ({
 
 const { updateFeatureFlagsAction, updateAppVersionConfigAction } = await import('../actions');
 
-// The real registry, as auth-service serves it: 26 flags,
+// The real registry, as auth-service serves it: 28 flags,
 // only referral defaulting on, and fhirExport deliberately clientKey: null (a
 // query-parameter branch on an existing route with no app surface to gate).
 const REGISTRY = [
@@ -54,6 +54,7 @@ const REGISTRY = [
   { name: 'brandedOnboarding', clientKey: 'brandedOnboardingEnabled', group: 'onboarding', deps: [] },
   { name: 'homeTrackHome', clientKey: 'homeTrackHomeEnabled', group: 'onboarding', deps: ['workoutTracking'] },
   { name: 'homeIntroduction', clientKey: 'homeIntroductionEnabled', group: 'coach', deps: ['coachJourney'] },
+  { name: 'weeklySummary', clientKey: 'weeklySummaryEnabled', group: 'coach', deps: ['coachJourney'] },
   { name: 'coachJourney', clientKey: 'coachJourneyEnabled', group: 'coach', deps: ['workoutTracking', 'nonPartnerAttendance'] },
   { name: 'selfLinkGym', clientKey: 'selfLinkGymEnabled', group: 'coach', deps: [] },
   { name: 'personaSwitch', clientKey: 'personaSwitchEnabled', group: 'coach', deps: [] },

@@ -6,7 +6,7 @@ import { SubmitButton } from '@/components/ui/SubmitButton';
 import { initialActionState, type ActionState } from '@/components/ui/ActionForm';
 
 export const SOCIAL_ON_CONFIRM =
-  'Switch social features on? Buddy, leaderboards and League become visible to every customer app install on its next launch.';
+  'Switch social features on Buddy, leaderboards and League become visible to every customer app install on its next launch.';
 
 /// Confirm only when the save would turn social ON from off; switching it off
 /// (the safe direction) never asks.

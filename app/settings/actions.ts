@@ -40,6 +40,7 @@ export async function updateCancellationPolicyAction(
   }
 
   revalidatePath('/settings');
+  revalidatePath('/settings', 'layout');
   return { ok: true, message: 'Cancellation policy updated' };
 }
 
@@ -75,6 +76,7 @@ export async function updateLaunchGateAction(_prev: ActionState, formData: FormD
   }
 
   revalidatePath('/settings');
+  revalidatePath('/settings', 'layout');
   return { ok: true, message: 'Launch gate updated' };
 }
 
@@ -183,6 +185,7 @@ export async function updateAppVersionConfigAction(
   }
 
   revalidatePath('/settings');
+  revalidatePath('/settings', 'layout');
   return { ok: true, message: 'App version config updated' };
 }
 
@@ -227,6 +230,7 @@ export async function updateFeatureFlagsAction(_prev: ActionState, formData: For
   }
 
   revalidatePath('/settings');
+  revalidatePath('/settings', 'layout');
   return { ok: true, message: 'Feature flags updated' };
 }
 
@@ -244,6 +248,7 @@ export async function updateSocialSwitchAction(_prev: ActionState, formData: For
   }
 
   revalidatePath('/settings');
+  revalidatePath('/settings', 'layout');
   return { ok: true, message: enabled ? 'Social features switched on' : 'Social features switched off' };
 }
 
@@ -278,6 +283,7 @@ export async function updateMaintenanceAction(_prev: ActionState, formData: Form
   }
 
   revalidatePath('/settings');
+  revalidatePath('/settings', 'layout');
   return { ok: true, message: `${feature === 'wallet' ? 'Wallet' : 'Gyms'} maintenance updated` };
 }
 
@@ -296,6 +302,7 @@ export async function updateOtpConfigAction(_prev: ActionState, formData: FormDa
   }
 
   revalidatePath('/settings');
+  revalidatePath('/settings', 'layout');
   return { ok: true, message: 'OTP provider updated' };
 }
 
@@ -320,7 +327,8 @@ export async function updateProfileCompletionBonusAction(
   }
 
   revalidatePath('/settings');
-  return { ok: true, message: `Profile-completion bonus updated to ₹${amount}` };
+  revalidatePath('/settings', 'layout');
+  return { ok: true, message: `Profile-completion bonus updated to ?${amount}` };
 }
 
 export async function addOtpSkipAllowlistAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -341,6 +349,7 @@ export async function addOtpSkipAllowlistAction(_prev: ActionState, formData: Fo
   }
 
   revalidatePath('/settings');
+  revalidatePath('/settings', 'layout');
   return { ok: true, message: `Added ${phone}` };
 }
 
@@ -355,6 +364,7 @@ export async function removeOtpSkipAllowlistAction(_prev: ActionState, formData:
   }
 
   revalidatePath('/settings');
+  revalidatePath('/settings', 'layout');
   return { ok: true, message: 'Number removed' };
 }
 
@@ -386,7 +396,7 @@ export async function addWalletTopupPresetAction(_prev: ActionState, formData: F
   try {
     const current = await getCurrentWalletTopupConfig();
     if (current.presets.includes(amount)) {
-      return { ok: false, message: `₹${amount} is already a preset` };
+      return { ok: false, message: `?${amount} is already a preset` };
     }
     await gatewayJson('/api/wallet/topup-config', {
       method: 'PUT',
@@ -397,7 +407,8 @@ export async function addWalletTopupPresetAction(_prev: ActionState, formData: F
   }
 
   revalidatePath('/settings');
-  return { ok: true, message: `Added ₹${amount}` };
+  revalidatePath('/settings', 'layout');
+  return { ok: true, message: `Added ?${amount}` };
 }
 
 export async function removeWalletTopupPresetAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -417,7 +428,8 @@ export async function removeWalletTopupPresetAction(_prev: ActionState, formData
   }
 
   revalidatePath('/settings');
-  return { ok: true, message: `Removed ₹${amount}` };
+  revalidatePath('/settings', 'layout');
+  return { ok: true, message: `Removed ?${amount}` };
 }
 
 export async function updateWalletTopupCustomAmountAction(
@@ -446,5 +458,6 @@ export async function updateWalletTopupCustomAmountAction(
   }
 
   revalidatePath('/settings');
+  revalidatePath('/settings', 'layout');
   return { ok: true, message: 'Custom-amount settings updated' };
 }

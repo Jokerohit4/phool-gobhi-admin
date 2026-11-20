@@ -118,6 +118,7 @@ export const EXPECTED_FLAGS: readonly ExpectedFlag[] = [
   { name: 'brandedOnboarding', defaultEnabled: false, deps: [], clientKey: 'brandedOnboardingEnabled', group: 'onboarding' },
   { name: 'homeTrackHome', defaultEnabled: false, deps: ['workoutTracking'], clientKey: 'homeTrackHomeEnabled', group: 'onboarding' },
   { name: 'homeIntroduction', defaultEnabled: false, deps: ['coachJourney'], clientKey: 'homeIntroductionEnabled', group: 'coach' },
+  { name: 'weeklySummary', defaultEnabled: false, deps: ['coachJourney'], clientKey: 'weeklySummaryEnabled', group: 'coach' },
   { name: 'coachJourney', defaultEnabled: false, deps: ['workoutTracking', 'nonPartnerAttendance'], clientKey: 'coachJourneyEnabled', group: 'coach' },
   { name: 'selfLinkGym', defaultEnabled: false, deps: [], clientKey: 'selfLinkGymEnabled', group: 'coach' },
   { name: 'personaSwitch', defaultEnabled: false, deps: [], clientKey: 'personaSwitchEnabled', group: 'coach' },

@@ -194,7 +194,7 @@ async function LiveNowTab({ gymsById }: { gymsById: Map<number, GymLite> }) {
                 {s.startTime}–{s.endTime}
               </Td>
               <Td>{formatDateTimeIST(s.attendedAt)}</Td>
-              <Td>{s.attendanceMethod ? METHOD_LABEL[s.attendanceMethod] ?? s.attendanceMethod : '—'}</Td>
+              <Td>{s.attendanceMethod ? (METHOD_LABEL[s.attendanceMethod] ?? s.attendanceMethod) : '-'}</Td>
             </Tr>
           ))}
           {live.sessions.length === 0 && <EmptyRow colSpan={5}>No one currently checked in anywhere.</EmptyRow>}
@@ -230,7 +230,7 @@ async function HeatmapTab({ gyms, gymId, days }: { gyms: GymLite[]; gymId?: numb
       <div className="flex flex-wrap items-center gap-3">
         <form action="/live" method="GET" className="flex items-center gap-2">
           <input type="hidden" name="tab" value="heatmap" />
-          <select name="gymId" defaultValue={gymId ?? ''} className="rounded border px-2 py-1 text-sm dark:bg-gray-900 dark:border-gray-800">
+          <select name="gymId" defaultValue={gymId || ''} className="rounded border px-2 py-1 text-sm dark:bg-gray-900 dark:border-gray-800">
             <option value="">All gyms (platform-wide)</option>
             {gyms.map((g) => (
               <option key={g.id} value={g.id}>
@@ -257,33 +257,31 @@ async function HeatmapTab({ gyms, gymId, days }: { gyms: GymLite[]; gymId?: numb
           subtitle="Which day of the week and hour of the day sees the most verified attendance, over the selected window."
         />
         <div className="overflow-x-auto rounded-lg border dark:border-gray-800">
-          <table className="w-full border-collapse text-center text-xs">
-            <thead>
-              <tr>
-                <th className="px-2 py-1"></th>
+          <Table className="w-full border-collapse text-center text-xs">
+            <Thead>
+              <Tr className="hover:bg-transparent">
+                <Th className="px-2 py-1"></Th>
                 {hours.map((h) => (
-                  <th key={h} className="px-1 py-1 font-medium text-gray-500">
-                    {h}
-                  </th>
+                  <Th key={h} className="px-1 py-1 text-center font-medium text-gray-500">{h}</Th>
                 ))}
-              </tr>
-            </thead>
+              </Tr>
+            </Thead>
             <tbody>
               {WEEKDAY_LABEL.map((label, weekday) => (
-                <tr key={weekday}>
-                  <td className="px-2 py-1 text-left font-medium text-gray-600 dark:text-gray-300">{label}</td>
+                <Tr key={weekday} className="hover:bg-transparent">
+                  <Td className="px-2 py-1 text-left font-medium text-gray-600 dark:text-gray-300">{label}</Td>
                   {hours.map((h) => {
                     const count = byKey.get(`${weekday}-${h}`) ?? 0;
                     return (
-                      <td key={h} className={`h-7 w-7 ${intensityClass(count)}`} title={`${count} attendances`}>
+                      <Td key={h} className={`h-7 w-7 ${intensityClass(count)}`} title={`${count} attendances`}>
                         {count > 0 ? count : ''}
-                      </td>
+                      </Td>
                     );
                   })}
-                </tr>
+                </Tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         </div>
       </div>
 
