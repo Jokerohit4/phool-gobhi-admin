@@ -21,12 +21,11 @@ export const NAV_ITEMS = [
   { href: '/reviews', label: 'Reviews' },
   { href: '/buddy-reports', label: 'Buddy reports' },
   { href: '/pitch-access', label: 'Pitch Access' },
-  { href: '/health', label: 'Health & Activity' },
+  { href: '/health', label: 'Health & Training' },
   { href: '/food-requests', label: 'Food Queue' },
   { href: '/content', label: 'Content' },
   { href: '/gamification/coins', label: 'Coins & Streaks' },
   { href: '/gamification/challenges', label: 'Challenges' },
-  { href: '/health', label: 'Health & Training' },
   { href: '/settings', label: 'Settings' },
 ];
 
@@ -43,12 +42,12 @@ export default function Sidebar() {
   return (
     <aside className="flex h-screen w-56 shrink-0 flex-col border-r bg-gray-50 dark:bg-gray-900 dark:border-gray-800">
       <div className="px-4 py-4 font-semibold">Phool Gobhi Admin</div>
-      <nav className="flex flex-1 flex-col gap-1 px-2">
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-2">
         {NAV_ITEMS.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + '/');
           return (
             <Link
-              key={`${item.href}-${item.label}`}
+              key={item.href}
               href={item.href}
               className={`rounded px-3 py-2 text-sm ${
                 active
