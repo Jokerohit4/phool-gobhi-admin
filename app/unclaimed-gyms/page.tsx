@@ -5,6 +5,7 @@ import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { formatDateIST } from '@/lib/dateFormat';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { InlineError } from '@/components/ui/InlineError';
+import { FilterBar } from '@/components/ui/FilterBar';
 import {
   CLAIM_STATUSES,
   CLAIM_STATUS_LABELS,
@@ -54,13 +55,13 @@ export default async function UnclaimedGymsPage({
         subtitle="Gyms our customers train at that are not partners yet, newest first. The people count only appears once at least 5 different people have checked in there."
       />
 
-      <div className="flex gap-2">
+      <FilterBar>
         {CLAIM_STATUSES.map((s) => (
           <a key={s} href={statusHref(s)} className={pillClass(claimStatus === s)}>
             {CLAIM_STATUS_LABELS[s]}
           </a>
         ))}
-      </div>
+      </FilterBar>
 
       {loadError && (
         <Card>

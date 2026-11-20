@@ -7,6 +7,8 @@ import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
+import { Section } from '@/components/ui/Section';
+import { FilterBar } from '@/components/ui/FilterBar';
 import { applyAttendanceSaasBillAction } from './actions';
 import { formatDateIST } from '@/lib/dateFormat';
 
@@ -117,6 +119,7 @@ export default async function AttendanceSaasPage({ searchParams }: { searchParam
   return (
     <div className="flex flex-col gap-4">
       <Breadcrumbs items={[{ label: 'Attendance SaaS' }]} />
+      <Section className="gap-4">
       <PageHeader
         title="Attendance SaaS"
         subtitle={
@@ -206,20 +209,22 @@ export default async function AttendanceSaasPage({ searchParams }: { searchParam
               override), debited from the partner wallet — negative balance allowed, charged with one click.
             </p>
           </div>
-          <form className="flex items-end gap-2" action="">
-            <label className="flex flex-col text-sm text-gray-600">
-              Month
-              <input
-                type="month"
-                name="month"
-                defaultValue={month}
-                className="mt-1 rounded border border-gray-300 px-2 py-1 text-sm"
-              />
-            </label>
-            <button type="submit" className="rounded bg-gray-900 px-3 py-1.5 text-sm font-medium text-white">
-              Load
-            </button>
-          </form>
+          <FilterBar className="items-end bg-transparent border-0 p-0">
+            <form className="flex flex-wrap items-end gap-2" action="">
+              <label className="flex flex-col text-sm text-gray-600">
+                Month
+                <input
+                  type="month"
+                  name="month"
+                  defaultValue={month}
+                  className="mt-1 rounded border border-gray-300 px-2 py-1 text-sm"
+                />
+              </label>
+              <button type="submit" className="rounded bg-gray-900 px-3 py-1.5 text-sm font-medium text-white">
+                Load
+              </button>
+            </form>
+          </FilterBar>
         </div>
 
         <Table>
@@ -274,6 +279,7 @@ export default async function AttendanceSaasPage({ searchParams }: { searchParam
           </tbody>
         </Table>
       </div>
+      </Section>
     </div>
   );
 }

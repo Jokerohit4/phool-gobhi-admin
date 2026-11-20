@@ -7,6 +7,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { formatDateTimeIST, formatDateIST } from '@/lib/dateFormat';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
+import { FilterBar } from '@/components/ui/FilterBar';
 
 interface GymLite {
   id: number;
@@ -110,7 +111,7 @@ export default async function LiveTrackingPage({
         subtitle="Who's here right now, when gyms are busiest, and which gyms are performing best."
       />
 
-      <div className="flex gap-2">
+      <FilterBar>
         {TABS.map((t) => (
           <Link
             key={t}
@@ -128,7 +129,7 @@ export default async function LiveTrackingPage({
         >
           ↻ Refresh
         </Link>
-      </div>
+      </FilterBar>
 
       {tab === 'live' && <LiveNowTab gymsById={gymsById} />}
       {tab === 'heatmap' && <HeatmapTab gyms={gyms} gymId={gymIdFilter} days={days} />}
@@ -229,8 +230,8 @@ async function HeatmapTab({ gyms, gymId, days }: { gyms: GymLite[]; gymId?: numb
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <form action="/live" method="GET" className="flex items-center gap-2">
+      <FilterBar className="items-center">
+        <form action="/live" method="GET" className="flex flex-wrap items-center gap-2">
           <input type="hidden" name="tab" value="heatmap" />
           <select name="gymId" defaultValue={gymId || ''} className="rounded border px-2 py-1 text-sm dark:bg-gray-900 dark:border-gray-800">
             <option value="">All gyms (platform-wide)</option>
@@ -251,7 +252,7 @@ async function HeatmapTab({ gyms, gymId, days }: { gyms: GymLite[]; gymId?: numb
             Apply
           </button>
         </form>
-      </div>
+      </FilterBar>
 
       <div>
         <PageHeader
@@ -332,7 +333,7 @@ async function LeaderboardTab({ gymsById, days }: { gymsById: Map<number, GymLit
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2">
+      <FilterBar>
         {DAY_OPTIONS.map((d) => (
           <Link
             key={d}
@@ -344,7 +345,7 @@ async function LeaderboardTab({ gymsById, days }: { gymsById: Map<number, GymLit
             Last {d}d
           </Link>
         ))}
-      </div>
+      </FilterBar>
 
       <PageHeader title="Top-performing gyms" subtitle="Ranked by revenue — attendance shown alongside." />
       <Table>

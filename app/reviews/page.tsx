@@ -8,6 +8,7 @@ import { SubmitButton } from '@/components/ui/SubmitButton';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { formatDateTimeIST } from '@/lib/dateFormat';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
+import { Section } from '@/components/ui/Section';
 
 interface PlatformReview {
   id: number;
@@ -26,7 +27,7 @@ export default async function ReviewsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="flex flex-col gap-4">
+      <Section>
         <Breadcrumbs items={[{ label: 'Reviews' }]} />
         <PageHeader
           title="Reviews"
@@ -77,7 +78,7 @@ export default async function ReviewsPage() {
             {reviews.length === 0 && <EmptyRow colSpan={6}>No reviews yet.</EmptyRow>}
           </tbody>
         </Table>
-      </section>
+      </Section>
     </div>
   );
 }

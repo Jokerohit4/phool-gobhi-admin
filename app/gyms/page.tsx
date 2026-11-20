@@ -4,6 +4,8 @@ import { gatewayJson } from '@/lib/api';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { Section } from '@/components/ui/Section';
 import { formatDateIST } from '@/lib/dateFormat';
 
 interface Gym {
@@ -42,60 +44,62 @@ export default async function GymsPage({
   return (
     <div className="flex flex-col gap-4">
       <Breadcrumbs items={[{ label: 'Gyms' }]} />
-      {partnerId ? (
-        <PageHeader
-          title={`Gyms for Partner #${partnerId}`}
-          subtitle={
-            <Link href="/gyms" className="underline">
-              ← All gyms
-            </Link>
-          }
-        />
-      ) : (
-        <PageHeader title="Gym approval queue" />
-      )}
+      <Section className="gap-4">
+        {partnerId ? (
+          <PageHeader
+            title={`Gyms for Partner #${partnerId}`}
+            subtitle={
+              <Link href="/gyms" className="underline">
+                ← All gyms
+              </Link>
+            }
+          />
+        ) : (
+          <PageHeader title="Gym approval queue" />
+        )}
 
-      {!partnerId && (
-        <div className="flex gap-2">
-          {TABS.map((tab) => (
-            <Link
-              key={tab}
-              href={`/gyms?status=${tab}`}
-              className={`rounded px-3 py-1 text-sm capitalize ${
-                tab === status ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800'
-              }`}
-            >
-              {tab}
-            </Link>
-          ))}
-        </div>
-      )}
+        {!partnerId && (
+          <FilterBar>
+            {TABS.map((tab) => (
+              <Link
+                key={tab}
+                href={`/gyms?status=${tab}`}
+                className={`rounded px-3 py-1 text-sm capitalize ${
+                  tab === status ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800'
+                }`}
+              >
+                {tab}
+              </Link>
+            ))}
+          </FilterBar>
+        )}
 
-      <Table>
-        <Thead>
-          <Th>Name</Th>
-          <Th>City</Th>
-          <Th>Partner ID</Th>
-          <Th>Submitted</Th>
-        </Thead>
-        <tbody>
-          {gyms.map((gym) => (
-            <Tr key={gym.id}>
-              <Td>
-                <Link href={`/gyms/${gym.id}`} className="underline">{gym.name}</Link>
-              </Td>
-              <Td>{gym.city}</Td>
-              <Td>
-                <Link href={`/gyms?partnerId=${gym.partnerId}`} className="underline">
-                  {gym.partnerId}
-                </Link>
-              </Td>
-              <Td>{formatDateIST(gym.createdAt)}</Td>
-            </Tr>
-          ))}
-          {gyms.length === 0 && <EmptyRow colSpan={4}>No gyms in this status.</EmptyRow>}
-        </tbody>
-      </Table>
+        <Table>
+          <Thead>
+            <Th>Name</Th>
+            <Th>City</Th>
+            <Th>Partner ID</Th>
+            <Th>Submitted</Th>
+          </Thead>
+          <tbody>
+            {gyms.map((gym) => (
+              <Tr key={gym.id}>
+                <Td>
+                  <Link href={`/gyms/${gym.id}`} className="underline">{gym.name}</Link>
+                </Td>
+                <Td>{gym.city}</Td>
+                <Td>
+                  <Link href={`/gyms?partnerId=${gym.partnerId}`} className="underline">
+                    {gym.partnerId}
+                  </Link>
+                </Td>
+                <Td>{formatDateIST(gym.createdAt)}</Td>
+              </Tr>
+            ))}
+            {gyms.length === 0 && <EmptyRow colSpan={4}>No gyms in this status.</EmptyRow>}
+          </tbody>
+        </Table>
+      </Section>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { SubmitButton } from '@/components/ui/SubmitButton';
 import { formatDateTimeIST } from '@/lib/dateFormat';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { InlineError } from '@/components/ui/InlineError';
+import { FilterBar } from '@/components/ui/FilterBar';
 import { ReportRow } from './ReportRow';
 import { clearGenderChangeAction } from './actions';
 import { REPORT_STATUSES, REPORT_STATUS_LABELS } from './reportDisplay';
@@ -79,14 +80,14 @@ export default async function BuddyReportsPage({
         subtitle="Safety reports from gym buddy, ordered by severity then newest. Moderation works even while gym buddy is switched off."
       />
 
-      <div className="flex gap-2">
+      <FilterBar>
         <TabLink href="/buddy-reports" active={tab === 'reports'}>
           Reports
         </TabLink>
         <TabLink href="/buddy-reports?tab=gender" active={tab === 'gender'}>
           Gender changes
         </TabLink>
-      </div>
+      </FilterBar>
 
       {loadError && (
         <Card>
@@ -99,7 +100,7 @@ export default async function BuddyReportsPage({
 
       {tab === 'reports' && (
         <section className="flex flex-col gap-4">
-          <div className="flex gap-2">
+          <FilterBar>
             {REPORT_STATUSES.map((s) => (
               <a
                 key={s}
@@ -109,7 +110,7 @@ export default async function BuddyReportsPage({
                 {REPORT_STATUS_LABELS[s]}
               </a>
             ))}
-          </div>
+          </FilterBar>
 
           <Table>
             <Thead>

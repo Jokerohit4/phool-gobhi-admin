@@ -5,6 +5,8 @@ import { requireSession } from '@/lib/auth';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
+import { Section } from '@/components/ui/Section';
+import { InlineError } from '@/components/ui/InlineError';
 import { fulfillmentAction } from './actions';
 
 type Fulfillment = { id: number; kind: string; status: string; details: { address?: string; panel?: string } };
@@ -23,15 +25,16 @@ export default async function FulfillmentPage() {
   const results = await Promise.allSettled([gatewayJson<{ data: Customer[] }>('/api/wallet/coaching/admin/fulfillment'), gatewayJson<{ data: { profiles: Profile[]; requests: CareRequest[] } }>('/api/health/guidance/admin')]);
   if (results[0].status === 'fulfilled') customers = results[0].value.data; else error += `Memberships: ${String(results[0].reason)} `;
   if (results[1].status === 'fulfilled') ({ profiles, requests } = results[1].value.data); else error += `Care records: ${String(results[1].reason)}`;
-  return <div className="space-y-6">
+  return <div className="flex flex-col gap-6">
     <Breadcrumbs items={[{ label: 'Coaching fulfillment' }]} />
+    <Section className="gap-4">
     <PageHeader title="Health guidance & fulfillment" subtitle="Paid memberships, session completion, clinical review and collection requests" />
     <div className="flex flex-wrap gap-3 text-sm">
       <Link href="/coaching-plans" className="underline">Guided plans & offerings</Link>
       <Link href="/reports" className="underline">Saved blood reports</Link>
       <Link href="/users" className="underline">Users & cohorts</Link>
     </div>
-    {error && <p role="alert" className="rounded bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+    {error && <InlineError message={error} retryHref="/fulfillment" title="Could not load all fulfillment data" />} 
     <div className="overflow-x-auto rounded border"><table className="w-full text-left text-sm"><thead><tr className="border-b bg-gray-50 dark:bg-gray-800">{['Customer', 'Phone', 'Plan', 'Risk / review', '72h cleared', 'Gym pass', 'Lab credits', 'Completed sessions'].map(x => <th key={x} className="p-3">{x}</th>)}</tr></thead><tbody>{customers.map(c => <tr key={c.id} className="border-b">
       <td className="p-3">{c.name}<small className="block">#{c.id}</small></td><td className="p-3">{c.phone || '—'}</td><td className="p-3">{c.plan_type}<small className="block">{c.plan_status}</small></td><td className="p-3">{c.risk_bucket} / {c.clinical_status}</td><td className="p-3">{c.trial_cleared ? 'Yes' : 'No'}</td>
       <td className="p-3"><ActionForm action={fulfillmentAction}><Hidden userId={c.id} action="GYM" /><select name="status" defaultValue={c.gym_pass_status} className={input}>{['NOT_ISSUED', 'AWAITING_ASSIGNMENT', 'ASSIGNED', 'ACTIVE', 'CANCELLED'].map(x => <option key={x}>{x}</option>)}</select><button className="mt-1 rounded border px-2 py-1 text-xs">Save pass status</button></ActionForm></td>
@@ -48,5 +51,6 @@ export default async function FulfillmentPage() {
       <label className="block text-sm">Review outcome<select name="clinicalStatus" defaultValue={p.clinicalStatus === 'PENDING' ? 'FOLLOW_UP_REQUIRED' : p.clinicalStatus} className={input}><option>CLEARED</option><option>FOLLOW_UP_REQUIRED</option><option>NOT_CLEARED</option></select></label>
       <label className="block text-sm"><input type="checkbox" required name="attestReviewed" /> I am recording a completed review from the named clinician, with permission to record it.</label><button className="rounded bg-emerald-700 px-4 py-2 text-white">Record clinical review</button>
     </ActionForm></details>)}</section>
+    </Section>
   </div>;
 }

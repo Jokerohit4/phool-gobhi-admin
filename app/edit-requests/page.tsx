@@ -4,6 +4,8 @@ import { gatewayJson } from '@/lib/api';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
+import { FilterBar } from '@/components/ui/FilterBar';
+import { Section } from '@/components/ui/Section';
 import { CHANGE_TYPE_LABELS } from '@/lib/editRequests';
 import { formatDateTimeIST } from '@/lib/dateFormat';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
@@ -41,52 +43,54 @@ export default async function EditRequestsPage({
   return (
     <div className="flex flex-col gap-4">
       <Breadcrumbs items={[{ label: 'Edit requests' }]} />
-      <PageHeader title="Partner Edit Requests" subtitle="Changes to already-approved gyms, held until you review them" />
+      <Section className="gap-4">
+        <PageHeader title="Partner Edit Requests" subtitle="Changes to already-approved gyms, held until you review them" />
 
-      <div className="flex gap-2">
-        {TABS.map((tab) => (
-          <Link
-            key={tab}
-            href={`/edit-requests?status=${tab}`}
-            className={`rounded px-3 py-1 text-sm capitalize ${
-              tab === status ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800'
-            }`}
-          >
-            {tab}
-          </Link>
-        ))}
-      </div>
-
-      <Table>
-        <Thead>
-          <Th>Gym</Th>
-          <Th>Partner ID</Th>
-          <Th>Change</Th>
-          <Th>Submitted</Th>
-        </Thead>
-        <tbody>
-          {requests.map((r) => (
-            <Tr key={r.id}>
-              <Td>
-                <Link href={`/edit-requests/${r.id}`} className="underline">
-                  {r.gym.name}
-                </Link>{' '}
-                <span className="text-gray-500">· {r.gym.city}</span>
-              </Td>
-              <Td>
-                <Link href={`/gyms?partnerId=${r.gym.partnerId}`} className="underline">
-                  {r.gym.partnerId}
-                </Link>
-              </Td>
-              <Td>
-                <StatusBadge tone={r.status}>{CHANGE_TYPE_LABELS[r.changeType] ?? r.changeType}</StatusBadge>
-              </Td>
-              <Td>{formatDateTimeIST(r.createdAt)}</Td>
-            </Tr>
+        <FilterBar>
+          {TABS.map((tab) => (
+            <Link
+              key={tab}
+              href={`/edit-requests?status=${tab}`}
+              className={`rounded px-3 py-1 text-sm capitalize ${
+                tab === status ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-800'
+              }`}
+            >
+              {tab}
+            </Link>
           ))}
-          {requests.length === 0 && <EmptyRow colSpan={4}>No {status} edit requests.</EmptyRow>}
-        </tbody>
-      </Table>
+        </FilterBar>
+
+        <Table>
+          <Thead>
+            <Th>Gym</Th>
+            <Th>Partner ID</Th>
+            <Th>Change</Th>
+            <Th>Submitted</Th>
+          </Thead>
+          <tbody>
+            {requests.map((r) => (
+              <Tr key={r.id}>
+                <Td>
+                  <Link href={`/edit-requests/${r.id}`} className="underline">
+                    {r.gym.name}
+                  </Link>{' '}
+                  <span className="text-gray-500">· {r.gym.city}</span>
+                </Td>
+                <Td>
+                  <Link href={`/gyms?partnerId=${r.gym.partnerId}`} className="underline">
+                    {r.gym.partnerId}
+                  </Link>
+                </Td>
+                <Td>
+                  <StatusBadge tone={r.status}>{CHANGE_TYPE_LABELS[r.changeType] ?? r.changeType}</StatusBadge>
+                </Td>
+                <Td>{formatDateTimeIST(r.createdAt)}</Td>
+              </Tr>
+            ))}
+            {requests.length === 0 && <EmptyRow colSpan={4}>No {status} edit requests.</EmptyRow>}
+          </tbody>
+        </Table>
+      </Section>
     </div>
   );
 }

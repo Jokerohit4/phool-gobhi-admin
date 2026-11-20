@@ -4,6 +4,8 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { InlineError } from '@/components/ui/InlineError';
+import { Section } from '@/components/ui/Section';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { ContentItem } from './ContentItem';
 import {
   CONTENT_LANGS,
@@ -93,8 +95,9 @@ export default async function ContentPage({
         ))}
       </div>
 
-      <div className="flex flex-col gap-2">
-        <FilterRow
+      <Section className="gap-4">
+        <div className="flex flex-col gap-2">
+          <FilterRow
           label="Type"
           options={[
             { key: 'all', label: 'All', href: filterHref(filters, { type: null }), active: !filters.type },
@@ -127,7 +130,7 @@ export default async function ContentPage({
             active: filters.status === s,
           }))}
         />
-      </div>
+        </div>
 
       {loadError && (
         <Card>
@@ -139,11 +142,11 @@ export default async function ContentPage({
       )}
 
       {queue && queue.items.length === 0 && (
-        <Card className="text-sm text-gray-500 dark:text-gray-400">
+        <EmptyState className="text-sm text-gray-500 dark:text-gray-400">
           {filters.status === 'pending'
             ? 'Nothing waiting for review'
             : `No ${STATUS_LABELS[filters.status].toLowerCase()} items for these filters.`}
-        </Card>
+        </EmptyState>
       )}
 
       {queue && queue.items.length > 0 && (
@@ -156,6 +159,7 @@ export default async function ContentPage({
           ))}
         </section>
       )}
+      </Section>
     </div>
   );
 }
