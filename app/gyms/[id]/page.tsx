@@ -20,6 +20,7 @@ import { SubmitButton } from '@/components/ui/SubmitButton';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { formatDateIST } from '@/lib/dateFormat';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
+import { InlineError } from '@/components/ui/InlineError';
 
 interface GymReview {
   id: number;
@@ -95,16 +96,23 @@ export default async function GymDetailPage({
     notFound();
   }
 
-  // Best-effort — a reviews-fetch failure shouldn't block the rest of the page.
-  const reviews = await gatewayJson<{ data: GymReview[] }>(`/api/gyms/${id}/reviews`)
-    .then((res) => res.data)
-    .catch(() => [] as GymReview[]);
+  // Best-effort: a reviews-fetch failure shouldn't block the rest of the page.
+  let reviews: GymReview[] = [];
+  let reviewsError = '';
+  try {
+    ({ data: reviews } = await gatewayJson<{ data: GymReview[] }>(`/api/gyms/${id}/reviews`));
+  } catch (e) {
+    reviewsError = e instanceof Error ? e.message : 'Could not load reviews';
+  }
 
-  // Admin previously had no bookings/presence list at all for a gym — this
-  // closes that gap. Best-effort, same posture as the reviews fetch above.
-  const bookings = await gatewayJson<{ data: GymBookingRow[] }>(`/api/bookings/admin/gym/${id}/bookings`)
-    .then((res) => res.data)
-    .catch(() => [] as GymBookingRow[]);
+  // Best-effort: bookings/presence list shouldn't block the rest of the page.
+  let bookings: GymBookingRow[] = [];
+  let bookingsError = '';
+  try {
+    ({ data: bookings } = await gatewayJson<{ data: GymBookingRow[] }>(`/api/bookings/admin/gym/${id}/bookings`));
+  } catch (e) {
+    bookingsError = e instanceof Error ? e.message : 'Could not load bookings';
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -339,6 +347,10 @@ export default async function GymDetailPage({
         </div>
       </Card>
 
+      {reviewsError && reviews.length === 0 && (
+        <InlineError title="Could not load reviews" message={reviewsError} />
+      )}
+
       {reviews.length > 0 && (
         <Card className="flex flex-col gap-3">
           <h2 className="font-medium">Reviews ({reviews.length})</h2>
@@ -392,7 +404,8 @@ export default async function GymDetailPage({
                 <Td>{b.attendanceMethod ?? '—'}</Td>
               </Tr>
             ))}
-            {bookings.length === 0 && <EmptyRow colSpan={5}>No bookings yet at this gym.</EmptyRow>}
+            {!bookingsError && bookings.length === 0 && <EmptyRow colSpan={5}>No bookings yet at this gym.</EmptyRow>}
+            {bookingsError && bookings.length === 0 && <EmptyRow colSpan={5}>Could not load bookings.</EmptyRow>}
           </tbody>
         </Table>
       </Card>

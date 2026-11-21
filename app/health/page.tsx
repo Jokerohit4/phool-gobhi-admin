@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
+import { InlineError } from '@/components/ui/InlineError';
 import { gatewayJson } from '@/lib/api';
 import { requireSession } from '@/lib/auth';
 
@@ -98,7 +99,7 @@ export default async function HealthPage() {
       <Card>
         <h2 className="mb-1 text-sm font-semibold">Adoption</h2>
         {adoptionError ? (
-          <LoadError message={adoptionError} />
+          <InlineError title="Could not load adoption numbers" message={`${adoptionError} - health-service is dev-only and flag-gated, so this is expected on prod.`} retryHref="/health" />
         ) : (
           <>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -135,7 +136,7 @@ export default async function HealthPage() {
           rate has no denominator. GS-5 targets 20%.
         </p>
         {feedbackError ? (
-          <LoadError message={feedbackError} />
+          <InlineError title="Could not load suggestion feedback" message={`${feedbackError} - health-service is dev-only and flag-gated, so this is expected on prod.`} retryHref="/health" />
         ) : (
           <>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -167,7 +168,7 @@ export default async function HealthPage() {
           never on a clock. Changing this number does not touch any of that.
         </p>
         {retentionError ? (
-          <LoadError message={retentionError} />
+          <InlineError title="Could not load retention policy" message={`${retentionError} - health-service is dev-only and flag-gated, so this is expected on prod.`} retryHref="/health" />
         ) : (
           <ActionForm action={updateRetentionPolicyAction} className="flex flex-col gap-3">
             <label className="flex flex-col gap-1 text-sm font-medium md:max-w-xs">
@@ -220,10 +221,3 @@ function Stat({
   );
 }
 
-function LoadError({ message }: { message: string }) {
-  return (
-    <p className="text-sm text-red-600 dark:text-red-400">
-      {message} — health-service is dev-only and flag-gated, so this is expected on prod.
-    </p>
-  );
-}
