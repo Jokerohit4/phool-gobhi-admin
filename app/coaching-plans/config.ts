@@ -24,3 +24,43 @@ export function pricePaise(value: string, optional: boolean): number | null {
   if (!Number.isSafeInteger(amount) || amount < 1 || amount > 100000000) throw new Error('Enter a price from ₹0.01 to ₹10,00,000');
   return amount;
 }
+
+// Upper bounds for the numeric plan fields (inclusive). Anything above is
+// almost certainly a typo, and these values feed pricing/entitlement logic.
+export const numberLimits: Record<string, number> = {
+  durationDays: 3650,
+  gymVisitsPerMonth: 62,
+  freeFormSessions: 1000,
+  checkInsPerWeek: 21,
+  labCredits: 100,
+  sessions: 1000,
+  validityDays: 3650,
+};
+
+// Maximum characters for text fields; `title`/`badge`/`ctaLabel`/`gymArea`/
+// `label` are short labels, the rest are descriptions.
+export const textLimits: Record<string, number> = {
+  label: 100,
+  title: 100,
+  badge: 40,
+  ctaLabel: 60,
+  gymArea: 120,
+};
+export const DEFAULT_TEXT_LIMIT = 1000;
+
+export function boundedInteger(raw: string, name: string): number {
+  const field = name.split('.').at(-1) || name;
+  if (!/^\d{1,9}$/.test(raw)) throw new Error(`Enter a whole number for ${field}`);
+  const value = Number(raw);
+  const max = numberLimits[field];
+  if (max !== undefined && value > max) throw new Error(`${field} must be at most ${max}`);
+  return value;
+}
+
+export function boundedText(value: string, name: string): string {
+  const field = name.split('.').at(-1) || name;
+  const max = textLimits[field] ?? DEFAULT_TEXT_LIMIT;
+  const trimmed = value.trim();
+  if (trimmed.length > max) throw new Error(`${field} must be ${max} characters or fewer`);
+  return trimmed;
+}
