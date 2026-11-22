@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { Toggle } from '@/components/ui/Toggle';
 import { SubmitButton } from '@/components/ui/SubmitButton';
+import { InlineError } from '@/components/ui/InlineError';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { SettingsSectionNav } from '../SettingsSectionNav';
 import { updateLaunchGateAction, updateMaintenanceAction } from '../actions';
@@ -18,12 +19,16 @@ interface LaunchGate {
 export default async function LaunchMaintenanceSettingsPage() {
   await requireSession();
 
-  const [{ data: launchGate }, { data: maintenanceConfig }] = await Promise.all([
+  const [gateSettled, configSettled] = await Promise.allSettled([
     gatewayJson<{ data: LaunchGate }>('/api/auth/launch-gate/admin'),
     gatewayJson<{ data: Record<string, unknown> }>('/api/auth/app-config/admin'),
   ]);
+  if (gateSettled.status === 'rejected') console.error('LaunchMaintenanceSettingsPage: launch-gate load failed', gateSettled.reason);
+  if (configSettled.status === 'rejected') console.error('LaunchMaintenanceSettingsPage: app-config load failed', configSettled.reason);
+  const launchGate = gateSettled.status === 'fulfilled' ? gateSettled.value.data : null;
+  const maintenanceConfig = configSettled.status === 'fulfilled' ? configSettled.value.data : null;
 
-  const maintenanceRaw = ((maintenanceConfig as { maintenance?: Partial<MaintenanceConfig> })?.maintenance || {}) as Partial<MaintenanceConfig>;
+  const maintenanceRaw = ((maintenanceConfig as { maintenance?: Partial<MaintenanceConfig> } | null)?.maintenance || {}) as Partial<MaintenanceConfig>;
   const maintenance: MaintenanceConfig = {
     wallet: { ...EMPTY_MAINTENANCE_ENTRY, ...(maintenanceRaw.wallet || {}) },
     gyms: { ...EMPTY_MAINTENANCE_ENTRY, ...(maintenanceRaw.gyms || {}) },
@@ -35,6 +40,7 @@ export default async function LaunchMaintenanceSettingsPage() {
       <PageHeader title="Launch & maintenance" subtitle="Control launch gating and website maintenance windows. These changes affect the website immediately; partner onboarding and apps are not affected as noted." />
       <SettingsSectionNav />
 
+      {launchGate ? (
       <section className="flex flex-col gap-4">
         <PageHeader
           title="Launch gate"
@@ -69,7 +75,11 @@ export default async function LaunchMaintenanceSettingsPage() {
           </ActionForm>
         </Card>
       </section>
+      ) : (
+        <InlineError title="Could not load the launch gate" message="This section could not be loaded, so editing is disabled to avoid saving over values you cannot see." retryHref="/settings/launch-maintenance" />
+      )}
 
+      {maintenanceConfig ? (
       <section className="flex flex-col gap-4">
         <PageHeader
           title="Maintenance windows"
@@ -134,6 +144,9 @@ export default async function LaunchMaintenanceSettingsPage() {
           );
         })}
       </section>
+      ) : (
+        <InlineError title="Could not load maintenance windows" message="This section could not be loaded, so editing is disabled to avoid saving over values you cannot see." retryHref="/settings/launch-maintenance" />
+      )}
     </div>
   );
 }

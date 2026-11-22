@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireSession } from '@/lib/auth';
+import { parsePositiveId } from '@/lib/ids';
 import { gatewayJson } from '@/lib/api';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
@@ -114,6 +115,7 @@ export default async function EditRequestDetailPage({
 }) {
   await requireSession();
   const { id } = await params;
+  if (parsePositiveId(id) === null) notFound();
 
   let request: EditRequestDetail;
   try {

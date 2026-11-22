@@ -10,6 +10,7 @@ import { SettingsSectionNav } from '../SettingsSectionNav';
 import { SocialSwitch } from '../SocialSwitch';
 import { loadFlagRegistry, registryDrift, type FlagRegistryEntry } from '../flagRegistry';
 import { updateFeatureFlagsAction, updateSocialSwitchAction } from '../actions';
+import { InlineError } from '@/components/ui/InlineError';
 import { socialEnabledFrom } from '@/lib/socialApi';
 
 const FLAG_GROUP_ORDER = ['exploration', 'training', 'health', 'gamification', 'social', 'onboarding', 'coach', 'ops'] as const;
@@ -48,13 +49,18 @@ function groupFlags(flags: FlagRegistryEntry[]): Array<[string, FlagRegistryEntr
 export default async function FlagsSocialSettingsPage() {
   await requireSession();
 
-  const [{ data: appConfig }, { flags: flagRegistry, failed: flagRegistryFailed }] = await Promise.all([
-    gatewayJson<{ data: Record<string, unknown> }>('/api/auth/app-config/admin'),
+  const [appConfigSettled, { flags: flagRegistry, failed: flagRegistryFailed }] = await Promise.all([
+    gatewayJson<{ data: Record<string, unknown> }>('/api/auth/app-config/admin').then(
+      (value) => ({ ok: true as const, value }),
+      (reason: unknown) => ({ ok: false as const, reason }),
+    ),
     loadFlagRegistry(),
   ]);
+  if (!appConfigSettled.ok) console.error('FlagsSocialSettingsPage: app-config load failed', appConfigSettled.reason);
+  const appConfig = appConfigSettled.ok ? appConfigSettled.value.data : null;
 
   const flagDrift = flagRegistryFailed ? { missing: [], unexpected: [] } : registryDrift(flagRegistry);
-  const socialEnabled = socialEnabledFrom(appConfig);
+  const socialEnabled = appConfig ? socialEnabledFrom(appConfig) : false;
 
   return (
     <div className="flex flex-col gap-6">
@@ -156,6 +162,7 @@ export default async function FlagsSocialSettingsPage() {
         </Card>
       </section>
 
+      {appConfig ? (
       <section className="flex flex-col gap-4">
         <PageHeader
           title="Social features"
@@ -165,6 +172,9 @@ export default async function FlagsSocialSettingsPage() {
           <SocialSwitch enabled={socialEnabled} action={updateSocialSwitchAction} />
         </Card>
       </section>
+      ) : (
+        <InlineError title="Could not load the social switch" message="This section could not be loaded, so editing is disabled to avoid saving over values you cannot see." retryHref="/settings/flags-social" />
+      )}
     </div>
   );
 }

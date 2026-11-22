@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireSession } from '@/lib/auth';
+import { parsePositiveId } from '@/lib/ids';
 import { gatewayJson } from '@/lib/api';
 import {
   approveGymAction,
@@ -87,6 +88,7 @@ export default async function GymDetailPage({
 }) {
   await requireSession();
   const { id } = await params;
+  if (parsePositiveId(id) === null) notFound();
 
   let gym: GymDetail;
   try {

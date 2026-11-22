@@ -1,12 +1,14 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireSession } from '@/lib/auth';
+import { parsePositiveId } from '@/lib/ids';
 import { gatewayJson } from '@/lib/api';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { formatDateIST } from '@/lib/dateFormat';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
+import { InlineError } from '@/components/ui/InlineError';
 import { Section } from '@/components/ui/Section';
 import { FilterBar } from '@/components/ui/FilterBar';
 
@@ -96,6 +98,7 @@ export default async function AttendanceSaasMembersPage({
 }) {
   await requireSession();
   const { gymId } = await params;
+  if (parsePositiveId(gymId) === null) notFound();
   const { days: daysParam, sort: sortParam } = await searchParams;
   const activityDays = ACTIVITY_DAY_OPTIONS.includes(Number(daysParam)) ? Number(daysParam) : 7;
   const activitySort: SortKey = SORT_OPTIONS.some((o) => o.key === sortParam) ? (sortParam as SortKey) : 'mostVisits';
@@ -108,24 +111,30 @@ export default async function AttendanceSaasMembersPage({
     notFound();
   }
 
-  const [{ data: members }, { data: subscriptions }, { data: activity }] = await Promise.all([
+  const [membersSettled, subscriptionsSettled, activitySettled] = await Promise.allSettled([
     gatewayJson<{ data: Member[] }>(`/api/auth/admin/attendance-saas/members/${gymId}`),
     gatewayJson<{ data: SubscriptionRow[] }>(`/api/wallet/subscriptions/admin/by-gym/${gymId}`),
     gatewayJson<{ data: MemberActivity }>(`/api/bookings/admin/gym/${gymId}/member-activity?days=${activityDays}`),
   ]);
-  const sortedActivity = sortActivity(activity.members, activitySort);
+  for (const [name, r] of [['members', membersSettled], ['subscriptions', subscriptionsSettled], ['member-activity', activitySettled]] as const) {
+    if (r.status === 'rejected') console.error(`AttendanceSaasGymPage: ${name} load failed`, r.reason);
+  }
+  const members = membersSettled.status === 'fulfilled' ? membersSettled.value.data : null;
+  const subscriptions = subscriptionsSettled.status === 'fulfilled' ? subscriptionsSettled.value.data : null;
+  const activity = activitySettled.status === 'fulfilled' ? activitySettled.value.data : null;
+  const sortedActivity = activity ? sortActivity(activity.members, activitySort) : [];
 
   // One gym's subscriptions only ever belong to that gym's own linked
   // members here, but a member can have bought more than once (renewals) —
   // aggregate per customerId rather than assuming one row each.
   const subsByCustomer = new Map<number, SubscriptionRow[]>();
-  for (const sub of subscriptions) {
+  for (const sub of subscriptions ?? []) {
     const list = subsByCustomer.get(sub.customerId) ?? [];
     list.push(sub);
     subsByCustomer.set(sub.customerId, list);
   }
 
-  const rows = members.map((member) => {
+  const rows = (members ?? []).map((member) => {
     const subs = subsByCustomer.get(member.id) ?? [];
     const totalPaid = subs.reduce((sum, s) => sum + s.price, 0);
     const activeNow = subs.some(isCurrentlyActive);
@@ -135,6 +144,7 @@ export default async function AttendanceSaasMembersPage({
   return (
     <div className="flex flex-col gap-4">
       <Breadcrumbs items={[{ label: 'Attendance SaaS', href: '/attendance-saas' }, { label: gym.name }]} />
+      {members && subscriptions ? (
       <Section>
         <PageHeader
           title={`${gym.name} - members`}
@@ -184,7 +194,11 @@ export default async function AttendanceSaasMembersPage({
           </tbody>
         </Table>
       </Section>
+      ) : (
+        <InlineError title="Could not load members" message="This section could not be loaded." retryHref={`/attendance-saas/${gymId}`} />
+      )}
 
+      {activity ? (
       <Section>
         <PageHeader
           title="Attendance activity"
@@ -250,6 +264,9 @@ export default async function AttendanceSaasMembersPage({
           </tbody>
         </Table>
       </Section>
+      ) : (
+        <InlineError title="Could not load attendance activity" message="This section could not be loaded." retryHref={`/attendance-saas/${gymId}`} />
+      )}
     </div>
   );
 }

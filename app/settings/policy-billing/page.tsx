@@ -6,6 +6,7 @@ import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { Toggle } from '@/components/ui/Toggle';
 import { SubmitButton } from '@/components/ui/SubmitButton';
+import { InlineError } from '@/components/ui/InlineError';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { SettingsSectionNav } from '../SettingsSectionNav';
 import {
@@ -20,14 +21,22 @@ import { formatDateTimeIST, normalizeTiers, type CancellationTier, type WalletTo
 export default async function PolicyBillingSettingsPage() {
   await requireSession();
 
-  const [{ data: policy }, bonusRes, { data: topupConfig }] = await Promise.all([
+  const [policySettled, bonusSettled, topupSettled] = await Promise.allSettled([
     gatewayJson<{ data: { tiers: CancellationTier[]; updatedAt: string | null } }>('/api/bookings/cancellation-policy'),
     gatewayJson<{ data: { amount: number }; updatedAt?: string | null }>('/api/auth/profile-completion-bonus/admin'),
     gatewayJson<{ data: WalletTopupConfig }>('/api/wallet/topup-config'),
   ]);
-  const profileCompletionBonus = { amount: bonusRes.data.amount, updatedAt: bonusRes.updatedAt ?? null };
+  for (const [name, r] of [['cancellation-policy', policySettled], ['profile-completion-bonus', bonusSettled], ['topup-config', topupSettled]] as const) {
+    if (r.status === 'rejected') console.error(`PolicyBillingSettingsPage: ${name} load failed`, r.reason);
+  }
+  const policy = policySettled.status === 'fulfilled' ? policySettled.value.data : null;
+  const topupConfig = topupSettled.status === 'fulfilled' ? topupSettled.value.data : null;
+  const profileCompletionBonus =
+    bonusSettled.status === 'fulfilled'
+      ? { amount: bonusSettled.value.data.amount, updatedAt: bonusSettled.value.updatedAt ?? null }
+      : null;
 
-  const rows = normalizeTiers(policy.tiers);
+  const rows = policy ? normalizeTiers(policy.tiers) : [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -35,6 +44,7 @@ export default async function PolicyBillingSettingsPage() {
       <PageHeader title="Policy & billing" subtitle="Cancellation rules, wallet top-up presets, and profile-completion bonus configuration." />
       <SettingsSectionNav />
 
+      {policy ? (
       <section className="flex flex-col gap-4">
         <PageHeader
           title="Cancellation policy"
@@ -95,7 +105,11 @@ export default async function PolicyBillingSettingsPage() {
           </ActionForm>
         </Card>
       </section>
+      ) : (
+        <InlineError title="Could not load the cancellation policy" message="This section could not be loaded, so editing is disabled to avoid saving over values you cannot see." retryHref="/settings/policy-billing" />
+      )}
 
+      {topupConfig ? (
       <section className="flex flex-col gap-4">
         <PageHeader
           title="Wallet top-up amounts"
@@ -191,7 +205,11 @@ export default async function PolicyBillingSettingsPage() {
           </ActionForm>
         </Card>
       </section>
+      ) : (
+        <InlineError title="Could not load wallet top-up settings" message="This section could not be loaded, so editing is disabled to avoid saving over values you cannot see." retryHref="/settings/policy-billing" />
+      )}
 
+      {profileCompletionBonus ? (
       <section className="flex flex-col gap-4">
         <PageHeader
           title="Profile-completion bonus"
@@ -231,6 +249,9 @@ export default async function PolicyBillingSettingsPage() {
           </ActionForm>
         </Card>
       </section>
+      ) : (
+        <InlineError title="Could not load the profile-completion bonus" message="This section could not be loaded, so editing is disabled to avoid saving over values you cannot see." retryHref="/settings/policy-billing" />
+      )}
     </div>
   );
 }

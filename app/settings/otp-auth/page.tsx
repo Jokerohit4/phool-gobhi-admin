@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
+import { InlineError } from '@/components/ui/InlineError';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { SettingsSectionNav } from '../SettingsSectionNav';
 import { updateOtpConfigAction, addOtpSkipAllowlistAction, removeOtpSkipAllowlistAction } from '../actions';
@@ -13,12 +14,17 @@ import { OTP_PROVIDER_OPTIONS, formatDateIST, formatDateTimeIST, type OtpProvide
 export default async function OtpAuthSettingsPage() {
   await requireSession();
 
-  const [otpRes, otpSkipRes] = await Promise.all([
+  const [otpSettled, otpSkipSettled] = await Promise.allSettled([
     gatewayJson<{ data: { provider: OtpProvider }; updatedAt?: string | null }>('/api/auth/otp-config/admin'),
     gatewayJson<{ data: OtpSkipAllowlistEntry[] }>('/api/auth/otp-config/admin/skip-allowlist'),
   ]);
-  const otpConfig = { provider: otpRes.data.provider, updatedAt: otpRes.updatedAt ?? null };
-  const skipAllowlist = otpSkipRes.data;
+  if (otpSettled.status === 'rejected') console.error('OtpAuthSettingsPage: otp-config load failed', otpSettled.reason);
+  if (otpSkipSettled.status === 'rejected') console.error('OtpAuthSettingsPage: skip-allowlist load failed', otpSkipSettled.reason);
+  const otpConfig =
+    otpSettled.status === 'fulfilled'
+      ? { provider: otpSettled.value.data.provider, updatedAt: otpSettled.value.updatedAt ?? null }
+      : null;
+  const skipAllowlist = otpSkipSettled.status === 'fulfilled' ? otpSkipSettled.value.data : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -30,11 +36,12 @@ export default async function OtpAuthSettingsPage() {
         <PageHeader
           title="OTP verification"
           subtitle={
-            otpConfig.updatedAt
-              ? `Controls how customer/partner phone login is verified ? last updated ${formatDateTimeIST(otpConfig.updatedAt)} IST.`
+            otpConfig?.updatedAt
+              ? `Controls how customer/partner phone login is verified ? last updated ${formatDateTimeIST(otpConfig?.updatedAt ?? null)} IST.`
               : 'Controls how customer/partner phone login is verified ? not customized yet, showing defaults.'
           }
         />
+      {otpConfig ? (
         <Card className="max-w-2xl">
           <ActionForm
             action={updateOtpConfigAction}
@@ -72,6 +79,11 @@ export default async function OtpAuthSettingsPage() {
           </ActionForm>
         </Card>
 
+      ) : (
+        <InlineError title="Could not load OTP settings" message="This section could not be loaded, so editing is disabled to avoid saving over values you cannot see." retryHref="/settings/otp-auth" />
+      )}
+      {skipAllowlist ? (
+        <>
         <Table>
           <Thead>
             <Th>Phone</Th>
@@ -121,7 +133,11 @@ export default async function OtpAuthSettingsPage() {
             <SubmitButton pendingText="Adding?" className="w-fit">Add to skip allowlist</SubmitButton>
           </ActionForm>
         </Card>
-      </section>
+
+        </>
+      ) : (
+        <InlineError title="Could not load the skip allowlist" message="This section could not be loaded, so editing is disabled to avoid saving over values you cannot see." retryHref="/settings/otp-auth" />
+      )}      </section>
     </div>
   );
 }
