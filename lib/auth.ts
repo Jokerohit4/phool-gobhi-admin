@@ -8,7 +8,12 @@ import {
   REFRESH_COOKIE_MAX_AGE,
 } from './cookieNames';
 
-const secretKey = new TextEncoder().encode(process.env.JWT_SECRET);
+function getSecretKey(): Uint8Array {
+  // Fail closed: an unset secret must never become an empty HMAC key.
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET is not configured');
+  return new TextEncoder().encode(secret);
+}
 
 export interface SessionUser {
   id: number;
@@ -18,10 +23,11 @@ export interface SessionUser {
 
 export async function verifyAccessToken(token: string): Promise<SessionUser | null> {
   try {
-    const { payload } = await jwtVerify(token, secretKey, { algorithms: ['HS256'] });
+    const { payload } = await jwtVerify(token, getSecretKey(), { algorithms: ['HS256'] });
     if (payload.role !== 'gobhi') return null;
     return { id: Number(payload.id), role: String(payload.role), type: String(payload.type) };
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.message === 'JWT_SECRET is not configured') console.error(err.message);
     return null;
   }
 }

@@ -3,11 +3,16 @@ import type { NextRequest } from 'next/server';
 import { jwtVerify, errors as joseErrors } from 'jose';
 import { ACCESS_COOKIE, REFRESH_COOKIE, ACCESS_COOKIE_MAX_AGE, REFRESH_COOKIE_MAX_AGE, cookieOptions } from '@/lib/cookieNames';
 
-const secretKey = new TextEncoder().encode(process.env.JWT_SECRET);
+function getSecretKey(): Uint8Array {
+  // Fail closed: an unset secret must never become an empty HMAC key.
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET is not configured');
+  return new TextEncoder().encode(secret);
+}
 const GATEWAY_URL = process.env.GATEWAY_URL;
 
 async function verifyGobhi(token: string) {
-  const { payload } = await jwtVerify(token, secretKey, { algorithms: ['HS256'] });
+  const { payload } = await jwtVerify(token, getSecretKey(), { algorithms: ['HS256'] });
   return payload.role === 'gobhi' ? payload : null;
 }
 

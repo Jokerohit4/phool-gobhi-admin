@@ -30,6 +30,18 @@ describe('verifyAccessToken', () => {
     vi.clearAllMocks();
   });
 
+  it('fails closed when JWT_SECRET is unset', async () => {
+    const token = await makeToken({ id: 1, role: 'gobhi', type: 'trainer' });
+    vi.stubEnv('JWT_SECRET', '');
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      expect(await verifyAccessToken(token)).toBeNull();
+    } finally {
+      spy.mockRestore();
+      vi.stubEnv('JWT_SECRET', 'test-secret-key-for-vitest');
+    }
+  });
+
   it('returns session user for valid gobhi token', async () => {
     const token = await makeToken({ id: 1, role: 'gobhi', type: 'trainer' });
     const result = await verifyAccessToken(token);
