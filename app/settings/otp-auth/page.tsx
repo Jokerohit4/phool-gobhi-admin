@@ -98,7 +98,11 @@ export default async function OtpAuthSettingsPage() {
         </Table>
 
         <Card className="max-w-md">
-          <ActionForm action={addOtpSkipAllowlistAction} className="flex flex-col gap-3">
+          <ActionForm
+            action={addOtpSkipAllowlistAction}
+            confirmMessage="Add this number to the OTP skip allowlist? Logins from it will bypass OTP verification entirely."
+            className="flex flex-col gap-3"
+          >
             <label className="text-sm font-medium" htmlFor="otp-skip-phone">Phone</label>
             <input
               id="otp-skip-phone"

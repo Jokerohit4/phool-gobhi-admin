@@ -78,7 +78,7 @@ export default async function JobsPage() {
                 </Td>
                 <Td>{formatDateIST(job.createdAt)}</Td>
                 <Td className="flex flex-wrap gap-2">
-                  <ActionForm action={setJobOpeningActiveAction}>
+                  <ActionForm action={setJobOpeningActiveAction} confirmMessage="Change whether this opening is visible on the public careers page?">
                     <input type="hidden" name="id" value={job.id} />
                     <input type="hidden" name="isActive" value={(!job.isActive).toString()} />
                     <SubmitButton variant="secondary" pendingText="Saving…">

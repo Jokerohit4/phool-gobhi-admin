@@ -45,7 +45,11 @@ export default async function PolicyBillingSettingsPage() {
           }
         />
         <Card className="max-w-2xl">
-          <ActionForm action={updateCancellationPolicyAction} className="flex flex-col gap-4">
+          <ActionForm
+            action={updateCancellationPolicyAction}
+            confirmMessage="This changes the refund rules applied to every future booking cancellation. Continue?"
+            className="flex flex-col gap-4"
+          >
             <p className="text-sm text-gray-500">
               Each row applies when the customer cancels with less notice than &ldquo;Up to hours&rdquo; (the
               last row has no upper bound). Leave &ldquo;Up to hours&rdquo; blank for the last row.
@@ -125,7 +129,11 @@ export default async function PolicyBillingSettingsPage() {
         </Table>
 
         <Card className="max-w-sm">
-          <ActionForm action={addWalletTopupPresetAction} className="flex flex-col gap-3">
+          <ActionForm
+            action={addWalletTopupPresetAction}
+            confirmMessage="Add this wallet top-up preset for all customers?"
+            className="flex flex-col gap-3"
+          >
             <label className="text-sm font-medium" htmlFor="topup-preset-amount">New preset amount (?)</label>
             <input
               id="topup-preset-amount"
