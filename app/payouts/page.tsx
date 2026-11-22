@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
 import { recordPayoutAction } from './actions';
@@ -74,10 +75,11 @@ export default async function PayoutsPage() {
                 <Td>
                   <ActionForm
                     action={recordPayoutAction}
-                    confirmMessage={`Record a payout to ${partnerLabel(b)}?`}
+                    confirmMessage={`Record a payout to ${partnerLabel(b)}? This moves real money out of their wallet balance and cannot be undone.`}
                     className="flex flex-wrap items-center gap-2"
                   >
                     <input type="hidden" name="userId" value={b.userId} />
+                    <input type="hidden" name="idempotencyKey" value={randomUUID()} />
                     <input
                       type="number"
                       name="amount"
