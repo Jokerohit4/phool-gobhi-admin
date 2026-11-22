@@ -1,7 +1,10 @@
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
+import { rejectCrossOrigin } from '@/lib/csrf';
 
 export async function GET(request: Request) {
+  const rejected = rejectCrossOrigin(request);
+  if (rejected) return rejected;
   await requireSession();
   const query = new URL(request.url).searchParams;
   const source = query.get('source'), id = query.get('reportId');

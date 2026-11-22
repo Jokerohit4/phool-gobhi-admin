@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { setSessionCookies } from '@/lib/auth';
+import { guardJsonPost } from '@/lib/csrf';
 
 const GATEWAY_URL = process.env.GATEWAY_URL;
 
 export async function POST(request: Request) {
+  const rejected = guardJsonPost(request);
+  if (rejected) return rejected;
   const body = await request.json();
   const res = await fetch(`${GATEWAY_URL}/api/auth/google`, {
     method: 'POST',

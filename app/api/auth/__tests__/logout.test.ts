@@ -15,7 +15,7 @@ beforeEach(() => {
 
 describe('POST /api/auth/logout', () => {
   it('clears session cookies and returns ok', async () => {
-    const res = await POST();
+    const res = await POST(new Request('http://localhost:3000/api/auth/logout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }));
     expect(res.status).toBe(200);
     expect(mockClearSessionCookies).toHaveBeenCalled();
     const json = await res.json();

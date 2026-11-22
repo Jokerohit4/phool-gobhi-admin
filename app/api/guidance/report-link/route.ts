@@ -1,7 +1,10 @@
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
+import { rejectCrossOrigin } from '@/lib/csrf';
 
 export async function GET(request: Request) {
+  const rejected = rejectCrossOrigin(request);
+  if (rejected) return rejected;
   await requireSession();
   const userId = Number(new URL(request.url).searchParams.get('userId'));
   if (!Number.isInteger(userId) || userId < 1) return Response.json({ error: 'Invalid customer' }, { status: 400 });

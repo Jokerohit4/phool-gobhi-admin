@@ -26,6 +26,28 @@ beforeEach(() => {
 });
 
 describe('POST /api/auth/login', () => {
+  it('rejects cross-origin requests before touching the gateway', async () => {
+    const req = new Request('http://localhost:3000/api/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'https://evil.example', host: 'localhost:3000' },
+      body: JSON.stringify({ email: 'a@b.com', password: 'pass' }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(403);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-JSON content types', async () => {
+    const req = new Request('http://localhost:3000/api/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'text/plain' },
+      body: 'x',
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(415);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
   it('sets session cookies and returns ok for gobhi role', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
