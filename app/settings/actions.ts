@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
+import { parsePositiveId, INVALID_ID_MESSAGE } from '@/lib/ids';
 import { loadFlagRegistry } from './flagRegistry';
 import { setSocialEnabled } from '@/lib/socialApi';
 import type { ActionState } from '@/components/ui/ActionForm';
@@ -355,7 +356,8 @@ export async function addOtpSkipAllowlistAction(_prev: ActionState, formData: Fo
 
 export async function removeOtpSkipAllowlistAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireSession();
-  const id = formData.get('id');
+  const id = parsePositiveId(formData.get('id'));
+  if (id === null) return { ok: false, message: INVALID_ID_MESSAGE };
 
   try {
     await gatewayJson(`/api/auth/otp-config/admin/skip-allowlist/${id}`, { method: 'DELETE' });

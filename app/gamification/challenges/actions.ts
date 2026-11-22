@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
+import { parsePathSegment, INVALID_ID_MESSAGE } from '@/lib/ids';
 import type { ActionState } from '@/components/ui/ActionForm';
 
 export async function createDefinitionAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -62,7 +63,8 @@ export async function createChallengeAction(_prev: ActionState, formData: FormDa
 
 export async function setChallengeStatusAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireSession();
-  const id = formData.get('id');
+  const id = parsePathSegment(formData.get('id'));
+  if (id === null) return { ok: false, message: INVALID_ID_MESSAGE };
   const status = String(formData.get('status') || '');
 
   try {

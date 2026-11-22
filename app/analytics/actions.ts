@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
+import { parsePathSegment, INVALID_ID_MESSAGE } from '@/lib/ids';
 import type { ActionState } from '@/components/ui/ActionForm';
 
 // Matches the fixed-row step builder in FunnelsView — one filter pair per
@@ -43,7 +44,8 @@ export async function createFunnelAction(_prev: ActionState, formData: FormData)
 
 export async function deleteFunnelAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireSession();
-  const id = formData.get('id');
+  const id = parsePathSegment(formData.get('id'));
+  if (id === null) return { ok: false, message: INVALID_ID_MESSAGE };
 
   try {
     await gatewayJson(`/api/bookings/admin/analytics/funnels/${id}`, { method: 'DELETE' });

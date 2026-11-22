@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
+import { parsePositiveId, INVALID_ID_MESSAGE } from '@/lib/ids';
 import type { ActionState } from '@/components/ui/ActionForm';
 
 // Charges the attendance-SaaS monthly bill for a (gym, month) —
@@ -11,7 +12,8 @@ import type { ActionState } from '@/components/ui/ActionForm';
 // so a double-submit can never charge the same month twice.
 export async function applyAttendanceSaasBillAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireSession();
-  const gymId = formData.get('gymId');
+  const gymId = parsePositiveId(formData.get('gymId'));
+  if (gymId === null) return { ok: false, message: INVALID_ID_MESSAGE };
   const month = formData.get('month');
   if (!gymId || !month) return { ok: false, message: 'Missing gym or month' };
 

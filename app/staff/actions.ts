@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
+import { parsePositiveId, INVALID_ID_MESSAGE } from '@/lib/ids';
 import type { ActionState } from '@/components/ui/ActionForm';
 
 export async function inviteStaffAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -31,7 +32,8 @@ export async function inviteStaffAction(_prev: ActionState, formData: FormData):
 
 export async function setStaffStatusAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireSession();
-  const id = formData.get('id');
+  const id = parsePositiveId(formData.get('id'));
+  if (id === null) return { ok: false, message: INVALID_ID_MESSAGE };
   const isActive = formData.get('isActive') === 'true';
 
   try {

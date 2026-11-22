@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
+import { parsePositiveId } from '@/lib/ids';
 import type { ActionState } from '@/components/ui/ActionForm';
 
 // No automated bank transfer — this just marks the ledger settled once
@@ -10,8 +11,8 @@ import type { ActionState } from '@/components/ui/ActionForm';
 // posture as the existing wallet payout flow (see /payouts).
 export async function settleBankSettlementsAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireSession();
-  const partnerId = formData.get('partnerId');
-  if (!partnerId) return { ok: false, message: 'Missing partner id' };
+  const partnerId = parsePositiveId(formData.get('partnerId'));
+  if (partnerId === null) return { ok: false, message: 'Invalid partner id' };
 
   try {
     await gatewayJson(`/api/wallet/bank-settlements/admin/${partnerId}/settle`, { method: 'POST' });

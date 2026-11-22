@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
+import { parsePositiveId, INVALID_ID_MESSAGE } from '@/lib/ids';
 import type { ActionState } from '@/components/ui/ActionForm';
 
 export async function createJobOpeningAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -32,7 +33,8 @@ export async function createJobOpeningAction(_prev: ActionState, formData: FormD
 
 export async function setJobOpeningActiveAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireSession();
-  const id = formData.get('id');
+  const id = parsePositiveId(formData.get('id'));
+  if (id === null) return { ok: false, message: INVALID_ID_MESSAGE };
   const isActive = formData.get('isActive') === 'true';
 
   try {
@@ -50,7 +52,8 @@ export async function setJobOpeningActiveAction(_prev: ActionState, formData: Fo
 
 export async function deleteJobOpeningAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireSession();
-  const id = formData.get('id');
+  const id = parsePositiveId(formData.get('id'));
+  if (id === null) return { ok: false, message: INVALID_ID_MESSAGE };
 
   try {
     await gatewayJson(`/api/auth/admin/jobs/${id}`, { method: 'DELETE' });

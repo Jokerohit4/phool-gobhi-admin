@@ -4,11 +4,13 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
+import { parsePositiveId, INVALID_ID_MESSAGE } from '@/lib/ids';
 import type { ActionState } from '@/components/ui/ActionForm';
 
 export async function approveGymAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireSession();
-  const gymId = formData.get('gymId');
+  const gymId = parsePositiveId(formData.get('gymId'));
+  if (gymId === null) return { ok: false, message: INVALID_ID_MESSAGE };
   try {
     await gatewayJson(`/api/gyms/${gymId}/approve`, {
       method: 'PUT',
@@ -24,7 +26,8 @@ export async function approveGymAction(_prev: ActionState, formData: FormData): 
 
 export async function rejectGymAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireSession();
-  const gymId = formData.get('gymId');
+  const gymId = parsePositiveId(formData.get('gymId'));
+  if (gymId === null) return { ok: false, message: INVALID_ID_MESSAGE };
   const reason = String(formData.get('reason') || '').trim();
   if (!reason) return { ok: false, message: 'A reason is required to reject a gym' };
   try {
@@ -42,7 +45,8 @@ export async function rejectGymAction(_prev: ActionState, formData: FormData): P
 
 export async function updateGymCommissionAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireSession();
-  const gymId = formData.get('gymId');
+  const gymId = parsePositiveId(formData.get('gymId'));
+  if (gymId === null) return { ok: false, message: INVALID_ID_MESSAGE };
   const commissionPct = Number(formData.get('commissionPct'));
   if (Number.isNaN(commissionPct) || commissionPct < 0 || commissionPct > 100) {
     return { ok: false, message: 'Commission must be a number between 0 and 100' };
@@ -69,7 +73,8 @@ export async function updateGymSubscriptionCommissionAction(
   formData: FormData
 ): Promise<ActionState> {
   await requireSession();
-  const gymId = formData.get('gymId');
+  const gymId = parsePositiveId(formData.get('gymId'));
+  if (gymId === null) return { ok: false, message: INVALID_ID_MESSAGE };
   const raw = String(formData.get('subscriptionCommissionPct') ?? '').trim();
   let subscriptionCommissionPct: number | null;
   if (raw === '') {
@@ -102,7 +107,8 @@ export async function updateGymSubscriptionPricingModeAction(
   formData: FormData
 ): Promise<ActionState> {
   await requireSession();
-  const gymId = formData.get('gymId');
+  const gymId = parsePositiveId(formData.get('gymId'));
+  if (gymId === null) return { ok: false, message: INVALID_ID_MESSAGE };
   const subscriptionPricingMode = String(formData.get('subscriptionPricingMode') ?? '');
   if (subscriptionPricingMode !== 'percentage' && subscriptionPricingMode !== 'flatPerUser') {
     return { ok: false, message: 'Pricing mode must be percentage or flat fee per customer' };
@@ -133,7 +139,8 @@ return { ok: false, message: err instanceof Error ? err.message : 'Failed to upd
 // gym needs to come down (spam listing, partner request, policy issue).
 export async function setGymActiveAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireSession();
-  const gymId = formData.get('gymId');
+  const gymId = parsePositiveId(formData.get('gymId'));
+  if (gymId === null) return { ok: false, message: INVALID_ID_MESSAGE };
   const isActive = formData.get('isActive') === 'true';
   try {
     await gatewayJson(`/api/gyms/admin/${gymId}/status`, {
@@ -153,7 +160,8 @@ export async function setGymActiveAction(_prev: ActionState, formData: FormData)
 // never had real activity.
 export async function deleteGymAdminAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireSession();
-  const gymId = formData.get('gymId');
+  const gymId = parsePositiveId(formData.get('gymId'));
+  if (gymId === null) return { ok: false, message: INVALID_ID_MESSAGE };
   try {
     await gatewayJson(`/api/gyms/admin/${gymId}`, { method: 'DELETE' });
   } catch (err) {
@@ -165,8 +173,10 @@ export async function deleteGymAdminAction(_prev: ActionState, formData: FormDat
 
 export async function deleteReviewAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireSession();
-  const gymId = formData.get('gymId');
-  const reviewId = formData.get('reviewId');
+  const gymId = parsePositiveId(formData.get('gymId'));
+  if (gymId === null) return { ok: false, message: INVALID_ID_MESSAGE };
+  const reviewId = parsePositiveId(formData.get('reviewId'));
+  if (reviewId === null) return { ok: false, message: INVALID_ID_MESSAGE };
   try {
     await gatewayJson(`/api/gyms/${gymId}/reviews/${reviewId}`, { method: 'DELETE' });
   } catch (err) {
