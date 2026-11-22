@@ -62,11 +62,45 @@ export async function gatewayFetch(path: string, init: RequestInit = {}): Promis
   return res;
 }
 
+export const GENERIC_SERVER_ERROR = 'Something went wrong on our side. Please try again.';
+const MAX_CLIENT_MESSAGE = 300;
+
+// Error thrown by gatewayJson. `message` is always safe to show to staff:
+// 4xx validation messages from the backend are kept (they are written for
+// the caller), while 5xx / network failures are replaced with a generic
+// message and the real detail is only logged server-side.
+export class GatewayError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'GatewayError';
+    this.status = status;
+  }
+}
+
+export function safeGatewayMessage(status: number, body: unknown): string {
+  if (status >= 400 && status < 500) {
+    const raw = (body as { error?: unknown } | null)?.error;
+    if (typeof raw === 'string' && raw.trim() && raw.length <= MAX_CLIENT_MESSAGE) return raw;
+    return `Request failed (${status})`;
+  }
+  return GENERIC_SERVER_ERROR;
+}
+
 export async function gatewayJson<T = unknown>(path: string, init?: RequestInit): Promise<T> {
-  const res = await gatewayFetch(path, init);
+  let res: Response;
+  try {
+    res = await gatewayFetch(path, init);
+  } catch (err) {
+    console.error(`gatewayJson: ${init?.method || 'GET'} ${path} unreachable`, err);
+    throw new GatewayError(GENERIC_SERVER_ERROR, 502);
+  }
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(body?.error || `Request failed (${res.status})`);
+    if (res.status >= 500 || res.status < 400) {
+      console.error(`gatewayJson: ${init?.method || 'GET'} ${path} -> ${res.status}`, body);
+    }
+    throw new GatewayError(safeGatewayMessage(res.status, body), res.status);
   }
   return body as T;
 }
