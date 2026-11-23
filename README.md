@@ -1,4 +1,4 @@
-﻿# Phool Gobhi Admin
+# Phool Gobhi Admin
 
 Internal staff (gobhi-role) admin portal for the Phool Gobhi platform. Built with Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, and Recharts.
 

@@ -1,4 +1,4 @@
-﻿import type { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 export function Section({ title, subtitle, children, className = '' }: { title?: ReactNode; subtitle?: ReactNode; children: ReactNode; className?: string }) {
   return (
