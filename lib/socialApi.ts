@@ -47,10 +47,13 @@ export async function loadSocialEnabled(): Promise<boolean> {
   return socialEnabledFrom(await loadStoredConfig());
 }
 
-export async function setSocialEnabled(enabled: boolean): Promise<void> {
+// `expectedUpdatedAt` is the app-config row's updatedAt as the page rendered it;
+// when present the backend refuses the write (409 CONFIG_CONFLICT) if anyone
+// saved the blob since. Absent = the old last-write-wins behaviour.
+export async function setSocialEnabled(enabled: boolean, expectedUpdatedAt?: string): Promise<void> {
   const current = await loadStoredConfig();
   await gatewayJson(ADMIN_CONFIG_PATH, {
     method: 'PUT',
-    body: JSON.stringify({ config: withSocialEnabled(current, enabled) }),
+    body: JSON.stringify({ config: withSocialEnabled(current, enabled), expectedUpdatedAt }),
   });
 }

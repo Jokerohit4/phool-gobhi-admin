@@ -4,6 +4,7 @@ import { useActionState } from 'react';
 import { Toggle } from '@/components/ui/Toggle';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { initialActionState, type ActionState } from '@/components/ui/ActionForm';
+import { ExpectedUpdatedAt } from '@/components/ui/ExpectedUpdatedAt';
 
 export const SOCIAL_ON_CONFIRM =
   'Switch social features on Buddy, leaderboards and League become visible to every customer app install on its next launch.';
@@ -17,8 +18,11 @@ export function needsSocialConfirm(currentlyEnabled: boolean, nextEnabled: boole
 export function SocialSwitch({
   enabled,
   action,
+  expectedUpdatedAt,
 }: {
   enabled: boolean;
+  // app-config row updatedAt from the page render (optimistic-concurrency token).
+  expectedUpdatedAt?: string | null;
   action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
 }) {
   const [state, formAction] = useActionState(action, initialActionState);
@@ -34,6 +38,7 @@ export function SocialSwitch({
         }
       }}
     >
+      <ExpectedUpdatedAt value={expectedUpdatedAt} />
       <label className="flex items-center gap-3 text-sm font-medium">
         <Toggle name="socialEnabled" defaultChecked={enabled} />
         Social features (buddy, leaderboards, league)

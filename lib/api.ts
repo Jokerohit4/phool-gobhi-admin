@@ -71,11 +71,30 @@ const MAX_CLIENT_MESSAGE = 300;
 // message and the real detail is only logged server-side.
 export class GatewayError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  // Machine-readable code from a 4xx body (e.g. 'CONFIG_CONFLICT' on a stale
+  // optimistic-concurrency save) so callers can branch without string-matching
+  // the message. Never set for 5xx.
+  errorCode?: string;
+  // Only on CONFIG_CONFLICT: the stored updatedAt the backend now holds.
+  currentUpdatedAt?: string;
+  constructor(message: string, status: number, extra: { errorCode?: string; currentUpdatedAt?: string } = {}) {
     super(message);
     this.name = 'GatewayError';
     this.status = status;
+    if (extra.errorCode) this.errorCode = extra.errorCode;
+    if (extra.currentUpdatedAt) this.currentUpdatedAt = extra.currentUpdatedAt;
   }
+}
+
+// Pulls the whitelisted, bounded machine fields out of a 4xx body. Anything
+// else in the body stays server-side.
+export function gatewayErrorExtras(status: number, body: unknown): { errorCode?: string; currentUpdatedAt?: string } {
+  if (status < 400 || status >= 500) return {};
+  const b = (body ?? {}) as { errorCode?: unknown; currentUpdatedAt?: unknown };
+  const out: { errorCode?: string; currentUpdatedAt?: string } = {};
+  if (typeof b.errorCode === 'string' && /^[A-Z0-9_]{1,64}$/.test(b.errorCode)) out.errorCode = b.errorCode;
+  if (typeof b.currentUpdatedAt === 'string' && b.currentUpdatedAt.length <= 64) out.currentUpdatedAt = b.currentUpdatedAt;
+  return out;
 }
 
 export function safeGatewayMessage(status: number, body: unknown): string {
@@ -100,7 +119,7 @@ export async function gatewayJson<T = unknown>(path: string, init?: RequestInit)
     if (res.status >= 500 || res.status < 400) {
       console.error(`gatewayJson: ${init?.method || 'GET'} ${path} -> ${res.status}`, body);
     }
-    throw new GatewayError(safeGatewayMessage(res.status, body), res.status);
+    throw new GatewayError(safeGatewayMessage(res.status, body), res.status, gatewayErrorExtras(res.status, body));
   }
   return body as T;
 }

@@ -47,3 +47,31 @@ describe('gatewayJson error mapping', () => {
     await expect(gatewayJson('/x')).rejects.toThrow(GENERIC_SERVER_ERROR);
   });
 });
+
+describe('gatewayJson optimistic-concurrency conflicts', () => {
+  it('surfaces errorCode and currentUpdatedAt on a CONFIG_CONFLICT 409, keeping the 4xx message', async () => {
+    respond(409, {
+      error: 'This setting was changed by someone else. Reload and try again.',
+      errorCode: 'CONFIG_CONFLICT',
+      currentUpdatedAt: '2026-10-01T10:00:00.000Z',
+    });
+    const err = (await gatewayJson('/x', { method: 'PUT' }).catch((e) => e)) as InstanceType<typeof GatewayError>;
+    expect(err).toBeInstanceOf(GatewayError);
+    expect(err.status).toBe(409);
+    expect(err.errorCode).toBe('CONFIG_CONFLICT');
+    expect(err.currentUpdatedAt).toBe('2026-10-01T10:00:00.000Z');
+    expect(err.message).toBe('This setting was changed by someone else. Reload and try again.');
+  });
+
+  it('ignores malformed machine fields and never copies them from a 5xx', async () => {
+    respond(400, { error: 'bad', errorCode: '<script>', currentUpdatedAt: 5 });
+    const bad = (await gatewayJson('/x').catch((e) => e)) as InstanceType<typeof GatewayError>;
+    expect(bad.errorCode).toBeUndefined();
+    expect(bad.currentUpdatedAt).toBeUndefined();
+
+    respond(500, { error: 'internal detail', errorCode: 'CONFIG_CONFLICT' });
+    const srv = (await gatewayJson('/x').catch((e) => e)) as InstanceType<typeof GatewayError>;
+    expect(srv.errorCode).toBeUndefined();
+    expect(srv.message).toBe(GENERIC_SERVER_ERROR);
+  });
+});
