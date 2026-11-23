@@ -46,6 +46,7 @@ export const NAV_GROUPS: NavGroup[] = [
   ]},
   { id: 'users', label: 'Users & Engagement', icon: 'users', items: [
     { href: '/users', label: 'Users & cohorts', icon: 'users' },
+    { href: '/organizations', label: 'Companies', icon: 'briefcase' },
     { href: '/reviews', label: 'Reviews', icon: 'star', badgeKey: 'reviews' },
     { href: '/buddy-reports', label: 'Buddy reports', icon: 'shield', badgeKey: 'buddy-reports' },
     { href: '/health', label: 'Health & Training', icon: 'heart' },
