@@ -71,7 +71,7 @@ export default async function FlagsSocialSettingsPage() {
       <section className="flex flex-col gap-4">
         <PageHeader
           title="Feature flags"
-          subtitle="Kill-switches for customer-app features. Saved to the same config blob as other app config; changes apply on the app's next launch (the app checks this once at startup). Gamification flags are also enforced server-side in challenge-service ? turning one off blocks its API routes immediately (within ~30s), not just after the app re-checks."
+          subtitle="Kill-switches for customer-app features. Saved to the same config blob as other app config; changes apply on the app's next launch (the app checks this once at startup). Gamification flags are also enforced server-side in challenge-service — turning one off blocks its API routes immediately (within ~30s), not just after the app re-checks."
         />
         <Card className="max-w-xl">
           <ActionForm
@@ -127,7 +127,7 @@ export default async function FlagsSocialSettingsPage() {
                                   {crossGroupDeps.includes(dep) && <span className="font-normal"> (another section)</span>}
                                 </span>
                               ))}{' '}
-                              {unmetDeps.length === 1 ? 'is' : 'are'} off ? this toggle controls the flag, but the feature
+                              {unmetDeps.length === 1 ? 'is' : 'are'} off — this toggle controls the flag, but the feature
                               will not respond until {unmetDeps.length === 1 ? 'it is' : 'they are'} on.
                             </p>
                           )}
@@ -155,7 +155,7 @@ export default async function FlagsSocialSettingsPage() {
                 ))}
               </>
             )}
-            <SubmitButton pendingText="Saving?" className="w-fit">
+            <SubmitButton pendingText="Saving…" className="w-fit">
               Save feature flags
             </SubmitButton>
           </ActionForm>

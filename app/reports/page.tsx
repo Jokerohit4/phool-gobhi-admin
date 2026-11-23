@@ -117,7 +117,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
       <div className="flex gap-4 text-sm">
         {query.has('cursor') && <Link href={`/reports?${new URLSearchParams([...query].filter(([key]) => key !== 'cursor'))}`} className="underline">Newest reports</Link>}
-        {result.nextCursor && <Link href={`/reports?${nextQuery}`} className="underline">Older reports ?</Link>}
+        {result.nextCursor && <Link href={`/reports?${nextQuery}`} className="underline">Older reports →</Link>}
       </div>
     </div>
   );

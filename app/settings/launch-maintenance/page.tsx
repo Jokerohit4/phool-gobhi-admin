@@ -69,7 +69,7 @@ export default async function LaunchMaintenanceSettingsPage() {
               Disabled: the site is always live. Enabled with a date: gated until that instant, then opens
               automatically. Enabled with no date: gated indefinitely (manual hold).
             </p>
-            <SubmitButton pendingText="Saving?" className="w-fit">
+            <SubmitButton pendingText="Saving…" className="w-fit">
               Save launch gate
             </SubmitButton>
           </ActionForm>
@@ -83,7 +83,7 @@ export default async function LaunchMaintenanceSettingsPage() {
       <section className="flex flex-col gap-4">
         <PageHeader
           title="Maintenance windows"
-          subtitle="Put the website's wallet or gyms section (or both) under maintenance ? immediately or on a schedule. Blocks the matching pages and APIs on phoolgobhi.com only; the customer/partner apps are not affected."
+          subtitle="Put the website's wallet or gyms section (or both) under maintenance — immediately or on a schedule. Blocks the matching pages and APIs on phoolgobhi.com only; the customer/partner apps are not affected."
         />
         {MAINTENANCE_SECTIONS.map(({ feature, label, blurb }) => {
           const entry = maintenance[feature];
@@ -128,15 +128,15 @@ export default async function LaunchMaintenanceSettingsPage() {
                     type="text"
                     name="message"
                     defaultValue={entry.message}
-                    placeholder={`Optional ? e.g. "We'll be back by 10 PM IST"`}
+                    placeholder={`Optional — e.g. "We'll be back by 10 PM IST"`}
                     className="rounded border px-3 py-2 text-sm"
                   />
                 </label>
                 <p className="text-sm text-gray-500">
                   Off with a start/end: the window still auto-engages while now is between them. On: gated
-                  immediately until you switch it off ? a past end time does not auto-release a manual hold.
+                  immediately until you switch it off — a past end time does not auto-release a manual hold.
                 </p>
-                <SubmitButton pendingText="Saving?" className="w-fit">
+                <SubmitButton pendingText="Saving…" className="w-fit">
                   Save {label} maintenance
                 </SubmitButton>
               </ActionForm>

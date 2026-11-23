@@ -60,21 +60,21 @@ export interface ProfileCompletionBonusConfig {
 }
 
 export const OTP_PROVIDER_OPTIONS: Array<{ value: OtpProvider; label: string; description: string }> = [
-  { value: 'firebase', label: 'Firebase phone auth', description: 'Default ? real Firebase phone verification, no SMS cost.' },
+  { value: 'firebase', label: 'Firebase phone auth', description: 'Default — real Firebase phone verification, no SMS cost.' },
   {
     value: 'fast2sms',
     label: 'Fast2SMS (real SMS, paid)',
-    description: 'Real paid SMS to every phone number ? only used when explicitly selected here.',
+    description: 'Real paid SMS to every phone number — only used when explicitly selected here.',
   },
   {
     value: 'skip',
     label: 'Skip (allowlist only, for testing)',
     description:
-      'Allowlisted numbers below verify with 123456, no real OTP sent. Every other number falls back to real Firebase phone verification ? Fast2SMS never fires unless it?s explicitly selected above.',
+      'Allowlisted numbers below verify with 123456, no real OTP sent. Every other number falls back to real Firebase phone verification — Fast2SMS never fires unless it’s explicitly selected above.',
   },
 ];
 
-// Inverse of launchInputToUtcIso in actions.ts ? same fixed +5:30 IST offset,
+// Inverse of launchInputToUtcIso in actions.ts — same fixed +5:30 IST offset,
 // reversed: treat the stored UTC instant as IST wall clock for the input.
 export function utcIsoToLaunchInput(iso: string | null): string {
   if (!iso) return '';
@@ -105,10 +105,10 @@ export const EMPTY_APP_VERSION_ENTRY: AppVersionEntry = {
 };
 
 export const APP_VERSION_ROWS: { app: 'customer' | 'partner'; platform: 'android' | 'ios'; label: string }[] = [
-  { app: 'customer', platform: 'android', label: 'Customer ? Android' },
-  { app: 'customer', platform: 'ios', label: 'Customer ? iOS' },
-  { app: 'partner', platform: 'android', label: 'Partner ? Android' },
-  { app: 'partner', platform: 'ios', label: 'Partner ? iOS' },
+  { app: 'customer', platform: 'android', label: 'Customer — Android' },
+  { app: 'customer', platform: 'ios', label: 'Customer — iOS' },
+  { app: 'partner', platform: 'android', label: 'Partner — Android' },
+  { app: 'partner', platform: 'ios', label: 'Partner — iOS' },
 ];
 
 export function normalizeAppVersionConfig(raw: unknown): AppVersionConfig {

@@ -50,8 +50,8 @@ export default async function PolicyBillingSettingsPage() {
           title="Cancellation policy"
           subtitle={
             policy.updatedAt
-              ? `Live for the app and refund calculation ? last updated ${formatDateTimeIST(policy.updatedAt)} IST.`
-              : 'Live for the app and refund calculation ? not customized yet, showing defaults.'
+              ? `Live for the app and refund calculation — last updated ${formatDateTimeIST(policy.updatedAt)} IST.`
+              : 'Live for the app and refund calculation — not customized yet, showing defaults.'
           }
         />
         <Card className="max-w-2xl">
@@ -99,7 +99,7 @@ export default async function PolicyBillingSettingsPage() {
                 </div>
               );
             })}
-            <SubmitButton pendingText="Saving?" className="w-fit">
+            <SubmitButton pendingText="Saving…" className="w-fit">
               Save policy
             </SubmitButton>
           </ActionForm>
@@ -115,8 +115,8 @@ export default async function PolicyBillingSettingsPage() {
           title="Wallet top-up amounts"
           subtitle={
             topupConfig.updatedAt
-              ? `Live for website + app top-up ? last updated ${formatDateTimeIST(topupConfig.updatedAt)} IST.`
-              : 'Live for website + app top-up ? not customized yet, showing defaults.'
+              ? `Live for website + app top-up — last updated ${formatDateTimeIST(topupConfig.updatedAt)} IST.`
+              : 'Live for website + app top-up — not customized yet, showing defaults.'
           }
         />
         <Table>
@@ -127,17 +127,17 @@ export default async function PolicyBillingSettingsPage() {
           <tbody>
             {topupConfig.presets.map((amount) => (
               <Tr key={amount}>
-                <Td>{`?${amount}`}</Td>
+                <Td>{`₹${amount}`}</Td>
                 <Td>
-                  <ActionForm action={removeWalletTopupPresetAction} confirmMessage={`Remove ?${amount} as a preset?`}>
+                  <ActionForm action={removeWalletTopupPresetAction} confirmMessage={`Remove ₹${amount} as a preset?`}>
                     <input type="hidden" name="amount" value={amount} />
-                    <SubmitButton variant="danger" pendingText="Removing?">Remove</SubmitButton>
+                    <SubmitButton variant="danger" pendingText="Removing…">Remove</SubmitButton>
                   </ActionForm>
                 </Td>
               </Tr>
             ))}
             {topupConfig.presets.length === 0 && (
-              <EmptyRow colSpan={2}>No preset amounts ? custom amount only.</EmptyRow>
+              <EmptyRow colSpan={2}>No preset amounts — custom amount only.</EmptyRow>
             )}
           </tbody>
         </Table>
@@ -158,7 +158,7 @@ export default async function PolicyBillingSettingsPage() {
               required
               className="rounded border px-3 py-2 text-sm"
             />
-            <SubmitButton pendingText="Adding?" className="w-fit">Add preset</SubmitButton>
+            <SubmitButton pendingText="Adding…" className="w-fit">Add preset</SubmitButton>
           </ActionForm>
         </Card>
 
@@ -198,10 +198,10 @@ export default async function PolicyBillingSettingsPage() {
             </div>
             <p className="text-sm text-gray-500">
               Required whenever the toggle above is on. If there are no preset amounts (see table above), this
-              toggle must stay on ? customers need at least one way to top up. Amounts above ?25,000 are rejected
-              regardless of what?s set here.
+              toggle must stay on — customers need at least one way to top up. Amounts above ₹25,000 are rejected
+              regardless of what&rsquo;s set here.
             </p>
-            <SubmitButton pendingText="Saving?" className="w-fit">Save custom-amount settings</SubmitButton>
+            <SubmitButton pendingText="Saving…" className="w-fit">Save custom-amount settings</SubmitButton>
           </ActionForm>
         </Card>
       </section>
@@ -215,8 +215,8 @@ export default async function PolicyBillingSettingsPage() {
           title="Profile-completion bonus"
           subtitle={
             profileCompletionBonus.updatedAt
-              ? `One-time wallet credit when a customer's profile crosses from incomplete to complete ? last updated ${formatDateTimeIST(profileCompletionBonus.updatedAt)} IST.`
-              : 'One-time wallet credit when a customer\'s profile crosses from incomplete to complete ? not customized yet, showing defaults.'
+              ? `One-time wallet credit when a customer's profile crosses from incomplete to complete — last updated ${formatDateTimeIST(profileCompletionBonus.updatedAt)} IST.`
+              : 'One-time wallet credit when a customer\'s profile crosses from incomplete to complete — not customized yet, showing defaults.'
           }
         />
         <Card className="max-w-md">
@@ -240,10 +240,10 @@ export default async function PolicyBillingSettingsPage() {
             </label>
             <p className="text-sm text-gray-500">
               Credited once per user the moment all profile fields (name, photo, gender, date of birth, fitness
-              goals) are set. Set to 0 to disable the bonus ? a profile completed while it is disabled is never
+              goals) are set. Set to 0 to disable the bonus — a profile completed while it is disabled is never
               paid retroactively.
             </p>
-            <SubmitButton pendingText="Saving?" className="w-fit">
+            <SubmitButton pendingText="Saving…" className="w-fit">
               Save bonus amount
             </SubmitButton>
           </ActionForm>

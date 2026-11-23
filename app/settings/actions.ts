@@ -329,7 +329,7 @@ export async function updateProfileCompletionBonusAction(
 
   revalidatePath('/settings');
   revalidatePath('/settings', 'layout');
-  return { ok: true, message: `Profile-completion bonus updated to ?${amount}` };
+  return { ok: true, message: `Profile-completion bonus updated to ₹${amount}` };
 }
 
 export async function addOtpSkipAllowlistAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -398,7 +398,7 @@ export async function addWalletTopupPresetAction(_prev: ActionState, formData: F
   try {
     const current = await getCurrentWalletTopupConfig();
     if (current.presets.includes(amount)) {
-      return { ok: false, message: `?${amount} is already a preset` };
+      return { ok: false, message: `₹${amount} is already a preset` };
     }
     await gatewayJson('/api/wallet/topup-config', {
       method: 'PUT',
@@ -410,7 +410,7 @@ export async function addWalletTopupPresetAction(_prev: ActionState, formData: F
 
   revalidatePath('/settings');
   revalidatePath('/settings', 'layout');
-  return { ok: true, message: `Added ?${amount}` };
+  return { ok: true, message: `Added ₹${amount}` };
 }
 
 export async function removeWalletTopupPresetAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -431,7 +431,7 @@ export async function removeWalletTopupPresetAction(_prev: ActionState, formData
 
   revalidatePath('/settings');
   revalidatePath('/settings', 'layout');
-  return { ok: true, message: `Removed ?${amount}` };
+  return { ok: true, message: `Removed ₹${amount}` };
 }
 
 export async function updateWalletTopupCustomAmountAction(

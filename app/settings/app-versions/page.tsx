@@ -27,8 +27,8 @@ export default async function AppVersionsSettingsPage() {
           title="App version config"
           subtitle={
             appVersionUpdatedAt
-              ? `Controls the force-update gate and update-available nudge in both apps ? last updated ${formatDateTimeIST(appVersionUpdatedAt)} IST.`
-              : 'Controls the force-update gate and update-available nudge in both apps ? not customized yet, showing defaults.'
+              ? `Controls the force-update gate and update-available nudge in both apps — last updated ${formatDateTimeIST(appVersionUpdatedAt)} IST.`
+              : 'Controls the force-update gate and update-available nudge in both apps — not customized yet, showing defaults.'
           }
         />
         <Card className="max-w-3xl">
@@ -84,7 +84,7 @@ export default async function AppVersionsSettingsPage() {
                         type="text"
                         name={`${prefix}_message`}
                         defaultValue={entry.message}
-                        placeholder="Optional ? shown on the update screen/dialog"
+                        placeholder="Optional — shown on the update screen/dialog"
                         className="rounded border px-3 py-2 text-sm"
                       />
                     </label>
@@ -92,7 +92,7 @@ export default async function AppVersionsSettingsPage() {
                 </div>
               );
             })}
-            <SubmitButton pendingText="Saving?" className="w-fit">
+            <SubmitButton pendingText="Saving…" className="w-fit">
               Save app version config
             </SubmitButton>
           </ActionForm>
