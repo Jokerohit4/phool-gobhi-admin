@@ -29,14 +29,13 @@ vi.mock('@/app/settings/flagRegistry', () => ({
 
 const { updateFeatureFlagsAction, updateAppVersionConfigAction } = await import('../actions');
 
-// The real registry, as auth-service serves it: 28 flags,
+// The real registry, as auth-service serves it: 27 flags,
 // only referral defaulting on, and fhirExport deliberately clientKey: null (a
 // query-parameter branch on an existing route with no app surface to gate).
 const REGISTRY = [
   { name: 'exploreFoodFinds', clientKey: 'exploreFoodFindsEnabled', group: 'exploration', deps: [] },
   { name: 'workoutTracking', clientKey: 'workoutTrackingEnabled', group: 'training', deps: [] },
   { name: 'healthMetrics', clientKey: 'healthMetricsEnabled', group: 'health', deps: ['workoutTracking'] },
-  { name: 'healthVault', clientKey: 'healthVaultEnabled', group: 'health', deps: [] },
   { name: 'healthLedger', clientKey: 'healthLedgerEnabled', group: 'health', deps: ['healthMetrics'] },
   { name: 'foodPhotoLogging', clientKey: 'foodPhotoLoggingEnabled', group: 'health', deps: ['healthLedger'] },
   { name: 'healthPersonalisation', clientKey: 'healthPersonalisationEnabled', group: 'health', deps: ['healthMetrics'] },
@@ -45,6 +44,7 @@ const REGISTRY = [
   { name: 'runTracker', clientKey: 'runTrackerEnabled', group: 'health', deps: ['healthMetrics'] },
   { name: 'cycleTracking', clientKey: 'cycleTrackingEnabled', group: 'health', deps: ['healthMetrics'] },
   { name: 'fhirExport', clientKey: null, group: 'health', deps: ['healthMetrics'] },
+  { name: 'reportSubscription', clientKey: 'reportSubscriptionEnabled', group: 'health', deps: [] },
   { name: 'badges', clientKey: 'badgesEnabled', group: 'gamification', deps: [] },
   { name: 'streaksCoins', clientKey: 'streaksCoinsEnabled', group: 'gamification', deps: [] },
   { name: 'challenges', clientKey: 'challengesEnabled', group: 'gamification', deps: [] },
@@ -53,13 +53,12 @@ const REGISTRY = [
   { name: 'referral', clientKey: 'referralEnabled', group: 'social', deps: [] },
   { name: 'brandedOnboarding', clientKey: 'brandedOnboardingEnabled', group: 'onboarding', deps: [] },
   { name: 'homeTrackHome', clientKey: 'homeTrackHomeEnabled', group: 'onboarding', deps: ['workoutTracking'] },
-  { name: 'homeIntroduction', clientKey: 'homeIntroductionEnabled', group: 'coach', deps: ['coachJourney'] },
-  { name: 'weeklySummary', clientKey: 'weeklySummaryEnabled', group: 'coach', deps: ['coachJourney'] },
-  { name: 'coachJourney', clientKey: 'coachJourneyEnabled', group: 'coach', deps: ['workoutTracking', 'nonPartnerAttendance'] },
+  { name: 'homeIntroduction', clientKey: 'homeIntroductionEnabled', group: 'coach', deps: [] },
+  { name: 'weeklySummary', clientKey: 'weeklySummaryEnabled', group: 'coach', deps: [] },
   { name: 'selfLinkGym', clientKey: 'selfLinkGymEnabled', group: 'coach', deps: [] },
   { name: 'personaSwitch', clientKey: 'personaSwitchEnabled', group: 'coach', deps: [] },
-  { name: 'referralHomeTrigger', clientKey: 'referralHomeTriggerEnabled', group: 'coach', deps: ['coachJourney'] },
-  { name: 'coachAssistant', clientKey: 'coachAssistantEnabled', group: 'coach', deps: ['coachJourney'] },
+  { name: 'referralHomeTrigger', clientKey: 'referralHomeTriggerEnabled', group: 'coach', deps: [] },
+  { name: 'coachAssistant', clientKey: 'coachAssistantEnabled', group: 'coach', deps: [] },
   { name: 'nonPartnerAttendance', clientKey: 'nonPartnerAttendanceEnabled', group: 'ops', deps: [] },
 ].map((f) => ({
   ...f,
@@ -214,13 +213,13 @@ describe('updateFeatureFlagsAction round trip', () => {
   it.each([true, false])('sets FRE to %s without changing Coach, other flags or app versions', async (enabled) => {
     const currentFeatures = {
       ...structuredClone(STORED_FEATURES),
-      coachJourney: { enabled: true },
+      coachJourney: { enabled: true }, // legacy key kept in storage during the transition
       homeIntroduction: { enabled: !enabled },
     };
     stored.features = currentFeatures;
     const result = await updateFeatureFlagsAction(
       { ok: false, message: '' },
-      formAsPageRenders({ coachJourney: true, homeIntroduction: enabled }),
+      formAsPageRenders({ homeIntroduction: enabled }),
     );
     expect(result.ok).toBe(true);
     expect(writtenFeatures()).toEqual({ ...currentFeatures, homeIntroduction: { enabled } });

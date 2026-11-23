@@ -23,23 +23,34 @@ describe('expected flag registry', () => {
   it('registers the six coach flags exactly as auth-service declares them', () => {
     const coach = EXPECTED_FLAGS.filter((f) => f.group === 'coach');
     expect(project(coach)).toEqual([
-      { name: 'homeIntroduction', defaultEnabled: false, deps: ['coachJourney'], clientKey: 'homeIntroductionEnabled', group: 'coach' },
-      { name: 'weeklySummary', defaultEnabled: false, deps: ['coachJourney'], clientKey: 'weeklySummaryEnabled', group: 'coach' },
-      { name: 'coachJourney', defaultEnabled: false, deps: ['workoutTracking', 'nonPartnerAttendance'], clientKey: 'coachJourneyEnabled', group: 'coach' },
+      { name: 'homeIntroduction', defaultEnabled: false, deps: [], clientKey: 'homeIntroductionEnabled', group: 'coach' },
+      { name: 'weeklySummary', defaultEnabled: false, deps: [], clientKey: 'weeklySummaryEnabled', group: 'coach' },
       { name: 'selfLinkGym', defaultEnabled: false, deps: [], clientKey: 'selfLinkGymEnabled', group: 'coach' },
       { name: 'personaSwitch', defaultEnabled: false, deps: [], clientKey: 'personaSwitchEnabled', group: 'coach' },
-      { name: 'referralHomeTrigger', defaultEnabled: false, deps: ['coachJourney'], clientKey: 'referralHomeTriggerEnabled', group: 'coach' },
-      { name: 'coachAssistant', defaultEnabled: false, deps: ['coachJourney'], clientKey: 'coachAssistantEnabled', group: 'coach' },
+      { name: 'referralHomeTrigger', defaultEnabled: false, deps: [], clientKey: 'referralHomeTriggerEnabled', group: 'coach' },
+      { name: 'coachAssistant', defaultEnabled: false, deps: [], clientKey: 'coachAssistantEnabled', group: 'coach' },
     ]);
   });
 
-  it('has 28 flags, unique names, and every dep names a known flag', () => {
+  it('has 27 flags, unique names, and every dep names a known flag', () => {
     const names = EXPECTED_FLAGS.map((f) => f.name);
-    expect(names).toHaveLength(28);
+    expect(names).toHaveLength(27);
     expect(new Set(names).size).toBe(names.length);
     for (const flag of EXPECTED_FLAGS) {
       for (const dep of flag.deps) expect(names, `${flag.name} depends on unknown ${dep}`).toContain(dep);
     }
+  });
+
+  it('registers reportSubscription off by default with no dependencies', () => {
+    const flag = EXPECTED_FLAGS.find((f) => f.name === 'reportSubscription');
+    expect(flag).toEqual({ name: 'reportSubscription', defaultEnabled: false, deps: [], clientKey: 'reportSubscriptionEnabled', group: 'health' });
+  });
+
+  it('no longer registers the retired coachJourney and healthVault flags, nor depends on them', () => {
+    const names = EXPECTED_FLAGS.map((f) => f.name);
+    expect(names).not.toContain('coachJourney');
+    expect(names).not.toContain('healthVault');
+    for (const f of EXPECTED_FLAGS) expect(f.deps).not.toEqual(expect.arrayContaining(['coachJourney']));
   });
 
   it('only referral defaults on', () => {
@@ -62,12 +73,16 @@ describe('registryDrift', () => {
     expect(registryDrift(live).missing).toEqual([
       'homeIntroduction',
       'weeklySummary',
-      'coachJourney',
       'selfLinkGym',
       'personaSwitch',
       'referralHomeTrigger',
       'coachAssistant',
     ]);
+  });
+
+  it('treats legacy coachJourney/healthVault entries from an older auth-service as unexpected, without throwing', () => {
+    const live = [...EXPECTED_FLAGS, { name: 'coachJourney' }, { name: 'healthVault' }];
+    expect(registryDrift(live)).toEqual({ missing: [], unexpected: ['coachJourney', 'healthVault'] });
   });
 
   it('reports flags a newer auth-service serves that this portal does not know', () => {

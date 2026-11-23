@@ -139,7 +139,7 @@ export default async function FlagsSocialSettingsPage() {
                           <p className="text-sm text-gray-500">{flag.blastRadius}</p>
                           {flag.name === 'homeIntroduction' && (
                             <p className="text-sm text-gray-500">
-                              New accounts enter when this and Coach journey are on; eligible accounts can restore the first
+                              New accounts enter when this is on; eligible accounts can restore the first
                               steps on another device. Existing accounts keep full Home. Switching this off restores full Home
                               immediately; water and workout completion and coin eligibility are verified by the server. Today
                               appears after a saved water log and completed workout; reminder and alarm setup is optional.
