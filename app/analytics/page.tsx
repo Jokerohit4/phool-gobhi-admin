@@ -25,6 +25,8 @@ import { TrafficFilters, TrafficOverview } from '@/components/analytics/TrafficO
 import { CohortFilter } from '@/components/analytics/CohortFilter';
 import { COHORT_VIEWS, cohortQs, cohortSelection } from '@/lib/cohortFilter';
 import { trafficSelection } from '@/lib/traffic';
+import { SignupRetentionView } from '@/components/analytics/SignupRetentionView';
+import { parseSignupGranularity, parseSignupPlatform, parseSignupWindow } from '@/lib/signupRetention';
 
 interface EventCountRow {
   event: string;
@@ -195,7 +197,7 @@ interface CustomFunnelResult {
 
 const VIEWS = [
   'traffic', 'reach', 'supply', 'customerOnboarding', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy',
-  'city', 'revenue', 'retention', 'giftBonus', 'badges', 'user', 'eventSearch', 'funnels',
+  'city', 'revenue', 'retention', 'signupRetention', 'giftBonus', 'badges', 'user', 'eventSearch', 'funnels',
 ] as const;
 type View = (typeof VIEWS)[number];
 
@@ -216,6 +218,7 @@ const VIEW_LABELS: Record<View, string> = {
   city: 'By City',
   revenue: 'Revenue',
   retention: 'Retention',
+  signupRetention: 'Signup retention',
   giftBonus: 'Gift & Bonus Payouts',
   badges: 'Badges',
   user: 'User Journey',
@@ -229,7 +232,7 @@ const VIEW_LABELS: Record<View, string> = {
 const VIEW_GROUPS: { label: string; views: View[] }[] = [
   { label: 'Traffic', views: ['traffic', 'reach'] },
   { label: 'Funnels', views: ['supply', 'customerOnboarding', 'conversion', 'fulfillment', 'activation', 'wallet', 'buddy'] },
-  { label: 'Breakdowns', views: ['city', 'revenue', 'retention', 'giftBonus', 'badges'] },
+  { label: 'Breakdowns', views: ['city', 'revenue', 'retention', 'signupRetention', 'giftBonus', 'badges'] },
   { label: 'Explore', views: ['user', 'eventSearch', 'funnels'] },
 ];
 
@@ -285,10 +288,11 @@ export default async function AnalyticsPage({
     product?: string;
     platform?: string;
     cohort?: string;
+    granularity?: string;
   }>;
 }) {
   await requireSession();
-  const { view: rawView, days: rawDays, distinctId, event, f1k, f1v, f2k, f2v, f3k, f3v, funnelId, country: rawCountry, city: rawCity, product: rawProduct, platform: rawPlatform, cohort: rawCohort } = await searchParams;
+  const { view: rawView, days: rawDays, distinctId, event, f1k, f1v, f2k, f2v, f3k, f3v, funnelId, country: rawCountry, city: rawCity, product: rawProduct, platform: rawPlatform, cohort: rawCohort, granularity: rawGranularity } = await searchParams;
   const view: View = isView(rawView) ? rawView : 'traffic';
   const days = analyticsDays(rawDays);
   const { product, platform } = trafficSelection(rawProduct, rawPlatform);
@@ -336,7 +340,7 @@ export default async function AnalyticsPage({
             </div>
           ))}
         </div>
-        {view !== 'user' && view !== 'retention' && view !== 'eventSearch' && view !== 'funnels' && (
+        {view !== 'user' && view !== 'retention' && view !== 'signupRetention' && view !== 'eventSearch' && view !== 'funnels' && (
           <div className="flex gap-1">
             {['today', '7', '30', '90'].map((d) => (
               <Link
@@ -384,6 +388,9 @@ export default async function AnalyticsPage({
       {view === 'city' && <CityView days={days} cohort={cohort} />}
       {view === 'revenue' && <RevenueView days={days} cohort={cohort} />}
       {view === 'retention' && <RetentionView cohort={cohort} />}
+      {view === 'signupRetention' && (
+        <SignupRetentionView platform={parseSignupPlatform(rawPlatform)} granularity={parseSignupGranularity(rawGranularity)} windowDays={parseSignupWindow(rawDays)} cohort={cohort} />
+      )}
       {view === 'giftBonus' && <GiftBonusView days={days} />}
       {view === 'badges' && <BadgesView days={days} cohort={cohort} />}
       {view === 'user' && <UserJourneyView distinctId={distinctId} />}

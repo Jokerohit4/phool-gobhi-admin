@@ -31,7 +31,10 @@ export default async function NotificationsPage({ searchParams }: { searchParams
       <Breadcrumbs items={[{ label: 'Notifications' }]} />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageHeader title="Push campaigns" subtitle="Create and manage customer push notification campaigns." />
-        <Link href="/notifications/new" className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white">New campaign</Link>
+        <div className="flex gap-2">
+          <Link href="/push" className="rounded border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">Push analytics</Link>
+          <Link href="/notifications/new" className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white">New campaign</Link>
+        </div>
       </div>
 
       <Card className="p-0 overflow-hidden">

@@ -43,5 +43,5 @@ export function cohortSummary(cohort: string): string {
 // anonymous footfall rather than segments of users.
 export const COHORT_VIEWS = new Set([
   'traffic', 'reach', 'customerOnboarding', 'conversion', 'fulfillment', 'activation',
-  'wallet', 'buddy', 'city', 'revenue', 'retention', 'badges', 'eventSearch', 'funnels',
+  'wallet', 'buddy', 'city', 'revenue', 'retention', 'signupRetention', 'badges', 'eventSearch', 'funnels',
 ]);

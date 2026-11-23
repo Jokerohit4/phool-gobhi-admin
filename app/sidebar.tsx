@@ -61,6 +61,7 @@ export const NAV_GROUPS: NavGroup[] = [
     { href: '/applications', label: 'Applications', icon: 'doc', badgeKey: 'applications' },
     { href: '/messages', label: 'Messages', icon: 'message', badgeKey: 'messages' },
     { href: '/pitch-access', label: 'Pitch Access', icon: 'doc' },
+    { href: '/push', label: 'Push analytics', icon: 'message' },
   ]},
   { id: 'finance', label: 'Finance & Staff', icon: 'wallet', items: [
     { href: '/payouts', label: 'Payouts', icon: 'wallet', badgeKey: 'payouts' },
