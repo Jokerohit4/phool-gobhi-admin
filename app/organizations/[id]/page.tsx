@@ -199,7 +199,7 @@ export default async function OrganizationDetailPage({ params }: { params: Promi
 
       <Section
         title="People"
-        subtitle="Only people listed here can see this company in the app. Invited = no account yet; they are linked the first time they sign in with that number."
+        subtitle="Only people listed here can see this company in the app. Invited = no account yet; they are linked the first time they sign in with that number. To be ranked, each person must also agree in the app to share their health data; until then they are not entered."
       >
         <Table>
           <Thead>

@@ -15,6 +15,8 @@ interface Standings {
   leaderboard: OrgBoard;
   entries: { rank: number; userId: number; name: string | null; team: string | null; score: number; activeDays: number; workoutDays: number; steps: number }[];
   teams: { rank: number; teamId: number; name: string; members: number; score: number }[];
+  // Opted-in members not ranked yet because they have not given health-data consent (null = could not check).
+  pendingConsent: number | null;
   complete: boolean;
 }
 
@@ -51,11 +53,19 @@ export default async function BoardStandingsPage({ params }: { params: Promise<{
         />
         {!data.complete && (
           <Card className="max-w-2xl text-sm text-amber-700">
-            Some activity data could not be read just now, so scores may read low. Refresh in a minute.
+            Activity and consent could not be read just now, so nobody is ranked. Refresh in a minute.
+          </Card>
+        )}
+        {data.pendingConsent != null && data.pendingConsent > 0 && (
+          <Card className="max-w-2xl text-sm">
+            {data.pendingConsent} {data.pendingConsent === 1 ? 'member has' : 'members have'} not given health-data consent
+            yet, so they are not ranked and none of their activity is read.
+            The app asks them to agree when they open the company.
           </Card>
         )}
         <p className="text-sm text-gray-500">
-          Only members who have not opted out of leaderboards are ranked. People see colleagues as first name + last initial.
+          Only members who agreed to share health data and have not opted out of leaderboards are ranked. Colleagues see
+          each other by full name, with no photo or contact details.
         </p>
       </Section>
 
