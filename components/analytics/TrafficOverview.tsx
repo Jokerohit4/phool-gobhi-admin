@@ -9,7 +9,7 @@ import { formatDateTimeIST } from '@/lib/dateFormat';
 import { labelFor } from '@/lib/analyticsLabels';
 import { cohortQs } from '@/lib/cohortFilter';
 import { rangeSentence, rangeWindowName } from '@/lib/analyticsMetrics';
-import { dailyTrafficPoints, engagementDuration, TRAFFIC_PRODUCTS, type TrafficProduct, type TrafficPlatform, type TrafficReport } from '@/lib/traffic';
+import { dailyTrafficPoints, engagementDuration, TRAFFIC_PRODUCTS, type TrafficProduct, type TrafficPlatform, type TrafficReport, type HeatmapUser } from '@/lib/traffic';
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const number = (value: number) => value.toLocaleString('en-IN');
@@ -117,7 +117,7 @@ export async function TrafficOverview({ days, product, platform, cohort = 'all' 
     </Card>
     <Card>
       <SectionHeading title="When people engage" subtitle="Distinct identities in each recurring weekday/hour slot, IST. Darker cells mean more identities; repeat weeks are deduplicated within each cell." />
-      <TrafficHeatmap rows={report.heatmap} />
+      <TrafficHeatmap rows={report.heatmap} users={report.heatmapUsers} />
     </Card>
     <div className="grid gap-4 lg:grid-cols-2">
       <Card><SectionHeading title="How often people return" subtitle="Distinct active IST dates per identity in this window" /><Table><Thead><Th>Active days</Th><Th>Identities</Th><Th>Share</Th></Thead><tbody>
@@ -143,15 +143,48 @@ export async function TrafficOverview({ days, product, platform, cohort = 'all' 
   </>;
 }
 
-function TrafficHeatmap({ rows }: { rows: TrafficReport['heatmap'] }) {
+const userLabel = (user: HeatmapUser) => user.name || (/^\d+$/.test(user.id) ? `User #${user.id}` : 'Anonymous visitor');
+const activityText = (user: HeatmapUser) => user.activity.map(item => `${labelFor(item.label)} ×${item.n}`).join(', ');
+const hourRange = (hour: number) => `${hour.toString().padStart(2, '0')}:00–${String((hour + 1) % 24).padStart(2, '0')}:00`;
+
+function cellTooltip(day: string, hour: number, count: number, users: HeatmapUser[] | undefined) {
+  const head = `${day} ${hourRange(hour)} IST: ${number(count)} ${count === 1 ? 'identity' : 'identities'}`;
+  if (!users?.length) return head;
+  const lines = users.slice(0, 12).map(user => `• ${userLabel(user)} (${/^\d+$/.test(user.id) ? `id ${user.id}` : user.id}) · ${productName(user.app)} · ${number(user.events)} events${user.activity.length ? ` — ${activityText(user)}` : ''}`);
+  const more = count > lines.length ? [`…and ${number(count - lines.length)} more (see the list below)`] : [];
+  return [head, ...lines, ...more].join('\n');
+}
+
+function TrafficHeatmap({ rows, users }: { rows: TrafficReport['heatmap']; users?: TrafficReport['heatmapUsers'] }) {
   const cells = new Map(rows.map(row => [`${row.label}-${row.platform}`, row]));
+  const busy = rows.filter(row => row.users > 0).sort((a, b) => Number(a.label) - Number(b.label) || Number(a.platform) - Number(b.platform));
   const max = Math.max(0, ...rows.map(row => row.users));
   const shades = ['bg-gray-100 dark:bg-gray-800', 'bg-emerald-100 dark:bg-emerald-950', 'bg-emerald-300 dark:bg-emerald-800', 'bg-emerald-500 dark:bg-emerald-600', 'bg-emerald-700 text-white dark:bg-emerald-400 dark:text-gray-950'];
   return <div className="overflow-x-auto"><table className="w-full min-w-[760px] border-separate border-spacing-1 text-center text-xs"><caption className="sr-only">Active identities by weekday and hour in India Standard Time</caption><thead><tr><th scope="col">IST</th>{Array.from({ length: 24 }, (_, hour) => <th scope="col" key={hour} className="font-normal text-gray-500">{hour.toString().padStart(2, '0')}</th>)}</tr></thead><tbody>
     {WEEKDAYS.map((day, weekday) => <tr key={day}><th scope="row" className="font-normal text-gray-500">{day}</th>{Array.from({ length: 24 }, (_, hour) => {
       const count = cells.get(`${weekday}-${hour}`)?.users || 0;
       const shade = count > 0 && max ? Math.max(1, Math.ceil(count / max * 4)) : 0;
-      return <td key={hour} title={`${day} ${hour}:00 IST: ${number(count)} identities`} className={`h-8 rounded ${shades[shade]}`}>{count ? number(count) : '0'}</td>;
+      return <td key={hour} title={cellTooltip(day, hour, count, users?.[`${weekday}-${hour}`])} className={`h-8 rounded ${shades[shade]}`}>{count ? number(count) : '0'}</td>;
     })}</tr>)}
-  </tbody></table><p className="mt-2 text-xs text-gray-500">0 to {number(max)} identities per slot · IST</p></div>;
+  </tbody></table><p className="mt-2 text-xs text-gray-500">0 to {number(max)} identities per slot · IST · hover a cell to see who was active and what they used</p>
+  {users && busy.length > 0 && <details className="mt-4 text-sm"><summary className="cursor-pointer font-medium">Who was active, slot by slot</summary>
+    <div className="mt-3 space-y-4">
+      {busy.map(row => {
+        const list = users[`${row.label}-${row.platform}`] || [];
+        return <div key={`${row.label}-${row.platform}`}>
+          <p className="text-xs font-medium text-gray-500">{WEEKDAYS[Number(row.label)]} {hourRange(Number(row.platform))} IST · {number(row.users)} {row.users === 1 ? 'identity' : 'identities'}</p>
+          <ul className="mt-1 space-y-1">
+            {list.map(user => <li key={`${user.app}-${user.id}`} className="break-words">
+              {/^\d+$/.test(user.id) && user.app !== 'website'
+                ? <Link href={`/analytics?view=user&distinctId=${encodeURIComponent(user.id)}`} className="text-emerald-700 underline dark:text-emerald-400">{userLabel(user)}</Link>
+                : <span>{userLabel(user)}</span>}
+              <span className="text-gray-500"> · {/^\d+$/.test(user.id) ? `id ${user.id}` : user.id} · {productName(user.app)} · {number(user.events)} events{user.activity.length ? ` · ${activityText(user)}` : ''}</span>
+            </li>)}
+            {row.users > list.length && <li className="text-xs text-gray-500">…and {number(row.users - list.length)} more not listed</li>}
+          </ul>
+        </div>;
+      })}
+    </div>
+  </details>}
+  </div>;
 }
