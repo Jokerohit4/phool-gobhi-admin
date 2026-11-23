@@ -15,6 +15,8 @@ import { SubmitButton } from '@/components/ui/SubmitButton';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { Section } from '@/components/ui/Section';
 import { formatDateTimeIST } from '@/lib/dateFormat';
+import { ExpectedUpdatedAt } from '@/components/ui/ExpectedUpdatedAt';
+import { readUpdatedAt } from '@/lib/configConcurrency';
 
 interface EconomyConfig {
   coinsPerCheckin: number;
@@ -57,7 +59,11 @@ export default async function CoinsPage() {
 
   const { data: economy } = await gatewayJson<{ data: EconomyConfig }>('/api/challenges/admin/coins/economy-config');
   const { data: catalog } = await gatewayJson<{ data: CatalogItem[] }>('/api/challenges/admin/coins/catalog');
-  const { data: appConfig } = await gatewayJson<{ data: Record<string, unknown> }>('/api/auth/app-config/admin');
+  const appConfigRes = await gatewayJson<{ data: Record<string, unknown>; updatedAt?: string | null }>('/api/auth/app-config/admin');
+  const appConfig = appConfigRes.data;
+  // Optimistic-concurrency tokens: the economy row and the shared app-config blob.
+  const appConfigUpdatedAt = readUpdatedAt(appConfigRes);
+  const economyUpdatedAt = readUpdatedAt({ data: economy });
   const rawFeatures = (appConfig.features as Record<string, { enabled?: boolean }>) || {};
   const features = Object.fromEntries(
     COIN_FLAGS.map((name) => [name, { enabled: rawFeatures[name]?.enabled ?? false }])
@@ -82,6 +88,7 @@ export default async function CoinsPage() {
             className="flex flex-col gap-4"
             confirmMessage="This immediately changes what's live for every customer. Continue?"
           >
+            <ExpectedUpdatedAt value={appConfigUpdatedAt} />
             <div className="flex flex-col gap-1">
               <label className="flex items-center gap-2 text-sm font-medium">
                 <input type="checkbox" name="streaksCoinsEnabled" defaultChecked={features.streaksCoins.enabled} />
@@ -129,6 +136,7 @@ export default async function CoinsPage() {
             className="flex flex-col gap-4"
             confirmMessage="This changes coin payouts for every customer check-in and streak week going forward. Continue?"
           >
+            <ExpectedUpdatedAt value={economyUpdatedAt} />
             <div className="grid grid-cols-2 gap-4">
               <label className="flex flex-col gap-1 text-sm">
                 Coins per check-in

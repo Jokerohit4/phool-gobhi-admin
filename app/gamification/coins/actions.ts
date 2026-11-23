@@ -5,6 +5,7 @@ import { requireSession } from '@/lib/auth';
 import { gatewayJson } from '@/lib/api';
 import { parsePathSegment, INVALID_ID_MESSAGE } from '@/lib/ids';
 import type { ActionState } from '@/components/ui/ActionForm';
+import { expectedUpdatedAtFrom, configErrorState } from '@/lib/configConcurrency';
 
 const MILESTONE_ROW_COUNT = 4;
 
@@ -15,6 +16,7 @@ export async function updateEconomyConfigAction(_prev: ActionState, formData: Fo
   const weeklyTargetBonus = Number(formData.get('weeklyTargetBonus'));
   const pairedStreakWeeklyBonus = Number(formData.get('pairedStreakWeeklyBonus'));
   const qualifyingCheckinsPerWeek = Number(formData.get('qualifyingCheckinsPerWeek'));
+  const expectedUpdatedAt = expectedUpdatedAtFrom(formData);
 
   const milestones: Record<string, number> = {};
   for (let i = 0; i < MILESTONE_ROW_COUNT; i++) {
@@ -27,10 +29,10 @@ export async function updateEconomyConfigAction(_prev: ActionState, formData: Fo
   try {
     await gatewayJson('/api/challenges/admin/coins/economy-config', {
       method: 'PUT',
-      body: JSON.stringify({ coinsPerCheckin, weeklyTargetBonus, milestones, pairedStreakWeeklyBonus, qualifyingCheckinsPerWeek }),
+      body: JSON.stringify({ coinsPerCheckin, weeklyTargetBonus, milestones, pairedStreakWeeklyBonus, qualifyingCheckinsPerWeek, expectedUpdatedAt }),
     });
   } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : 'Failed to save coin economy config' };
+    return configErrorState(err, 'Failed to save coin economy config');
   }
 
   revalidatePath('/gamification/coins');
@@ -75,6 +77,8 @@ export async function setCoinFeatureFlagsAction(_prev: ActionState, formData: Fo
 
   const streaksCoinsEnabled = formData.get('streaksCoinsEnabled') === 'on';
   const buddyPairedStreaksEnabled = formData.get('buddyPairedStreaksEnabled') === 'on';
+  // Token for the shared app-config blob (same row Settings > Feature flags edits).
+  const expectedUpdatedAt = expectedUpdatedAtFrom(formData);
 
   try {
     const current = await loadCurrentAppConfig();
@@ -85,10 +89,10 @@ export async function setCoinFeatureFlagsAction(_prev: ActionState, formData: Fo
     };
     await gatewayJson('/api/auth/app-config/admin', {
       method: 'PUT',
-      body: JSON.stringify({ config: { ...current.versions, maintenance: current.maintenance, features } }),
+      body: JSON.stringify({ config: { ...current.versions, maintenance: current.maintenance, features }, expectedUpdatedAt }),
     });
   } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : 'Failed to update flags' };
+    return configErrorState(err, 'Failed to update flags');
   }
 
   revalidatePath('/gamification/coins');
