@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
+import { ExpectedUpdatedAt } from '@/components/ui/ExpectedUpdatedAt';
 import { SettingsSectionNav } from '../SettingsSectionNav';
 import { updateAppVersionConfigAction } from '../actions';
 import { APP_VERSION_ROWS, formatDateTimeIST, normalizeAppVersionConfig } from '../settingsShared';
@@ -37,6 +38,7 @@ export default async function AppVersionsSettingsPage() {
             className="flex flex-col gap-6"
             confirmMessage="This changes force/soft-update behavior for every install of both apps, immediately. Continue?"
           >
+            <ExpectedUpdatedAt value={appVersionUpdatedAt} />
             <p className="text-sm text-gray-500">
               &ldquo;Min version&rdquo; below the installed build hard-blocks the app with an update-now screen.
               &ldquo;Latest version&rdquo; above the installed build shows a dismissible update-available nudge instead.

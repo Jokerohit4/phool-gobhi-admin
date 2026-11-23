@@ -7,6 +7,8 @@ import { ActionForm } from '@/components/ui/ActionForm';
 import { Toggle } from '@/components/ui/Toggle';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { InlineError } from '@/components/ui/InlineError';
+import { ExpectedUpdatedAt } from '@/components/ui/ExpectedUpdatedAt';
+import { readUpdatedAt } from '@/lib/configConcurrency';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { SettingsSectionNav } from '../SettingsSectionNav';
 import {
@@ -37,6 +39,10 @@ export default async function PolicyBillingSettingsPage() {
       : null;
 
   const rows = policy ? normalizeTiers(policy.tiers) : [];
+  // Optimistic-concurrency tokens, one per config row.
+  const policyToken = readUpdatedAt(policy);
+  const topupToken = readUpdatedAt(topupConfig);
+  const bonusToken = profileCompletionBonus?.updatedAt ?? null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -60,6 +66,7 @@ export default async function PolicyBillingSettingsPage() {
             confirmMessage="This changes the refund rules applied to every future booking cancellation. Continue?"
             className="flex flex-col gap-4"
           >
+            <ExpectedUpdatedAt value={policyToken} />
             <p className="text-sm text-gray-500">
               Each row applies when the customer cancels with less notice than &ldquo;Up to hours&rdquo; (the
               last row has no upper bound). Leave &ldquo;Up to hours&rdquo; blank for the last row.
@@ -131,6 +138,7 @@ export default async function PolicyBillingSettingsPage() {
                 <Td>
                   <ActionForm action={removeWalletTopupPresetAction} confirmMessage={`Remove ₹${amount} as a preset?`}>
                     <input type="hidden" name="amount" value={amount} />
+                    <ExpectedUpdatedAt value={topupToken} />
                     <SubmitButton variant="danger" pendingText="Removing…">Remove</SubmitButton>
                   </ActionForm>
                 </Td>
@@ -148,6 +156,7 @@ export default async function PolicyBillingSettingsPage() {
             confirmMessage="Add this wallet top-up preset for all customers?"
             className="flex flex-col gap-3"
           >
+            <ExpectedUpdatedAt value={topupToken} />
             <label className="text-sm font-medium" htmlFor="topup-preset-amount">New preset amount (?)</label>
             <input
               id="topup-preset-amount"
@@ -168,6 +177,7 @@ export default async function PolicyBillingSettingsPage() {
             className="flex flex-col gap-4"
             confirmMessage="This changes whether customers can type any custom top-up amount, platform-wide. Continue?"
           >
+            <ExpectedUpdatedAt value={topupToken} />
             <label className="flex items-center gap-3 text-sm font-medium">
               <Toggle name="allowCustomAmount" defaultChecked={topupConfig.allowCustomAmount} />
               Allow customer-entered custom amount
@@ -225,6 +235,7 @@ export default async function PolicyBillingSettingsPage() {
             className="flex flex-col gap-4"
             confirmMessage="This changes the wallet reward for every customer completing their profile, immediately (it only applies to profiles completed after the change). Continue?"
           >
+            <ExpectedUpdatedAt value={bonusToken} />
             <label className="flex flex-col gap-1 text-sm">
               Bonus amount (?)
               <input

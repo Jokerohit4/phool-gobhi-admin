@@ -7,6 +7,7 @@ import { parsePositiveId, INVALID_ID_MESSAGE } from '@/lib/ids';
 import { loadFlagRegistry } from './flagRegistry';
 import { setSocialEnabled } from '@/lib/socialApi';
 import type { ActionState } from '@/components/ui/ActionForm';
+import { expectedUpdatedAtFrom, configErrorState } from '@/lib/configConcurrency';
 
 // Fixed 4-row shape matching booking-service's DEFAULT_CANCELLATION_TIERS —
 // editing adds/removes tiers is deliberately out of scope for v1, just the
@@ -31,13 +32,15 @@ export async function updateCancellationPolicyAction(
     };
   });
 
+  const expectedUpdatedAt = expectedUpdatedAtFrom(formData);
+
   try {
     await gatewayJson('/api/bookings/cancellation-policy', {
       method: 'PUT',
-      body: JSON.stringify({ tiers }),
+      body: JSON.stringify({ tiers, expectedUpdatedAt }),
     });
   } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : 'Failed to save policy' };
+    return configErrorState(err, 'Failed to save policy');
   }
 
   revalidatePath('/settings');
@@ -67,13 +70,15 @@ export async function updateLaunchGateAction(_prev: ActionState, formData: FormD
   // Enabled + no date = held gated indefinitely (deliberate manual-hold state).
   const launchAt = launchInputToUtcIso(launchAtRaw);
 
+  const expectedUpdatedAt = expectedUpdatedAtFrom(formData);
+
   try {
     await gatewayJson('/api/auth/launch-gate/admin', {
       method: 'PUT',
-      body: JSON.stringify({ enabled, launchAt }),
+      body: JSON.stringify({ enabled, launchAt, expectedUpdatedAt }),
     });
   } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : 'Failed to save launch gate' };
+    return configErrorState(err, 'Failed to save launch gate');
   }
 
   revalidatePath('/settings');
@@ -155,6 +160,10 @@ export async function updateAppVersionConfigAction(
   formData: FormData
 ): Promise<ActionState> {
   await requireSession();
+  // The blob is one row shared by versions, flags, maintenance and social, so
+  // this token (from the page render) guards all of them: if ANY section was
+  // saved since this page loaded, the PUT conflicts instead of clobbering it.
+  const expectedUpdatedAt = expectedUpdatedAtFrom(formData);
 
   try {
     const current = await loadCurrentAppConfig();
@@ -179,10 +188,11 @@ export async function updateAppVersionConfigAction(
       method: 'PUT',
       body: JSON.stringify({
         config: { ...current.versions, ...config, maintenance: current.maintenance, features: current.features },
+        expectedUpdatedAt,
       }),
     });
   } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : 'Failed to save app version config' };
+    return configErrorState(err, 'Failed to save app version config');
   }
 
   revalidatePath('/settings');
@@ -192,6 +202,7 @@ export async function updateAppVersionConfigAction(
 
 export async function updateFeatureFlagsAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireSession();
+  const expectedUpdatedAt = expectedUpdatedAtFrom(formData);
 
   try {
     // The list of flags to write comes from the server's registry, not from this
@@ -224,10 +235,10 @@ export async function updateFeatureFlagsAction(_prev: ActionState, formData: For
 
     await gatewayJson('/api/auth/app-config/admin', {
       method: 'PUT',
-      body: JSON.stringify({ config: { ...current.versions, maintenance: current.maintenance, features } }),
+      body: JSON.stringify({ config: { ...current.versions, maintenance: current.maintenance, features }, expectedUpdatedAt }),
     });
   } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : 'Failed to save feature flags' };
+    return configErrorState(err, 'Failed to save feature flags');
   }
 
   revalidatePath('/settings');
@@ -243,9 +254,9 @@ export async function updateSocialSwitchAction(_prev: ActionState, formData: For
   const enabled = formData.get('socialEnabled') === 'on';
 
   try {
-    await setSocialEnabled(enabled);
+    await setSocialEnabled(enabled, expectedUpdatedAtFrom(formData));
   } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : 'Failed to save the social switch' };
+    return configErrorState(err, 'Failed to save the social switch');
   }
 
   revalidatePath('/settings');
@@ -268,6 +279,7 @@ export async function updateMaintenanceAction(_prev: ActionState, formData: Form
     return { ok: false, message: 'Start must be before end' };
   }
   const message = String(formData.get('message') || '').trim();
+  const expectedUpdatedAt = expectedUpdatedAtFrom(formData);
 
   try {
     const current = await loadCurrentAppConfig();
@@ -277,10 +289,10 @@ export async function updateMaintenanceAction(_prev: ActionState, formData: Form
     };
     await gatewayJson('/api/auth/app-config/admin', {
       method: 'PUT',
-      body: JSON.stringify({ config: { ...current.versions, maintenance, features: current.features } }),
+      body: JSON.stringify({ config: { ...current.versions, maintenance, features: current.features }, expectedUpdatedAt }),
     });
   } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : 'Failed to save maintenance window' };
+    return configErrorState(err, 'Failed to save maintenance window');
   }
 
   revalidatePath('/settings');
@@ -292,14 +304,15 @@ export async function updateOtpConfigAction(_prev: ActionState, formData: FormDa
   await requireSession();
 
   const provider = String(formData.get('provider') || '');
+  const expectedUpdatedAt = expectedUpdatedAtFrom(formData);
 
   try {
     await gatewayJson('/api/auth/otp-config/admin', {
       method: 'PUT',
-      body: JSON.stringify({ provider }),
+      body: JSON.stringify({ provider, expectedUpdatedAt }),
     });
   } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : 'Failed to save OTP provider' };
+    return configErrorState(err, 'Failed to save OTP provider');
   }
 
   revalidatePath('/settings');
@@ -318,13 +331,15 @@ export async function updateProfileCompletionBonusAction(
     return { ok: false, message: 'Enter a whole rupee amount between 0 and 1000 (0 disables the bonus)' };
   }
 
+  const expectedUpdatedAt = expectedUpdatedAtFrom(formData);
+
   try {
     await gatewayJson('/api/auth/profile-completion-bonus/admin', {
       method: 'PUT',
-      body: JSON.stringify({ amount }),
+      body: JSON.stringify({ amount, expectedUpdatedAt }),
     });
   } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : 'Failed to save bonus amount' };
+    return configErrorState(err, 'Failed to save bonus amount');
   }
 
   revalidatePath('/settings');
@@ -395,17 +410,21 @@ export async function addWalletTopupPresetAction(_prev: ActionState, formData: F
     return { ok: false, message: 'Enter a whole positive rupee amount' };
   }
 
+  const expectedUpdatedAt = expectedUpdatedAtFrom(formData);
+
   try {
     const current = await getCurrentWalletTopupConfig();
     if (current.presets.includes(amount)) {
       return { ok: false, message: `₹${amount} is already a preset` };
     }
+    // `current` carries the freshly-read updatedAt; the token that guards the
+    // write is the one from the page render, so an edit made since then conflicts.
     await gatewayJson('/api/wallet/topup-config', {
       method: 'PUT',
-      body: JSON.stringify({ ...current, presets: [...current.presets, amount] }),
+      body: JSON.stringify({ ...current, presets: [...current.presets, amount], updatedAt: undefined, expectedUpdatedAt }),
     });
   } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : 'Failed to add preset' };
+    return configErrorState(err, 'Failed to add preset');
   }
 
   revalidatePath('/settings');
@@ -417,16 +436,17 @@ export async function removeWalletTopupPresetAction(_prev: ActionState, formData
   await requireSession();
 
   const amount = Number(formData.get('amount'));
+  const expectedUpdatedAt = expectedUpdatedAtFrom(formData);
 
   try {
     const current = await getCurrentWalletTopupConfig();
     const presets = current.presets.filter((a) => a !== amount);
     await gatewayJson('/api/wallet/topup-config', {
       method: 'PUT',
-      body: JSON.stringify({ ...current, presets }),
+      body: JSON.stringify({ ...current, presets, updatedAt: undefined, expectedUpdatedAt }),
     });
   } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : 'Failed to remove preset' };
+    return configErrorState(err, 'Failed to remove preset');
   }
 
   revalidatePath('/settings');
@@ -443,6 +463,7 @@ export async function updateWalletTopupCustomAmountAction(
   const allowCustomAmount = formData.get('allowCustomAmount') === 'on';
   const minRaw = String(formData.get('minCustomAmount') || '').trim();
   const maxRaw = String(formData.get('maxCustomAmount') || '').trim();
+  const expectedUpdatedAt = expectedUpdatedAtFrom(formData);
 
   try {
     const current = await getCurrentWalletTopupConfig();
@@ -453,10 +474,11 @@ export async function updateWalletTopupCustomAmountAction(
         allowCustomAmount,
         minCustomAmount: allowCustomAmount && minRaw !== '' ? Number(minRaw) : null,
         maxCustomAmount: allowCustomAmount && maxRaw !== '' ? Number(maxRaw) : null,
+        expectedUpdatedAt,
       }),
     });
   } catch (err) {
-    return { ok: false, message: err instanceof Error ? err.message : 'Failed to save custom-amount settings' };
+    return configErrorState(err, 'Failed to save custom-amount settings');
   }
 
   revalidatePath('/settings');

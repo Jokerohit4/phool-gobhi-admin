@@ -11,6 +11,8 @@ import { SocialSwitch } from '../SocialSwitch';
 import { loadFlagRegistry, registryDrift, type FlagRegistryEntry } from '../flagRegistry';
 import { updateFeatureFlagsAction, updateSocialSwitchAction } from '../actions';
 import { InlineError } from '@/components/ui/InlineError';
+import { ExpectedUpdatedAt } from '@/components/ui/ExpectedUpdatedAt';
+import { readUpdatedAt } from '@/lib/configConcurrency';
 import { socialEnabledFrom } from '@/lib/socialApi';
 
 const FLAG_GROUP_ORDER = ['exploration', 'training', 'health', 'gamification', 'social', 'onboarding', 'coach', 'ops'] as const;
@@ -50,7 +52,7 @@ export default async function FlagsSocialSettingsPage() {
   await requireSession();
 
   const [appConfigSettled, { flags: flagRegistry, failed: flagRegistryFailed }] = await Promise.all([
-    gatewayJson<{ data: Record<string, unknown> }>('/api/auth/app-config/admin').then(
+    gatewayJson<{ data: Record<string, unknown>; updatedAt?: string | null }>('/api/auth/app-config/admin').then(
       (value) => ({ ok: true as const, value }),
       (reason: unknown) => ({ ok: false as const, reason }),
     ),
@@ -58,6 +60,8 @@ export default async function FlagsSocialSettingsPage() {
   ]);
   if (!appConfigSettled.ok) console.error('FlagsSocialSettingsPage: app-config load failed', appConfigSettled.reason);
   const appConfig = appConfigSettled.ok ? appConfigSettled.value.data : null;
+  // Optimistic-concurrency token for the shared app-config blob (flags + social).
+  const appConfigUpdatedAt = appConfigSettled.ok ? readUpdatedAt(appConfigSettled.value) : null;
 
   const flagDrift = flagRegistryFailed ? { missing: [], unexpected: [] } : registryDrift(flagRegistry);
   const socialEnabled = appConfig ? socialEnabledFrom(appConfig) : false;
@@ -79,6 +83,7 @@ export default async function FlagsSocialSettingsPage() {
             className="flex flex-col gap-4"
             confirmMessage="This immediately gates these features for every customer app install (gamification flags also take effect server-side within ~30s). Continue?"
           >
+            <ExpectedUpdatedAt value={appConfigUpdatedAt} />
             {flagRegistryFailed ? (
               <p className="text-sm text-red-600">
                 Could not load the feature-flag registry from auth-service, so toggles are not shown rather than shown
@@ -169,7 +174,7 @@ export default async function FlagsSocialSettingsPage() {
           subtitle="One switch for Buddy, leaderboards and League in the customer app. Off by default. Saved into the same config blob as the flags above without changing anything else in it; apps pick it up on their next launch."
         />
         <Card className="max-w-xl">
-          <SocialSwitch enabled={socialEnabled} action={updateSocialSwitchAction} />
+          <SocialSwitch enabled={socialEnabled} action={updateSocialSwitchAction} expectedUpdatedAt={appConfigUpdatedAt} />
         </Card>
       </section>
       ) : (

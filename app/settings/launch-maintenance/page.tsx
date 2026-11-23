@@ -6,6 +6,8 @@ import { ActionForm } from '@/components/ui/ActionForm';
 import { Toggle } from '@/components/ui/Toggle';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { InlineError } from '@/components/ui/InlineError';
+import { ExpectedUpdatedAt } from '@/components/ui/ExpectedUpdatedAt';
+import { readUpdatedAt } from '@/lib/configConcurrency';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { SettingsSectionNav } from '../SettingsSectionNav';
 import { updateLaunchGateAction, updateMaintenanceAction } from '../actions';
@@ -20,13 +22,17 @@ export default async function LaunchMaintenanceSettingsPage() {
   await requireSession();
 
   const [gateSettled, configSettled] = await Promise.allSettled([
-    gatewayJson<{ data: LaunchGate }>('/api/auth/launch-gate/admin'),
-    gatewayJson<{ data: Record<string, unknown> }>('/api/auth/app-config/admin'),
+    gatewayJson<{ data: LaunchGate; updatedAt?: string | null }>('/api/auth/launch-gate/admin'),
+    gatewayJson<{ data: Record<string, unknown>; updatedAt?: string | null }>('/api/auth/app-config/admin'),
   ]);
   if (gateSettled.status === 'rejected') console.error('LaunchMaintenanceSettingsPage: launch-gate load failed', gateSettled.reason);
   if (configSettled.status === 'rejected') console.error('LaunchMaintenanceSettingsPage: app-config load failed', configSettled.reason);
   const launchGate = gateSettled.status === 'fulfilled' ? gateSettled.value.data : null;
   const maintenanceConfig = configSettled.status === 'fulfilled' ? configSettled.value.data : null;
+  // Optimistic-concurrency tokens: the launch gate and the app-config blob are
+  // separate rows, each guarded by its own updatedAt.
+  const launchGateUpdatedAt = gateSettled.status === 'fulfilled' ? readUpdatedAt(gateSettled.value) : null;
+  const appConfigUpdatedAt = configSettled.status === 'fulfilled' ? readUpdatedAt(configSettled.value) : null;
 
   const maintenanceRaw = ((maintenanceConfig as { maintenance?: Partial<MaintenanceConfig> } | null)?.maintenance || {}) as Partial<MaintenanceConfig>;
   const maintenance: MaintenanceConfig = {
@@ -52,6 +58,7 @@ export default async function LaunchMaintenanceSettingsPage() {
             className="flex flex-col gap-4"
             confirmMessage="This changes whether gym browsing and booking are gated for every visitor, immediately. Continue?"
           >
+            <ExpectedUpdatedAt value={launchGateUpdatedAt} />
             <label className="flex items-center gap-3 text-sm font-medium">
               <Toggle name="enabled" defaultChecked={launchGate.enabled} />
               Gate enabled
@@ -95,6 +102,7 @@ export default async function LaunchMaintenanceSettingsPage() {
                 confirmMessage={`This changes the ${label} maintenance window for every website visitor, immediately. Continue?`}
               >
                 <input type="hidden" name="feature" value={feature} />
+                <ExpectedUpdatedAt value={appConfigUpdatedAt} />
                 <div className="flex flex-col gap-1">
                   <label className="flex items-center gap-3 text-sm font-medium">
                     <Toggle name="enabled" defaultChecked={entry.enabled} />

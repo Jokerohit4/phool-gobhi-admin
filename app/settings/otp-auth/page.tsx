@@ -6,6 +6,7 @@ import { Table, Thead, Th, Tr, Td, EmptyRow } from '@/components/ui/Table';
 import { ActionForm } from '@/components/ui/ActionForm';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { InlineError } from '@/components/ui/InlineError';
+import { ExpectedUpdatedAt } from '@/components/ui/ExpectedUpdatedAt';
 import { Breadcrumbs } from '@/components/navigation/Breadcrumbs';
 import { SettingsSectionNav } from '../SettingsSectionNav';
 import { updateOtpConfigAction, addOtpSkipAllowlistAction, removeOtpSkipAllowlistAction } from '../actions';
@@ -48,6 +49,7 @@ export default async function OtpAuthSettingsPage() {
             className="flex flex-col gap-4"
             confirmMessage="This changes how OTP verification works for every customer/partner login, platform-wide — including 'skip', which disables OTP verification entirely. Continue?"
           >
+            <ExpectedUpdatedAt value={otpConfig.updatedAt} />
             <div className="flex flex-col gap-3">
               {OTP_PROVIDER_OPTIONS.map((opt) => (
                 <label key={opt.value} className="flex items-start gap-2 text-sm">
