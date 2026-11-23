@@ -20,6 +20,15 @@ export interface TrafficRow {
   measured: number;
 }
 
+/** One person in a weekday/hour heatmap cell. `name` is null for anonymous visitors. */
+export interface HeatmapUser {
+  app: string;
+  id: string;
+  name: string | null;
+  events: number;
+  activity: { label: string; n: number }[];
+}
+
 export interface TrafficReport {
   asOf: string;
   filters: { product: TrafficProduct; platform: TrafficPlatform; days: number; cohort?: string };
@@ -30,6 +39,8 @@ export interface TrafficReport {
   screens: TrafficRow[];
   actions: TrafficRow[];
   heatmap: TrafficRow[];
+  /** Keyed `${weekday 0=Mon}-${hour}`; absent on older backends. */
+  heatmapUsers?: Record<string, HeatmapUser[]>;
   breakdown: TrafficRow[];
   frequency: TrafficRow[];
   sessionLengths: TrafficRow[];
