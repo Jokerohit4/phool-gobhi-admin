@@ -2,9 +2,31 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireSession } from '@/lib/auth';
-import { gatewayJson } from '@/lib/api';
+import { GatewayError, gatewayJson } from '@/lib/api';
 import type { ActionState } from '@/components/ui/ActionForm';
 import { isCohort, parseUserIds } from './cohorts';
+
+export async function deleteUserDataAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireSession();
+  const id = String(formData.get('id') ?? '');
+  const scope = String(formData.get('scope') ?? '');
+  if (!/^\d{1,10}$/.test(id) || Number(id) < 1 || Number(id) > 2147483647 || !/^[a-z]+$/.test(scope)) {
+    return { ok: false, message: 'Select a user and data category' };
+  }
+  try {
+    const { message } = await gatewayJson<{ message: string }>(
+      `/api/auth/admin/users/${id}/data/${scope}`,
+      { method: 'DELETE' },
+    );
+    revalidatePath('/users');
+    return { ok: true, message };
+  } catch (err) {
+    const message = err instanceof GatewayError && err.status < 500
+      ? err.message
+      : 'Deletion could not be confirmed. Some data may already be gone. Refresh the list and retry if the account is still present.';
+    return { ok: false, message };
+  }
+}
 
 export async function setUserCohortAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   await requireSession();

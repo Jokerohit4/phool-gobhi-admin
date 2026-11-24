@@ -13,6 +13,7 @@ import { setUserCohortAction, bulkSetCohortAction } from './actions';
 import { FilterBar } from '@/components/ui/FilterBar';
 import { InlineError } from '@/components/ui/InlineError';
 import { Section } from '@/components/ui/Section';
+import { UserDataDeletion, type DeletionCategory } from './UserDataDeletion';
 
 interface UserRow {
   id: number;
@@ -29,6 +30,7 @@ interface UsersResponse {
     users: UserRow[];
     counts: Record<string, number>;
     nextCursor: number | null;
+    deletionCategories?: DeletionCategory[];
   };
 }
 
@@ -54,6 +56,8 @@ export default async function UsersPage({
     error = e instanceof Error ? e.message : 'Could not load users';
   }
 
+  const deletionCategories = data.deletionCategories ?? [];
+  const canDeleteUserData = deletionCategories.length > 0;
   const total = Object.values(data.counts).reduce((a, b) => a + b, 0);
   const nextParams = new URLSearchParams();
   if (cohort) nextParams.set('cohort', cohort);
@@ -96,6 +100,7 @@ export default async function UsersPage({
             <Th>Role</Th>
             <Th>Joined</Th>
             <Th>Cohort</Th>
+            {canDeleteUserData && <Th>Data deletion (dev)</Th>}
           </Thead>
           <tbody>
             {data.users.map((u) => (
@@ -117,10 +122,17 @@ export default async function UsersPage({
                     <SubmitButton variant="secondary" pendingText="Saving…">Save</SubmitButton>
                   </ActionForm>
                 </Td>
+                {canDeleteUserData && (
+                  <Td>
+                    {u.role === 'customer' && (
+                      <UserDataDeletion userId={u.id} name={u.name} categories={deletionCategories} />
+                    )}
+                  </Td>
+                )}
               </Tr>
             ))}
-            {!error && data.users.length === 0 && <EmptyRow colSpan={7}>No users in this cohort.</EmptyRow>}
-            {error && data.users.length === 0 && <EmptyRow colSpan={7}>Could not load users.</EmptyRow>}
+            {!error && data.users.length === 0 && <EmptyRow colSpan={canDeleteUserData ? 8 : 7}>No users in this cohort.</EmptyRow>}
+            {error && data.users.length === 0 && <EmptyRow colSpan={canDeleteUserData ? 8 : 7}>Could not load users.</EmptyRow>}
           </tbody>
         </Table>
         {nextHref && (
