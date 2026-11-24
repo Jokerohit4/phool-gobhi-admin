@@ -48,7 +48,11 @@ export default async function OrganizationDetailPage({ params }: { params: Promi
       <Section>
         <Breadcrumbs items={[{ label: 'Companies', href: '/organizations' }, { label: org.name }]} />
         <PageHeader title={org.name} subtitle={`${org.activeMembers ?? 0} members · ${org.invitedMembers ?? 0} invited · ${expiryLabel(org)}`} />
-        <div><StatusBadge tone={ORG_TONE[org.status]}>{org.status}</StatusBadge></div>
+        <div className="flex flex-wrap items-center gap-4">
+          <StatusBadge tone={ORG_TONE[org.status]}>{org.status}</StatusBadge>
+          <Link className="text-sm font-medium underline" href={`/organizations/${org.id}/dashboard`}>Programme dashboard</Link>
+          <Link className="text-sm underline" href={`/organizations/${org.id}/report`}>HR report (print or PDF)</Link>
+        </div>
         {expired && (
           <Card className="max-w-2xl text-sm">
             This company profile has expired and is now a normal one: it no longer shows in the app and its members

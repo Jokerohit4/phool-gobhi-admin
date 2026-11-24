@@ -48,7 +48,10 @@ export default async function OrganizationsPage() {
           <tbody>
             {orgs.map((o) => (
               <Tr key={o.id}>
-                <Td><Link className="font-medium underline" href={`/organizations/${o.id}`}>{o.name}</Link></Td>
+                <Td>
+                  <Link className="font-medium underline" href={`/organizations/${o.id}`}>{o.name}</Link>
+                  <Link className="ml-3 text-xs underline" href={`/organizations/${o.id}/dashboard`}>Dashboard</Link>
+                </Td>
                 <Td><StatusBadge tone={TONE[o.status]}>{o.status}</StatusBadge></Td>
                 <Td>{o.activeMembers ?? 0}</Td>
                 <Td>{o.invitedMembers ?? 0}</Td>
