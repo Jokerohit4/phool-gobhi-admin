@@ -16,6 +16,10 @@ import {
   formatRate, formatCount, formatDuration, funnelSteps, hasNoPushEvents, unknownPlatformShare,
   type PushFilters, type PushFunnelData, type PushSort, type PushSortKey, type PushTypesData,
 } from '@/lib/pushAnalytics';
+import {
+  PERM_DAYS, parsePermDays, permissionQuery, permissionErrorMessage, statusUsers, mutedRatio, formatMutedRate, rowTotal, hasNoReports,
+  type NotificationPermissionData, type PermDays,
+} from '@/lib/notificationPermission';
 
 export const metadata = { title: 'Push analytics' };
 
@@ -32,7 +36,7 @@ const COLUMNS: { key: PushSortKey; label: string; numeric: boolean }[] = [
 export default async function PushAnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ days?: string; type?: string; platform?: string; role?: string; sort?: string; dir?: string }>;
+  searchParams: Promise<{ days?: string; type?: string; platform?: string; role?: string; sort?: string; dir?: string; pdays?: string }>;
 }) {
   await requireSession();
   const raw = await searchParams;
@@ -41,12 +45,15 @@ export default async function PushAnalyticsPage({
 
   // Parallel, server-side. The type list is cosmetic (filter dropdown), so a
   // failure there never blocks the funnel and vice versa.
-  const [funnelRes, typesRes] = await Promise.allSettled([
+  const permDays = parsePermDays(raw.pdays);
+  const [funnelRes, typesRes, permRes] = await Promise.allSettled([
     gatewayJson<{ data: PushFunnelData }>(`/api/bookings/admin/analytics/push-funnel?${pushFunnelQuery(filters)}`),
     gatewayJson<{ data: PushTypesData }>(`/api/bookings/admin/analytics/push-types?days=${filters.days}`),
+    gatewayJson<{ data: NotificationPermissionData }>(`/api/bookings/admin/analytics/notification-permission?${permissionQuery(permDays, filters.platform)}`),
   ]);
   if (funnelRes.status === 'rejected') console.error('push-funnel failed', funnelRes.reason);
   if (typesRes.status === 'rejected') console.error('push-types failed', typesRes.reason);
+  if (permRes.status === 'rejected') console.error('notification-permission failed', permRes.reason);
 
   const types = typesRes.status === 'fulfilled' ? typesRes.value.data.types : undefined;
   const options = typeOptions(types, filters.type);
@@ -77,6 +84,8 @@ export default async function PushAnalyticsPage({
       ) : (
         <FunnelBody data={funnelRes.value.data} filters={filters} sort={sort} />
       )}
+
+      <PermissionSection res={permRes} filters={filters} sort={sort} permDays={permDays} />
     </div>
   );
 }
@@ -297,5 +306,117 @@ function FunnelBody({ data, filters, sort }: { data: PushFunnelData; filters: Pu
         </Card>
       </div>
     </>
+  );
+}
+
+function permHref(filters: PushFilters, sort: PushSort, permDays: PermDays): string {
+  return `${pushHref(filters, sort)}&pdays=${permDays}`;
+}
+
+function PermissionSection({
+  res, filters, sort, permDays,
+}: {
+  res: PromiseSettledResult<{ data: NotificationPermissionData }>;
+  filters: PushFilters;
+  sort: PushSort;
+  permDays: PermDays;
+}) {
+  const data = res.status === 'fulfilled' ? res.value.data : undefined;
+  return (
+    <Card>
+      <SectionHeading
+        title="Notification permission"
+        subtitle={`Latest reported phone setting per user, last ${permDays} days${filters.platform ? `, ${filters.platform} only` : ''}`}
+      />
+      <div className="mb-3 flex gap-1">
+        {PERM_DAYS.map((d) => (
+          <Link
+            key={d}
+            href={permHref(filters, sort, d)}
+            aria-current={d === permDays ? 'true' : undefined}
+            className={`rounded px-2.5 py-1 text-sm transition-colors ${
+              d === permDays
+                ? 'bg-gray-800 font-medium text-white dark:bg-gray-200 dark:text-gray-900'
+                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
+            }`}
+          >
+            {d} days
+          </Link>
+        ))}
+      </div>
+      <p className="mb-3 text-xs text-gray-500">
+        Counts users on the updated app who reported in the window; users on old builds are not included. Muted = notifications turned off in phone settings.
+      </p>
+      {res.status === 'rejected' ? (
+        <InlineError
+          title="Notification permission is unavailable"
+          message={permissionErrorMessage(res.reason)}
+          retryHref={permHref(filters, sort, permDays)}
+        />
+      ) : !data || hasNoReports(data) ? (
+        <div className="py-6 text-center text-sm text-gray-500">No reports yet - appears after users update the app</div>
+      ) : (
+        <PermissionBody data={data} />
+      )}
+    </Card>
+  );
+}
+
+function PermissionBody({ data }: { data: NotificationPermissionData }) {
+  const rate = data.mutedRate != null && Number.isFinite(data.mutedRate) ? data.mutedRate : mutedRatio(data.mutedUsers, data.reportingUsers);
+  const last = data.lastReportAt ? new Date(data.lastReportAt) : null;
+  const lastText = last && !Number.isNaN(last.getTime())
+    ? last.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) + ' IST'
+    : 'No report yet';
+  const cols = ['granted', 'denied', 'not_determined', 'provisional'] as const;
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <StatTile label="Reporting users" value={formatCount(data.reportingUsers)} hint="On the updated app" />
+        <StatTile label="Granted" value={formatCount(statusUsers(data.byStatus, 'granted'))} />
+        <StatTile label="Muted" value={formatCount(data.mutedUsers)} status={data.mutedUsers > 0 ? 'warning' : 'default'} hint="Denied in phone settings" />
+        <StatTile label="Not asked yet" value={formatCount(statusUsers(data.byStatus, 'not_determined'))} />
+        <StatTile label="Provisional" value={formatCount(statusUsers(data.byStatus, 'provisional'))} />
+        <StatTile label="Muted rate" value={formatMutedRate(rate)} hint="Muted / reporting" />
+      </div>
+      <p className="text-xs text-gray-500">Last report: {lastText}</p>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <PermissionTable title="platform" label="Platform" rows={data.byPlatform.map((r) => ({ key: r.platform, ...r }))} cols={cols} />
+        <PermissionTable title="app" label="App" rows={data.byApp.map((r) => ({ key: r.app, ...r }))} cols={cols} />
+      </div>
+    </div>
+  );
+}
+
+function PermissionTable({
+  title, label, rows, cols,
+}: {
+  title: string;
+  label: string;
+  rows: { key: string; granted: number; denied: number; not_determined: number; provisional: number }[];
+  cols: readonly ['granted', 'denied', 'not_determined', 'provisional'];
+}) {
+  const heads = { granted: 'Granted', denied: 'Muted', not_determined: 'Not asked', provisional: 'Provisional' };
+  return (
+    <div>
+      <p className="mb-1 text-sm font-medium">By {title}</p>
+      <Table>
+        <Thead>
+          <Th>{label}</Th>
+          {cols.map((c) => <Th key={c} className="text-right">{heads[c]}</Th>)}
+          <Th className="text-right">Muted %</Th>
+        </Thead>
+        <tbody>
+          {rows.map((r) => (
+            <Tr key={r.key}>
+              <Td>{r.key}</Td>
+              {cols.map((c) => <Td key={c} className="text-right tabular-nums">{formatCount(r[c])}</Td>)}
+              <Td className="text-right tabular-nums">{formatMutedRate(mutedRatio(r.denied, rowTotal(r)))}</Td>
+            </Tr>
+          ))}
+          {rows.length === 0 && <EmptyRow colSpan={cols.length + 2}>No data.</EmptyRow>}
+        </tbody>
+      </Table>
+    </div>
   );
 }

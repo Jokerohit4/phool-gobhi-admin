@@ -22,6 +22,7 @@ describe('read-only dashboard pages require a session', () => {
     expect(src).not.toMatch(/\bfetch\(/);
     expect(src).toContain('/api/bookings/admin/analytics/push-funnel?');
     expect(src).toContain('/api/bookings/admin/analytics/push-types?days=');
+    expect(src).toContain('/api/bookings/admin/analytics/notification-permission?');
   });
 
   it('the push dashboard is in the sidebar', () => {
