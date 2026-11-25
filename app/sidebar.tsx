@@ -50,6 +50,7 @@ export const NAV_GROUPS: NavGroup[] = [
     { href: '/reviews', label: 'Reviews', icon: 'star', badgeKey: 'reviews' },
     { href: '/buddy-reports', label: 'Buddy reports', icon: 'shield', badgeKey: 'buddy-reports' },
     { href: '/health', label: 'Health & Training', icon: 'heart' },
+    { href: '/routines', label: 'Routines', icon: 'heart' },
     { href: '/food-requests', label: 'Food Queue', icon: 'doc', badgeKey: 'food-requests' },
   ]},
   { id: 'gamification', label: 'Gamification', icon: 'star', items: [

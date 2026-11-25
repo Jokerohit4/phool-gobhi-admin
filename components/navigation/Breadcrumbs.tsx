@@ -19,6 +19,7 @@ const SPECIAL_LABELS: Record<string, string> = {
   '/attendance-saas': 'Attendance SaaS',
   '/fulfillment': 'Coaching fulfillment',
   '/coaching-plans': 'Guided plans & offerings',
+  '/routines': 'Routines',
   '/reports': 'Blood reports',
   '/users': 'Users & cohorts',
   '/food-requests': 'Food Queue',
