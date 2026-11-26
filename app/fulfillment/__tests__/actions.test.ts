@@ -4,6 +4,7 @@ const gatewayJson = vi.fn();
 vi.mock('@/lib/api', () => ({ gatewayJson: (...args: unknown[]) => gatewayJson(...args) }));
 const requireSession = vi.fn();
 vi.mock('@/lib/auth', () => ({ requireSession: (...args: unknown[]) => requireSession(...args) }));
+vi.mock('@/lib/actionOrigin', () => ({ hasInvalidActionOrigin: async () => false }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 
 const { fulfillmentAction } = await import('../actions');

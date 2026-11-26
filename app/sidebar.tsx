@@ -43,6 +43,7 @@ export const NAV_GROUPS: NavGroup[] = [
     { href: '/live', label: 'Live Tracking', icon: 'bolt' },
     { href: '/attendance-saas', label: 'Attendance SaaS', icon: 'check' },
     { href: '/fulfillment', label: 'Coaching fulfillment', icon: 'check', badgeKey: 'fulfillment' },
+    { href: '/coupons', label: 'Coaching coupons', icon: 'doc' },
   ]},
   { id: 'users', label: 'Users & Engagement', icon: 'users', items: [
     { href: '/users', label: 'Users & cohorts', icon: 'users' },

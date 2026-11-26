@@ -12,10 +12,14 @@ import { NextResponse } from 'next/server';
 // Same-origin is decided against the Host / X-Forwarded-Host the request
 // actually arrived on, so it works behind Vercel without extra config.
 export function isCrossOrigin(request: Request): boolean {
-  const fetchSite = request.headers.get('sec-fetch-site');
+  return hasCrossOriginHeaders(request.headers, new URL(request.url).host);
+}
+
+export function hasCrossOriginHeaders(headers: Pick<Headers, 'get'>, fallbackHost?: string): boolean {
+  const fetchSite = headers.get('sec-fetch-site');
   if (fetchSite === 'cross-site') return true;
 
-  const origin = request.headers.get('origin');
+  const origin = headers.get('origin');
   if (origin !== null) {
     let originHost: string;
     try {
@@ -23,8 +27,8 @@ export function isCrossOrigin(request: Request): boolean {
     } catch {
       return true; // "null" or malformed origin
     }
-    const forwarded = request.headers.get('x-forwarded-host');
-    const host = (forwarded ? forwarded.split(',')[0].trim() : null) || request.headers.get('host') || new URL(request.url).host;
+    const forwarded = headers.get('x-forwarded-host');
+    const host = (forwarded ? forwarded.split(',')[0].trim() : null) || headers.get('host') || fallbackHost;
     if (originHost !== host) return true;
   }
   return false;
