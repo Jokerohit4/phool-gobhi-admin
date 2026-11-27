@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { gatewayJson } from '@/lib/api';
 import { requireSession } from '@/lib/auth';
+import { hasInvalidActionOrigin } from '@/lib/actionOrigin';
+import { parseISTFormDate } from '@/lib/istFormDate';
 import { parsePositiveId } from '@/lib/ids';
 import type { ActionState } from '@/components/ui/ActionForm';
 
@@ -22,8 +24,9 @@ function oneOf<T extends string>(value: FormDataEntryValue | null, allowed: read
 
 export async function fulfillmentAction(_prev: ActionState, form: FormData): Promise<ActionState> {
   await requireSession();
-  const userId = Number(form.get('userId')), action = String(form.get('action') || '');
-  if (!Number.isInteger(userId) || userId < 1) return { ok: false, message: 'Invalid customer' };
+  if (await hasInvalidActionOrigin()) return { ok: false, message: 'Cross-origin request rejected' };
+  const userId = parsePositiveId(form.get('userId')), action = String(form.get('action') || '');
+  if (userId === null) return { ok: false, message: 'Invalid customer' };
   try {
     if (action === 'FREE_SESSION' || action === 'ADDON_SESSION') {
       await gatewayJson(`/api/wallet/coaching/admin/fulfillment/${userId}/sessions`, { method: 'POST', body: JSON.stringify({ kind: action, idempotencyKey: KEY_RE.test(String(form.get('idempotencyKey') || '')) ? String(form.get('idempotencyKey')) : randomUUID() }) });
@@ -32,8 +35,8 @@ export async function fulfillmentAction(_prev: ActionState, form: FormData): Pro
       if (!status) return { ok: false, message: 'Invalid pass status' };
       await gatewayJson(`/api/wallet/coaching/admin/fulfillment/${userId}/gym`, { method: 'PATCH', body: JSON.stringify({ status }) });
     } else if (action === 'FULFILLMENT_STATUS' || action === 'CARE_STATUS') {
-      const id = Number(form.get('requestId'));
-      if (!Number.isInteger(id) || id < 1) return { ok: false, message: 'Invalid request' };
+      const id = parsePositiveId(form.get('requestId'));
+      if (id === null) return { ok: false, message: 'Invalid request' };
       const status = oneOf(form.get('status'), action === 'CARE_STATUS' ? CARE_STATUSES : FULFILLMENT_STATUSES);
       if (!status) return { ok: false, message: 'Invalid status' };
       await gatewayJson(action === 'CARE_STATUS' ? `/api/health/guidance/admin/requests/${id}` : `/api/wallet/coaching/admin/requests/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
@@ -54,4 +57,73 @@ export async function fulfillmentAction(_prev: ActionState, form: FormData): Pro
     revalidatePath('/fulfillment');
     return { ok: true, message: 'Saved' };
   } catch (e) { return { ok: false, message: e instanceof Error ? e.message : 'Could not save this action' }; }
+}
+
+export async function logSessionAction(_state: ActionState, form: FormData): Promise<ActionState> {
+  await requireSession();
+  if (await hasInvalidActionOrigin()) return { ok: false, message: 'Cross-origin request rejected' };
+  const userId = parsePositiveId(form.get('userId'));
+  if (userId === null || userId > 2147483647) return { ok: false, message: 'Invalid customer ID' };
+  const kind = oneOf(form.get('kind'), ['trainer', 'nutritionist'] as const);
+  if (kind === null) return { ok: false, message: 'Choose trainer or nutritionist' };
+  const mode = oneOf(form.get('mode'), ['online', 'in_person'] as const);
+  if (mode === null) return { ok: false, message: 'Choose online or in person' };
+  const idempotencyKey = form.get('idempotencyKey');
+  if (typeof idempotencyKey !== 'string' || !/^[\w-]{8,100}$/.test(idempotencyKey)) {
+    return { ok: false, message: 'Reload the form to get a valid session request identifier' };
+  }
+  const rawDuration = form.get('durationMinutes');
+  const durationMinutes = parsePositiveId(rawDuration);
+  if (rawDuration && (durationMinutes === null || durationMinutes > 2147483647)) {
+    return { ok: false, message: 'Duration must be a positive whole number of minutes' };
+  }
+  const rawNote = form.get('note');
+  if (rawNote !== null && (typeof rawNote !== 'string' || rawNote.length > 500 || rawNote.includes('\0'))) {
+    return { ok: false, message: 'Note must be text of at most 500 characters' };
+  }
+  try {
+    const heldAt = parseISTFormDate(String(form.get('heldAt') ?? ''), 'session date and time');
+    if (Date.parse(heldAt) > Date.now()) return { ok: false, message: 'Enter a session time in the past' };
+    await gatewayJson(`/api/wallet/coaching/admin/fulfillment/${userId}/session-log`, {
+      method: 'POST',
+      body: JSON.stringify({ kind, mode, heldAt, durationMinutes, note: rawNote?.trim() || null, idempotencyKey }),
+    });
+    revalidatePath('/fulfillment');
+    return { ok: true, message: 'Session logged.' };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Could not log session' };
+  }
+}
+
+export async function resolveSessionAction(_state: ActionState, form: FormData): Promise<ActionState> {
+  await requireSession();
+  if (await hasInvalidActionOrigin()) return { ok: false, message: 'Cross-origin request rejected' };
+  const id = parsePositiveId(form.get('sessionId'));
+  if (id === null || id > 2147483647) return { ok: false, message: 'Invalid session ID' };
+  const resolution = oneOf(form.get('resolution'), ['upheld', 'recredited'] as const);
+  if (resolution === null) return { ok: false, message: 'Choose upheld or re-credited' };
+  try {
+    await gatewayJson(`/api/wallet/coaching/admin/sessions/${id}/resolve`, {
+      method: 'POST',
+      body: JSON.stringify({ resolution }),
+    });
+    revalidatePath('/fulfillment');
+    return { ok: true, message: resolution === 'upheld' ? 'Session upheld.' : 'Session re-credited.' };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Could not resolve dispute' };
+  }
+}
+
+export async function reverseCheckinPayoutAction(_state: ActionState, form: FormData): Promise<ActionState> {
+  await requireSession();
+  if (await hasInvalidActionOrigin()) return { ok: false, message: 'Cross-origin request rejected' };
+  const id = parsePositiveId(form.get('bookingId'));
+  if (id === null || id > 2147483647) return { ok: false, message: 'Invalid booking ID' };
+  try {
+    await gatewayJson(`/api/bookings/admin/bookings/${id}/reverse-checkin-payout`, { method: 'POST' });
+    revalidatePath('/fulfillment');
+    return { ok: true, message: `Check-in payout reversed for booking #${id}.` };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Could not reverse check-in payout' };
+  }
 }

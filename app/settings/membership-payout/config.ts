@@ -1,0 +1,5 @@
+export const MEMBERSHIP_PAYOUT_PATH = '/api/bookings/admin/membership-payout-config';
+export const MEMBERSHIP_PAYOUT_PAGE = '/settings/membership-payout';
+export const GYM_PAYOUT_PATH = `${MEMBERSHIP_PAYOUT_PATH}/gyms`;
+export type MembershipPayout = { payoutPaise: number; updatedAt: string | null };
+export type GymPayout = MembershipPayout & { gymId: number; updatedAt: string };

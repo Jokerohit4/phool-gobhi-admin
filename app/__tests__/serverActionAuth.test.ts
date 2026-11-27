@@ -47,3 +47,20 @@ describe('server actions require a session', () => {
     });
   }
 });
+
+describe('subscription admin mutations check the request origin', () => {
+  for (const file of ['coaching-plans', 'coupons', 'fulfillment', 'settings/membership-payout']) {
+    it(file, () => {
+      const actions = exportedFunctions(readFileSync(path.join(APP_DIR, file, 'actions.ts'), 'utf8'));
+      expect(actions.length).toBeGreaterThan(0);
+      if (file === 'settings/membership-payout') {
+        expect(actions.map(({ name }) => name)).toEqual(expect.arrayContaining([
+          'saveGymPayoutAction', 'removeGymPayoutAction',
+        ]));
+      }
+      for (const { body } of actions) {
+        expect(body).toMatch(/await requireSession\(\);\s+if \(await hasInvalidActionOrigin\(\)\)/);
+      }
+    });
+  }
+});

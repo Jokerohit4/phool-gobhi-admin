@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/Card';
 const SECTIONS = [
   { href: '/settings/launch-maintenance', title: 'Launch & maintenance', description: 'Launch gate and website maintenance windows.' },
   { href: '/settings/policy-billing', title: 'Policy & billing', description: 'Cancellation policy, wallet top-up presets, and profile-completion bonus.' },
+  { href: '/settings/membership-payout', title: 'Membership payout', description: 'Partner payout per membership gym visit.' },
   { href: '/settings/flags-social', title: 'Flags & social', description: 'Feature flags and the platform-wide social switch.' },
   { href: '/settings/otp-auth', title: 'OTP & auth', description: 'OTP provider and skip allowlist for login verification.' },
   { href: '/settings/app-versions', title: 'App versions', description: 'Force-update and soft-update configuration for customer and partner apps.' },
